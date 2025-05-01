@@ -11,6 +11,7 @@
 2. [核心功能](#核心功能)  
 3. [系統架構](#系統架構)  
 4. [Clone](#Clone)
+5. [Build](#Build)
 
 ---
 
@@ -61,4 +62,14 @@
 ```bash
 git clone https://github.com/MengXi47/RED-Safe.git
 cd RED-Safe
+```
+
+## Build
+
+```bash
+mkdir build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release         # UNIX
+cmake .. -G "Visual Studio 17 2022" -A x64  # Windows
+cmake --build . --config Release
 ```
