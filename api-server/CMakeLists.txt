@@ -1,7 +1,7 @@
 # api-server/CMakeLists.txt
 
 # 建立一個可執行檔 target
-add_executable(RED_safe_server
+add_executable(RED_Safe_server
     main.cpp
 )
 
@@ -22,7 +22,7 @@ elseif(UNIX)
 endif()
 
 # （可選）啟用更多警告
-target_compile_options(red_safe_server PRIVATE
+target_compile_options(RED_Safe_server PRIVATE
   $<$<CXX_COMPILER_ID:GNU>:-Wall -Wextra -Wpedantic>
   $<$<CXX_COMPILER_ID:Clang>:-Wall -Wextra -Wpedantic>
   $<$<CXX_COMPILER_ID:MSVC>:/W4>
