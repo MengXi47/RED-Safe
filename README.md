@@ -69,7 +69,6 @@ cd RED-Safe
 ```bash
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release         # UNIX
-cmake .. -G "Visual Studio 17 2022" -A x64  # Windows
-cmake --build . --config Release
+cmake ..
+cmake --build .
 ```
