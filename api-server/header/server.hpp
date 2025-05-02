@@ -12,24 +12,21 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include "../header/config.hpp"
-#include "../header/server.hpp"
+#pragma once
 
-#include <iostream>
+#include <boost/asio.hpp>
 
-int main(int argc, char* argv[])
+namespace redsafe::network
 {
-    try
+    class TCPServer
     {
-        boost::asio::io_context io_context_;
-        redsafe::network::TCPServer server(io_context_, SERVER_PORT);
-        server.start();
-        io_context_.run();
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << "Server error: " << e.what() << "\n";
-    }
-    std::cin.get();
-    return 0;
+    public:
+        TCPServer(boost::asio::io_context& io_context, unsigned short port);
+        void start(); // 啟動伺服器
+    private:
+        void do_accept();
+        inline std::string current_timestamp();
+        boost::asio::io_context&        io_context_;  // I/O 事件迴圈
+        boost::asio::ip::tcp::acceptor  acceptor_;    // 監聽器
+    };
 }

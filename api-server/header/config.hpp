@@ -12,24 +12,8 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include "../header/config.hpp"
-#include "../header/server.hpp"
+#pragma once
 
-#include <iostream>
-
-int main(int argc, char* argv[])
-{
-    try
-    {
-        boost::asio::io_context io_context_;
-        redsafe::network::TCPServer server(io_context_, SERVER_PORT);
-        server.start();
-        io_context_.run();
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << "Server error: " << e.what() << "\n";
-    }
-    std::cin.get();
-    return 0;
-}
+#ifndef SERVER_PORT
+#define SERVER_PORT 30678
+#endif

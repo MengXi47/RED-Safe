@@ -24,6 +24,7 @@ endif()
 # ——— 建立可執行檔 ———
 add_executable(RED_Safe_server
   src/main.cpp
+  src/server.cpp
 )
 
 # ——— Include 路徑 & Link 函式庫 ———
