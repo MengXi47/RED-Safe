@@ -12,13 +12,9 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include "../header/server.hpp"
-
-#include <iostream>
-#include <memory>
-#include <chrono>
-#include <ctime>
-#include <iomanip>
+#include "server.hpp"
+#include "session.hpp"
+#include "util.hpp"
 
 using namespace boost::asio;
 using tcp = ip::tcp;
@@ -42,40 +38,22 @@ namespace redsafe::network
 
     void TCPServer::do_accept()
     {
-        acceptor_.async_accept(
-            [this](boost::system::error_code ec, tcp::socket socket) {
-                if (!ec) {
-                    std::cout << current_timestamp()
+        acceptor_.async_accept([this](boost::system::error_code ec, tcp::socket socket) 
+        {
+                if (!ec) 
+                {
+                    std::cout << redsafe::util::current_timestamp()
                               << "New connection from " 
                               << socket.remote_endpoint().address().to_string()
                               << ":" 
                               << socket.remote_endpoint().port() 
                               << "\n";
-                } else {
+                    auto session = std::make_shared<Session>(std::move(socket));
+                    session->start();
+                } 
+                else
                     std::cerr << "Accept failed: " << ec.message() << "\n";
-                }
                 do_accept();
-            }
-        );
-    }
-
-    inline std::string TCPServer::current_timestamp()
-    {
-        using namespace std::chrono;
-        auto now = system_clock::now();
-        auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
-        auto in_time_t = system_clock::to_time_t(now);
-        std::tm buf;
-#ifdef _WIN32 || _WIN64
-    localtime_s(&buf, &in_time_t);
-#else
-    localtime_r(&in_time_t, &buf);
-#endif
-        std::ostringstream oss;
-        oss << '['
-            << std::put_time(&buf, "%Y-%m-%d %H:%M:%S")
-            << ':' << std::setw(3) << std::setfill('0') << ms.count()
-            << "] ";
-        return oss.str();
+        });
     }
 }

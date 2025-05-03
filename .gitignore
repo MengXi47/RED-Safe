@@ -6,3 +6,5 @@
 
 # 忽略所有 build 目錄
 build/
+
+client.json

@@ -25,7 +25,6 @@ namespace redsafe::network
         void start(); // 啟動伺服器
     private:
         void do_accept();
-        inline std::string current_timestamp();
         boost::asio::io_context&        io_context_;  // I/O 事件迴圈
         boost::asio::ip::tcp::acceptor  acceptor_;    // 監聽器
     };

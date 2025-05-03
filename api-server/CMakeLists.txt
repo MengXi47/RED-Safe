@@ -25,6 +25,7 @@ endif()
 add_executable(RED_Safe_server
   src/main.cpp
   src/server.cpp
+  src/session.cpp
 )
 
 # ——— Include 路徑 & Link 函式庫 ———

@@ -12,24 +12,35 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include "config.hpp"
-#include "server.hpp"
+#pragma once
 
 #include <iostream>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 
-int main(int argc, char* argv[])
+namespace redsafe::util
 {
-    try
+    /**
+    * return [YYYY-MM-DD HH:MM:SS:mmm]
+    */
+    inline std::string current_timestamp()
     {
-        boost::asio::io_context io_context_;
-        redsafe::network::TCPServer server(io_context_, SERVER_PORT);
-        server.start();
-        io_context_.run();
+        using namespace std::chrono;
+        auto now = system_clock::now();
+        auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+        auto in_time_t = system_clock::to_time_t(now);
+        std::tm buf;
+#if defined(_WIN32) || defined(_WIN64)
+    localtime_s(&buf, &in_time_t);
+#else
+    localtime_r(&in_time_t, &buf);
+#endif
+        std::ostringstream oss;
+        oss << '['
+            << std::put_time(&buf, "%Y-%m-%d %H:%M:%S")
+            << ':' << std::setw(3) << std::setfill('0') << ms.count()
+            << "] ";
+        return oss.str();
     }
-    catch(const std::exception& e)
-    {
-        std::cerr << "Server error: " << e.what() << "\n";
-    }
-    std::cin.get();
-    return 0;
 }
