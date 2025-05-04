@@ -21,8 +21,15 @@ int main(int argc, char* argv[])
 {
     try
     {
-        boost::asio::io_context io_context_;
-        redsafe::network::TCPServer server(io_context_, SERVER_PORT);
+        boost::asio::io_context     io_context_;
+
+        // load 憑證與私鑰
+        boost::asio::ssl::context   ssl_ctx{boost::asio::ssl::context::tlsv12_server};
+        ssl_ctx.use_certificate_chain_file("server.crt");
+        ssl_ctx.use_private_key_file("server.key", boost::asio::ssl::context::pem);
+
+        // 把 ssl_ctx 傳給 Server
+        redsafe::network::APIServer server(io_context_, ssl_ctx, SERVER_PORT);
         server.start();
         io_context_.run();
     }

@@ -17,9 +17,8 @@ project(RED_Safe_API_Server LANGUAGES CXX)
 
 # ——— 找 Boost.Asio 所需的模組 ———
 find_package(Boost REQUIRED COMPONENTS system thread)
-if(NOT Boost_FOUND)
-  message(FATAL_ERROR "找不到 Boost 函式庫，請確認已安裝並設定 BOOST_ROOT")
-endif()
+# ——— 找 OpenSSL 所需的模組 ———
+find_package(OpenSSL REQUIRED)
 
 # ——— 建立可執行檔 ———
 add_executable(RED_Safe_server
@@ -32,9 +31,19 @@ add_executable(RED_Safe_server
 # PRIVATE：只對本 target 生效，不會傳遞給其他 target
 target_include_directories(RED_Safe_server PRIVATE
   ${Boost_INCLUDE_DIRS}
+  ${OPENSSL_INCLUDE_DIR}
 )
 target_link_libraries(RED_Safe_server PRIVATE
   ${Boost_LIBRARIES}
+  OpenSSL::SSL
+  OpenSSL::Crypto
+)
+
+add_custom_command(TARGET RED_Safe_server POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_SOURCE_DIR}/server.crt
+            ${CMAKE_SOURCE_DIR}/server.key
+            $<TARGET_FILE_DIR:RED_Safe_server>
 )
 
 # ——— 不同平台／編譯器的額外定義或 flags ———

@@ -21,14 +21,17 @@ using tcp = ip::tcp;
 
 namespace redsafe::network
 {
-    TCPServer::TCPServer(io_context& io_context, unsigned short port)
-        : io_context_(io_context), 
-          acceptor_(io_context, { tcp::v4(), port })
+    APIServer::APIServer(boost::asio::io_context& io_context,
+                         boost::asio::ssl::context& ssl_ctx,
+                         unsigned short port)
+        : io_context_   (io_context),
+          ssl_ctx_      (ssl_ctx),
+          acceptor_     (io_context, { tcp::v4(), port })
     {
-        std::cout << "TCPServer init Successfully.\n";
+        std::cout << "APIServer init Successfully.\n";
     }
 
-    void TCPServer::start()
+    void APIServer::start()
     {
         std::cout << "Server listening on port " 
                   << acceptor_.local_endpoint().port() 
@@ -36,23 +39,39 @@ namespace redsafe::network
         do_accept();
     }
 
-    void TCPServer::do_accept()
+    void APIServer::do_accept()
     {
         acceptor_.async_accept([this](boost::system::error_code ec, tcp::socket socket) 
         {
                 if (!ec) 
                 {
-                    std::cout << redsafe::util::current_timestamp()
-                              << "New connection from " 
-                              << socket.remote_endpoint().address().to_string()
-                              << ":" 
-                              << socket.remote_endpoint().port() 
-                              << "\n";
-                    auto session = std::make_shared<Session>(std::move(socket));
-                    session->start();
+                    // 把 socket 包到 SSL Stream
+                    auto stream = std::make_shared<boost::asio::ssl::stream<tcp::socket>>
+                        (std::move(socket), ssl_ctx_);
+
+                    // 非同步 TLS 握手
+                    stream->async_handshake(boost::asio::ssl::stream_base::server,
+                        [stream](auto ec2) 
+                        {
+                            if (!ec2) // 握手完成後啟動 Session
+                            {
+                                auto& sock = stream->lowest_layer();
+                                std::cout << redsafe::util::current_timestamp()
+                                          << "New connection from " 
+                                          << sock.remote_endpoint().address().to_string()
+                                          << ":" 
+                                          << sock.remote_endpoint().port() 
+                                          << "\n";
+
+                                std::make_shared<Session>(stream)->start();
+                            }
+                            else
+                                std::cerr << "Handshake failed: " << ec2.message() << "\n";
+                        });
                 } 
                 else
                     std::cerr << "Accept failed: " << ec.message() << "\n";
+
                 do_accept();
         });
     }

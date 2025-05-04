@@ -15,17 +15,23 @@
 #pragma once
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+
 
 namespace redsafe::network
 {
-    class TCPServer
+    class APIServer
     {
     public:
-        TCPServer(boost::asio::io_context& io_context, unsigned short port);
-        void start(); // 啟動伺服器
+        APIServer(boost::asio::io_context& io_context,
+            boost::asio::ssl::context& ssl_ctx,
+            unsigned short port);
+            
+        void start();
     private:
         void do_accept();
-        boost::asio::io_context&        io_context_;  // I/O 事件迴圈
-        boost::asio::ip::tcp::acceptor  acceptor_;    // 監聽器
+        boost::asio::io_context&        io_context_;
+        boost::asio::ssl::context&      ssl_ctx_;
+        boost::asio::ip::tcp::acceptor  acceptor_;
     };
 }

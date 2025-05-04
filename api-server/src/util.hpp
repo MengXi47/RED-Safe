@@ -22,7 +22,7 @@
 namespace redsafe::util
 {
     /**
-    * return [YYYY-MM-DD HH:MM:SS:mmm]
+    *   [YYYY-MM-DD HH:MM:SS:mmm]
     */
     inline std::string current_timestamp()
     {
@@ -36,11 +36,11 @@ namespace redsafe::util
 #else
     localtime_r(&in_time_t, &buf);
 #endif
-        std::ostringstream oss;
-        oss << '['
-            << std::put_time(&buf, "%Y-%m-%d %H:%M:%S")
-            << ':' << std::setw(3) << std::setfill('0') << ms.count()
-            << "] ";
-        return oss.str();
+        std::ostringstream strTime;
+        strTime << '['
+                << std::put_time(&buf, "%Y-%m-%d %H:%M:%S")
+                << ':' << std::setw(3) << std::setfill('0') << ms.count()
+                << "] ";
+        return strTime.str();
     }
 }

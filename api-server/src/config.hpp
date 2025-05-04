@@ -15,5 +15,5 @@
 #pragma once
 
 #ifndef SERVER_PORT
-#define SERVER_PORT 30678
+#define SERVER_PORT 443
 #endif

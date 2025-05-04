@@ -17,43 +17,25 @@
 #include "util.hpp"
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <array>
 #include <memory>
 
 namespace redsafe::network
 {
-    /**
-    * @class Session
-    * @brief 管理與單一客戶端的非同步 I/O 會話
-    */
     class Session : public std::enable_shared_from_this<Session>
     {
     public:
-        /**
-         * @brief 建構函式
-         * @param socket 已接受的 TCP 連線 socket
-         */
-        explicit Session(boost::asio::ip::tcp::socket socket);
-    
-        /**
-         * @brief 啟動會話，開始非同步讀取資料
-         */
+        using ssl_socket = boost::asio::ssl::stream<boost::asio::ip::tcp::socket>;
+
+        explicit Session(std::shared_ptr<ssl_socket> sock);
+        
         void start();
-    
     private:
-        /**
-         * @brief 發起一次非同步讀取請求
-         */
         void do_read();
-    
-        /**
-         * @brief 讀取完成回呼
-         * @param ec    錯誤代碼，ec == eof 表示對端已關閉
-         * @param length 讀取到的位元組數
-         */
         void on_read(boost::system::error_code ec, std::size_t length);
-    
-        boost::asio::ip::tcp::socket    socket_;        /// 底層 TCP socket
-        std::array<char, 1024>          buffer_;        /// 接收緩衝區
+        void print_buffer_and_text(const char* data, std::size_t length);
+        std::shared_ptr<ssl_socket> socket_;
+        std::array<char, 1024> buffer_;
     };
 }

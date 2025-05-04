@@ -15,11 +15,13 @@
 #include "session.hpp"
 
 #include <iostream>
+#include <boost/asio/write.hpp>
+
 
 namespace redsafe::network
 {
-    Session::Session(boost::asio::ip::tcp::socket socket)
-    : socket_(std::move(socket))
+    Session::Session(std::shared_ptr<ssl_socket> socket)
+        : socket_(std::move(socket))
     {
     }
 
@@ -31,7 +33,7 @@ namespace redsafe::network
     void Session::do_read()
     {
         auto self = shared_from_this();
-        socket_.async_read_some(
+        socket_->async_read_some(
             boost::asio::buffer(buffer_),
             [self](boost::system::error_code ec, std::size_t length)
             {
@@ -45,24 +47,28 @@ namespace redsafe::network
         if (ec)
         {
             if (ec == boost::asio::error::eof)
+            {
+                auto& sock = socket_->lowest_layer();
                 std::cout << redsafe::util::current_timestamp()
                           << "Client disconnected: "
-                          << socket_.remote_endpoint().address().to_string()
-                          << ":" << socket_.remote_endpoint().port()
+                          << sock.remote_endpoint().address().to_string()
+                          << ":" << sock.remote_endpoint().port()
                           << "\n";
+            }
             else
                 std::cerr << redsafe::util::current_timestamp()
                           << "Read error: " << ec.message()
                           << "\n";
             return;
         }
+
+        print_buffer_and_text(buffer_.data(), length);
     
-        // 處理讀到的資料 (例如 echo 回傳)
         auto self = shared_from_this();
         boost::asio::async_write(
-            socket_,
+            *socket_,
             boost::asio::buffer(buffer_.data(), length),
-            [self](boost::system::error_code ec2, std::size_t )
+            [self](boost::system::error_code ec2, std::size_t)
             {
                 if (ec2)
                     std::cerr << redsafe::util::current_timestamp()
@@ -73,5 +79,23 @@ namespace redsafe::network
     
         // 繼續等待下一次讀取
         do_read();
+    }
+
+    void Session::print_buffer_and_text(const char *data, std::size_t length)
+    {
+        std::string msg(data, length);
+        // 輸出原始訊息並換行
+        std::cout << redsafe::util::current_timestamp() << msg << '\n';
+
+        const std::string key = "text=";
+        auto pos = msg.find(key);
+        if (pos != std::string::npos) 
+        {
+           std::string val = msg.substr(pos + key.size());
+           // 去除可能末尾的換行符
+           while (!val.empty() && (val.back() == '\n' || val.back() == '\r'))
+               val.pop_back();
+           std::cout << redsafe::util::current_timestamp() << "text: " << val << '\n';
+        }
     }
 }
