@@ -4,7 +4,7 @@
    This file and its contents are proprietary and confidential.
    Unauthorized reproduction, distribution, or modification is strictly prohibited.
   
-   Without the prior written permission of [Copyright Owner], you may not:
+   Without the prior written permission of CHEN,BO-EN , you may not:
      1. Modify, adapt, or create derivative works of this source code;
      2. Reverse engineer, decompile, or otherwise attempt to derive the source code;
      3. Distribute, display, or otherwise use this source code or its derivatives in any form.
@@ -15,10 +15,8 @@
 #include "session.hpp"
 
 #include <iostream>
-#include <boost/asio/write.hpp>
 
-
-namespace redsafe::network
+namespace redsafe::apiserver::session
 {
     Session::Session(std::shared_ptr<ssl_socket> socket)
         : socket_(std::move(socket))
@@ -49,14 +47,14 @@ namespace redsafe::network
             if (ec == boost::asio::error::eof)
             {
                 auto& sock = socket_->lowest_layer();
-                std::cout << redsafe::util::current_timestamp()
+                std::cout << redsafe::apiserver::util::current_timestamp()
                           << "Client disconnected: "
                           << sock.remote_endpoint().address().to_string()
                           << ":" << sock.remote_endpoint().port()
                           << "\n";
             }
             else
-                std::cerr << redsafe::util::current_timestamp()
+                std::cerr << redsafe::apiserver::util::current_timestamp()
                           << "Read error: " << ec.message()
                           << "\n";
             return;
@@ -71,7 +69,7 @@ namespace redsafe::network
             [self](boost::system::error_code ec2, std::size_t)
             {
                 if (ec2)
-                    std::cerr << redsafe::util::current_timestamp()
+                    std::cerr << redsafe::apiserver::util::current_timestamp()
                               << "Write error: " << ec2.message()
                               << "\n";
             }
@@ -85,7 +83,7 @@ namespace redsafe::network
     {
         std::string msg(data, length);
         // 輸出原始訊息並換行
-        std::cout << redsafe::util::current_timestamp() << msg << '\n';
+        std::cout << redsafe::apiserver::util::current_timestamp() << msg << '\n';
 
         const std::string key = "text=";
         auto pos = msg.find(key);
@@ -95,7 +93,7 @@ namespace redsafe::network
            // 去除可能末尾的換行符
            while (!val.empty() && (val.back() == '\n' || val.back() == '\r'))
                val.pop_back();
-           std::cout << redsafe::util::current_timestamp() << "text: " << val << '\n';
+           std::cout << redsafe::apiserver::util::current_timestamp() << "text: " << val << '\n';
         }
     }
 }

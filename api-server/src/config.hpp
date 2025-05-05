@@ -4,7 +4,7 @@
    This file and its contents are proprietary and confidential.
    Unauthorized reproduction, distribution, or modification is strictly prohibited.
   
-   Without the prior written permission of [Copyright Owner], you may not:
+   Without the prior written permission of CHEN,BO-EN , you may not:
      1. Modify, adapt, or create derivative works of this source code;
      2. Reverse engineer, decompile, or otherwise attempt to derive the source code;
      3. Distribute, display, or otherwise use this source code or its derivatives in any form.
@@ -13,7 +13,3 @@
 *******************************************************************************/
 
 #pragma once
-
-#ifndef SERVER_PORT
-#define SERVER_PORT 443
-#endif
