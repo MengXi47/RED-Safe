@@ -35,25 +35,7 @@
 
 ## 系統架構
 
-```text
-┌──────────────┐      ┌──────────────────────────┐      ┌────────────────┐
-│  IP Camera(s)│ ──▶  │ Image Capture &          │ ──▶  │ Inference      │
-│ (Edge Device)│      │ Preprocessing (C++)      │      │ Engine         │
-│              │      │                          │      │ (ONNX/TensorRT)│
-└──────────────┘      └──────────────────────────┘      └────────────────┘
-                                                                 │
-                                                                 ▼
-                                                        ┌──────────────────┐
-                                                        │ FastAPI Backend  │──▶ APNs Notification
-                                                        │                  │
-                                                        └──────────────────┘
-                                                                 │
-                                                                 ▼
-                                                        ┌──────────────────┐
-                                                        │ iOS Application  │
-                                                        │                  │
-                                                        └──────────────────┘
-```
+![RED‑Safe Architecture](docs/redsafe‑architecture_v1.png)
 
 ---
 
