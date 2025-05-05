@@ -8,6 +8,3 @@
 build/
 
 client.json
-
-*.crt
-*.key
