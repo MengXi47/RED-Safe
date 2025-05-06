@@ -18,7 +18,10 @@ if(APPLE)
   target_compile_definitions(RED_Safe_server PRIVATE PLATFORM_MACOS)
 elseif(WIN32)
   message(STATUS "Building on Windows")
-  add_compile_definitions(_WIN32_WINNT=0x0601)
+  add_compile_definitions(
+    _WIN32_WINNT=0x0601
+    WIN32_LEAN_AND_MEAN
+  )
   target_compile_definitions(RED_Safe_server PRIVATE PLATFORM_WINDOWS)
 elseif(UNIX)
   message(STATUS "Building on Linux/Unix")
@@ -44,15 +47,6 @@ target_link_libraries(RED_Safe_server
       OpenSSL::SSL
       OpenSSL::Crypto
 )
-
-# target_link_libraries(RED_Safe_server
-#     PRIVATE
-#       Boost::asio
-#       Boost::system
-#       Boost::thread
-#       OpenSSL::SSL
-#       OpenSSL::Crypto
-# )
 
 #-------------------- 複製憑證 ------------------
 configure_file(${CMAKE_SOURCE_DIR}/server.crt  server.crt  COPYONLY)
