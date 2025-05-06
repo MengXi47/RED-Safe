@@ -16,84 +16,76 @@
 
 #include <iostream>
 
-namespace redsafe::apiserver::session
+namespace redsafe::apiserver
 {
-    Session::Session(std::shared_ptr<ssl_socket> socket)
+    Session::Session(std::shared_ptr<ssl_stream> socket)
         : socket_(std::move(socket))
     {
     }
 
     void Session::start()
     {
-        do_read();
+        auto self = shared_from_this();
+        socket_->async_handshake(
+            boost::asio::ssl::stream_base::server,
+            [self](boost::system::error_code ec)
+            {
+                if(ec)
+                {
+                    std::cerr << "Handshake failed: " << ec.message() << "\n";
+                    return;
+                }
+                self->do_read();
+            }
+        );
     }
 
     void Session::do_read()
     {
         auto self = shared_from_this();
-        socket_->async_read_some(
-            boost::asio::buffer(buffer_),
-            [self](boost::system::error_code ec, std::size_t length)
-            {
-                self->on_read(ec, length);
-            }
-        );
-    }
-
-    void Session::on_read(boost::system::error_code ec, std::size_t length)
-    {
-        if (ec)
-        {
-            if (ec == boost::asio::error::eof)
-            {
-                auto& sock = socket_->lowest_layer();
-                std::cout << redsafe::apiserver::util::current_timestamp()
-                          << "Client disconnected: "
-                          << sock.remote_endpoint().address().to_string()
-                          << ":" << sock.remote_endpoint().port()
-                          << "\n";
-            }
-            else
-                std::cerr << redsafe::apiserver::util::current_timestamp()
-                          << "Read error: " << ec.message()
-                          << "\n";
-            return;
-        }
-
-        print_buffer_and_text(buffer_.data(), length);
-    
-        auto self = shared_from_this();
-        boost::asio::async_write(
+        http::async_read(
             *socket_,
-            boost::asio::buffer(buffer_.data(), length),
-            [self](boost::system::error_code ec2, std::size_t)
+            buffer_,
+            req_,
+            [self](boost::system::error_code ec, std::size_t)
             {
-                if (ec2)
-                    std::cerr << redsafe::apiserver::util::current_timestamp()
-                              << "Write error: " << ec2.message()
-                              << "\n";
+                if(ec) {
+                    std::cerr << "Read failure: " << ec.message() << "\n";
+                    return;
+                }
+                self->handle_request();
             }
         );
-    
-        // 繼續等待下一次讀取
-        do_read();
     }
 
-    void Session::print_buffer_and_text(const char *data, std::size_t length)
+    void Session::handle_request()
     {
-        std::string msg(data, length);
-        // 輸出原始訊息並換行
-        std::cout << redsafe::apiserver::util::current_timestamp() << msg << '\n';
+        std::cout << redsafe::apiserver::util::current_timestamp() << req_ << std::endl;
 
-        const std::string key = "text=";
-        auto pos = msg.find(key);
-        if (pos != std::string::npos) 
-        {
-           std::string val = msg.substr(pos + key.size());
-           // 去除可能末尾的換行符
-           while (!val.empty() && (val.back() == '\n' || val.back() == '\r'))
-               val.pop_back();
-           std::cout << redsafe::apiserver::util::current_timestamp() << "text: " << val << '\n';
-        }
+        // req ez e04💩
+        http::response<http::string_body> res{
+            http::status::ok, req_.version()};
+        res.set(http::field::server, "RED-Safe");
+        res.set(http::field::content_type, "text/plain");
+        res.keep_alive(req_.keep_alive());
+        res.body() = "OK";
+        res.prepare_payload();
+        do_write(std::move(res));
+    }
+
+    template<class Response>
+    void Session::do_write(Response&& res)
+    {
+        auto self = shared_from_this();
+        auto sp = std::make_shared<std::decay_t<Response>>(std::forward<Response>(res));
+
+        http::async_write(
+            *socket_,
+            res,
+            [self](boost::system::error_code ec, std::size_t)
+            {
+                self->socket_->async_shutdown([self](boost::system::error_code) {});
+            }
+        );
     }
 }

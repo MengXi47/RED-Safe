@@ -59,15 +59,13 @@ class Server::Impl
             {
                     if (!ec) 
                     {
-                        // 把 socket 包到 SSL Stream
                         auto stream = std::make_shared<ssl::stream<tcp::socket>>
                             (std::move(socket), ssl_ctx_);
     
-                        // 非同步 TLS 握手
                         stream->async_handshake(ssl::stream_base::server,
                             [stream](auto ec2) 
                             {
-                                if (!ec2) // 握手完成後啟動 Session
+                                if (!ec2)
                                 {
                                     auto& sock = stream->lowest_layer();
                                     std::cout << redsafe::apiserver::util::current_timestamp()
@@ -77,7 +75,7 @@ class Server::Impl
                                               << sock.remote_endpoint().port() 
                                               << "\n";
     
-                                    std::make_shared<redsafe::apiserver::session::Session>
+                                    std::make_shared<redsafe::apiserver::Session>
                                         (stream)->start();
                                 }
                                 else
