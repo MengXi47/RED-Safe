@@ -25,7 +25,7 @@ using tcp = ip::tcp;
 
 namespace redsafe::apiserver
 {
-    class Server::Impl
+class Server::Impl
     {
     public:
         Impl(const Server::Options& opt) 
@@ -69,13 +69,13 @@ namespace redsafe::apiserver
                             {
                                 if (!ec2) // 握手完成後啟動 Session
                                 {
-                                    // auto& sock = stream->lowest_layer();
-                                    // std::cout << redsafe::apiserver::util::current_timestamp()
-                                    //           << "New connection from " 
-                                    //           << sock.remote_endpoint().address().to_string()
-                                    //           << ":" 
-                                    //           << sock.remote_endpoint().port() 
-                                    //           << "\n";
+                                    auto& sock = stream->lowest_layer();
+                                    std::cout << redsafe::apiserver::util::current_timestamp()
+                                              << "New connection from " 
+                                              << sock.remote_endpoint().address().to_string()
+                                              << ":" 
+                                              << sock.remote_endpoint().port() 
+                                              << "\n";
     
                                     std::make_shared<redsafe::apiserver::session::Session>
                                         (stream)->start();
@@ -97,8 +97,10 @@ namespace redsafe::apiserver
         Options                           options_;
     };
 
-    Server::Server()
-    : Server(Options{}) {}
+    Server::Server() : Server(Options{})
+    {
+        
+    }
 
     Server::Server(const Options& opt) : impl_{std::make_unique<Impl>(opt)}
     {
