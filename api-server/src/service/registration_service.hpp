@@ -11,3 +11,20 @@
   
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
+
+#include <iostream>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
+
+namespace redsafe::apiserver::service
+{
+    class RegistrationService
+    {
+    public:
+        RegistrationService(std::string serial_number);
+        json registerUser();
+    private:
+        std::string serial_number_;
+    };
+}

@@ -12,11 +12,8 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include <nlohmann/json.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
-
-using json = nlohmann::json;
 
 namespace redsafe::apiserver
 {
@@ -26,11 +23,11 @@ namespace redsafe::apiserver
 
     class Controller
     {
-        using json = nlohmann::json;
     public:
-        explicit Controller(const http::request<http::string_body> req);
+        explicit Controller(http::request<http::string_body> req);
         response handle_request();
     private:
+        response make_error_response(int status_code, const std::string& message);
         std::string str_response = "ttttttttttttttttttt";
         http::request<http::string_body> req_;
     };

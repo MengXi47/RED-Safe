@@ -12,6 +12,7 @@ add_executable(RED_Safe_apiserver
     src/api-server.cpp
     src/session.cpp
     src/controller.cpp
+    src/service/registration_service.cpp
 )
 
 if(APPLE)
@@ -49,7 +50,7 @@ target_link_libraries(RED_Safe_apiserver
       ${Boost_LIBRARIES}
       OpenSSL::SSL
       OpenSSL::Crypto
-      nlohmann_json::nlohmann_json
+      ${nlohmann_json_LIBS}
 )
 
 #-------------------- 複製憑證 ------------------
