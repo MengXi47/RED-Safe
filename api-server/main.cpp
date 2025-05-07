@@ -12,7 +12,7 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include "../include/api-server.hpp"
+#include "include/api-server.hpp"
 
 #include <iostream>
 

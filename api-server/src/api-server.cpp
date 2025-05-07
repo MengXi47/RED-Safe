@@ -67,16 +67,16 @@ class Server::Impl
                             {
                                 if (!ec2)
                                 {
-                                    auto& sock = stream->lowest_layer();
-                                    std::cout << redsafe::apiserver::util::current_timestamp()
-                                              << "New connection from " 
-                                              << sock.remote_endpoint().address().to_string()
-                                              << ":" 
-                                              << sock.remote_endpoint().port() 
-                                              << "\n";
-    
                                     std::make_shared<redsafe::apiserver::Session>
                                         (stream)->start();
+
+                                    // auto& sock = stream->lowest_layer();
+                                    // std::cout << redsafe::apiserver::util::current_timestamp()
+                                    //           << "New connection from " 
+                                    //           << sock.remote_endpoint().address().to_string()
+                                    //           << ":" 
+                                    //           << sock.remote_endpoint().port() 
+                                    //           << "\n";
                                 }
                                 else
                                     std::cerr << "Handshake failed: " << ec2.message() << "\n";

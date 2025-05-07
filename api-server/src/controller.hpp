@@ -12,36 +12,26 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#pragma once
-
-#include "util.hpp"
-
-#include <memory>
-#include <boost/asio/ip/tcp.hpp>
+#include <nlohmann/json.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
-#include <boost/asio/ssl/stream.hpp>
+
+using json = nlohmann::json;
 
 namespace redsafe::apiserver
 {
     namespace beast = boost::beast;
     namespace http  = beast::http;
-    using tcp       = boost::asio::ip::tcp;
-    using ssl_stream = boost::asio::ssl::stream<tcp::socket>;
+    using response = http::response<http::string_body>;
 
-    class Session : public std::enable_shared_from_this<Session>
+    class Controller
     {
+        using json = nlohmann::json;
     public:
-        explicit Session(std::shared_ptr<ssl_stream> sock);
-        void start();
+        explicit Controller(const http::request<http::string_body> req);
+        response handle_request();
     private:
-        void do_read();
-        void handle_request();
-        template<class Response>
-        void do_write(Response&& res);
-
-        std::shared_ptr<ssl_stream>         socket_;
-        beast::flat_buffer                  buffer_;
-        http::request<http::string_body>    req_;
+        std::string str_response = "ttttttttttttttttttt";
+        http::request<http::string_body> req_;
     };
 }

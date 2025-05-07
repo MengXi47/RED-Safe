@@ -7,25 +7,26 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 #-------------------- 來源檔 -------------------
-add_executable(RED_Safe_server
-    src/main.cpp
+add_executable(RED_Safe_apiserver
+    main.cpp
     src/api-server.cpp
     src/session.cpp
+    src/controller.cpp
 )
 
 if(APPLE)
   message(STATUS "Building on macOS")
-  target_compile_definitions(RED_Safe_server PRIVATE PLATFORM_MACOS)
+  target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_MACOS)
 elseif(WIN32)
   message(STATUS "Building on Windows")
   add_compile_definitions(
     _WIN32_WINNT=0x0601
     WIN32_LEAN_AND_MEAN
   )
-  target_compile_definitions(RED_Safe_server PRIVATE PLATFORM_WINDOWS)
+  target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_WINDOWS)
 elseif(UNIX)
   message(STATUS "Building on Linux/Unix")
-  target_compile_definitions(RED_Safe_server PRIVATE PLATFORM_UNIX)
+  target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_UNIX)
 endif()
 
 if(POLICY CMP0167)
@@ -35,17 +36,20 @@ endif()
 #-------------------- 依賴 --------------------
 find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(OpenSSL REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
-target_include_directories(RED_Safe_server
+target_include_directories(RED_Safe_apiserver
     PRIVATE
       ${Boost_INCLUDE_DIRS}
       ${OPENSSL_INCLUDE_DIR}
+      ${nlohmann_json_INCLUDE_DIRS}
 )
-target_link_libraries(RED_Safe_server
+target_link_libraries(RED_Safe_apiserver
     PRIVATE
       ${Boost_LIBRARIES}
       OpenSSL::SSL
       OpenSSL::Crypto
+      nlohmann_json::nlohmann_json
 )
 
 #-------------------- 複製憑證 ------------------

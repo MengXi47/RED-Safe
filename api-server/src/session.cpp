@@ -13,6 +13,7 @@
 *******************************************************************************/
 
 #include "session.hpp"
+#include "controller.hpp"
 
 #include <iostream>
 
@@ -60,16 +61,9 @@ namespace redsafe::apiserver
 
     void Session::handle_request()
     {
-        std::cout << redsafe::apiserver::util::current_timestamp() << req_ << std::endl;
+        http::response<http::string_body> res = 
+            std::make_shared<redsafe::apiserver::Controller>(req_)->handle_request();
 
-        // req ez e04💩
-        http::response<http::string_body> res{
-            http::status::ok, req_.version()};
-        res.set(http::field::server, "RED-Safe");
-        res.set(http::field::content_type, "text/plain");
-        res.keep_alive(req_.keep_alive());
-        res.body() = "OK";
-        res.prepare_payload();
         do_write(std::move(res));
     }
 
@@ -81,8 +75,8 @@ namespace redsafe::apiserver
 
         http::async_write(
             *socket_,
-            res,
-            [self](boost::system::error_code ec, std::size_t)
+            *sp,
+            [self, sp](boost::system::error_code ec, std::size_t)
             {
                 self->socket_->async_shutdown([self](boost::system::error_code) {});
             }
