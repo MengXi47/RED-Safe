@@ -12,6 +12,8 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
+#pragma once
+
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 

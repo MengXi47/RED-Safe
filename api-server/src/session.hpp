@@ -24,10 +24,10 @@
 
 namespace redsafe::apiserver
 {
-    namespace beast = boost::beast;
-    namespace http  = beast::http;
-    using tcp       = boost::asio::ip::tcp;
-    using ssl_stream = boost::asio::ssl::stream<tcp::socket>;
+    namespace beast      = boost::beast;
+    namespace http       = beast::http;
+    using     tcp        = boost::asio::ip::tcp;
+    using     ssl_stream = boost::asio::ssl::stream<tcp::socket>;
 
     class Session : public std::enable_shared_from_this<Session>
     {

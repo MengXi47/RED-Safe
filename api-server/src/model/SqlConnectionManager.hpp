@@ -12,29 +12,43 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include <iostream>
-#include <memory>
+#pragma once
 
-namespace redsafe::apiserver
+#include "../../config.hpp"
+
+#include <iostream>
+#include <pqxx/pqxx>
+#include <memory>
+#include <string>
+#include <stdexcept>
+
+namespace redsafe::apiserver::model::sql
 {
-    class Server
+    class ConnectionManager
     {
     public:
-        struct Options
+        explicit ConnectionManager()
         {
-            uint16_t    port      {443};
-            std::string cert_file {"server.crt"};
-            std::string key_file  {"server.key"};
-        };
+            initConnection(SQL_CONNECTION_STR);
+        }
 
-        explicit Server(const Options&);
-        Server();
-        ~Server();
+        static void initConnection(const std::string& conn_str)
+        {
+            if (!conn_)
+            {
+                conn_ = std::make_unique<pqxx::connection>(conn_str);
+                if (!conn_->is_open())
+                    throw std::runtime_error("DB connection failed: " + conn_str);
+            }
+        }
 
-        void start();
-        void stop();
+        static pqxx::connection& connection()
+        {
+            if (!conn_)
+                throw std::runtime_error("DB connection not initialized");
+            return *conn_;
+        }
     private:
-        class Impl;
-        std::unique_ptr<Impl> impl_;
+        static inline std::unique_ptr<pqxx::connection> conn_{nullptr};
     };
 }

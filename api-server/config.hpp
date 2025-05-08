@@ -13,3 +13,7 @@
 *******************************************************************************/
 
 #pragma once
+
+#ifndef SQL_CONNECTION_STR
+#define SQL_CONNECTION_STR "host=127.0.0.1 port=5432 dbname=redsafedb user=redsafedb_user password=931204"
+#endif

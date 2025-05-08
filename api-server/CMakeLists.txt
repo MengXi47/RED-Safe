@@ -13,6 +13,7 @@ add_executable(RED_Safe_apiserver
     src/session.cpp
     src/controller.cpp
     src/service/registration_service.cpp
+    src/model/sql_model.cpp
 )
 
 if(APPLE)
@@ -38,6 +39,20 @@ endif()
 find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(PostgreSQL REQUIRED)
+find_package(libpqxx CONFIG QUIET)
+
+if(TARGET libpqxx::pqxx)                       # 成功找到
+    set(PQXX_TARGET libpqxx::pqxx)
+else()                                         # 回退到 pkg-config
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(PQXX REQUIRED libpqxx)
+    add_library(pqxx INTERFACE)
+    target_include_directories(pqxx INTERFACE ${PQXX_INCLUDE_DIRS})
+    target_link_libraries(pqxx INTERFACE ${PQXX_LINK_LIBRARIES})
+    set(PQXX_TARGET pqxx)
+endif()
+
 
 target_include_directories(RED_Safe_apiserver
     PRIVATE
@@ -48,9 +63,10 @@ target_include_directories(RED_Safe_apiserver
 target_link_libraries(RED_Safe_apiserver
     PRIVATE
       ${Boost_LIBRARIES}
-      OpenSSL::SSL
-      OpenSSL::Crypto
+      ${OPENSSL_LIBRARIES}
       ${nlohmann_json_LIBS}
+      ${PQXX_TARGET}
+      PostgreSQL::PostgreSQL
 )
 
 #-------------------- 複製憑證 ------------------

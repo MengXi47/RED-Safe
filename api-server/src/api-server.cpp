@@ -19,6 +19,8 @@
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
 #include <memory>
+#include <thread>
+#include <vector>
 
 using namespace boost::asio;
 using tcp = ip::tcp;
@@ -43,8 +45,24 @@ class Server::Impl
             std::cout << "Server listening on port " 
                       << acceptor_.local_endpoint().port() 
                       << " …\n";
+
             do_accept();
-            io_.run();
+
+            unsigned int numThreads = std::thread::hardware_concurrency();
+            if (numThreads == 0) numThreads = 2;
+
+            std::cout << numThreads << std::endl;
+
+            std::vector<std::jthread> workers;
+            workers.reserve(numThreads);
+            for (unsigned int i = 0; i < numThreads; ++i)
+            {
+                workers.emplace_back(
+                    [this](std::stop_token)
+                    {
+                        io_.run();
+                    });
+            }
         }
 
         void stop()
@@ -70,13 +88,13 @@ class Server::Impl
                                     std::make_shared<redsafe::apiserver::Session>
                                         (stream)->start();
 
-                                    // auto& sock = stream->lowest_layer();
-                                    // std::cout << redsafe::apiserver::util::current_timestamp()
-                                    //           << "New connection from " 
-                                    //           << sock.remote_endpoint().address().to_string()
-                                    //           << ":" 
-                                    //           << sock.remote_endpoint().port() 
-                                    //           << "\n";
+                                    auto& sock = stream->lowest_layer();
+                                    std::cout << redsafe::apiserver::util::current_timestamp()
+                                              << "New connection from " 
+                                              << sock.remote_endpoint().address().to_string()
+                                              << ":" 
+                                              << sock.remote_endpoint().port() 
+                                              << "\n";
                                 }
                                 else
                                     std::cerr << "Handshake failed: " << ec2.message() << "\n";
