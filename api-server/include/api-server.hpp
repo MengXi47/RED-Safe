@@ -31,8 +31,8 @@ namespace redsafe::apiserver
         Server();
         ~Server();
 
-        void start();
-        void stop();
+        void start() const;
+        void stop() const;
     private:
         class Impl;
         std::unique_ptr<Impl> impl_;

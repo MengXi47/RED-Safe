@@ -27,10 +27,10 @@ using tcp = ip::tcp;
 
 namespace redsafe::apiserver
 {
-class Server::Impl
+    class Server::Impl
     {
     public:
-        Impl(const Server::Options& opt) 
+        explicit Impl(const Server::Options& opt)
             : io_(),
               ssl_ctx_{ssl::context::tlsv12_server},
               acceptor_{io_, {tcp::v4(), opt.port}},
@@ -58,7 +58,7 @@ class Server::Impl
             for (unsigned int i = 0; i < numThreads; ++i)
             {
                 workers.emplace_back(
-                    [this](std::stop_token)
+                    [this](const std::stop_token&)
                     {
                         io_.run();
                     });
@@ -73,15 +73,15 @@ class Server::Impl
     private:
         void do_accept()
         {
-            acceptor_.async_accept([this](boost::system::error_code ec, tcp::socket socket) 
+            acceptor_.async_accept([this](const boost::system::error_code &ec, tcp::socket socket)
             {
-                    if (!ec) 
-                    {
-                        auto stream = std::make_shared<ssl::stream<tcp::socket>>
-                            (std::move(socket), ssl_ctx_);
-    
+                if (!ec)
+                {
+                    auto stream = std::make_shared<ssl::stream<tcp::socket>>
+                        (std::move(socket), ssl_ctx_);
+
                         stream->async_handshake(ssl::stream_base::server,
-                            [stream](auto ec2) 
+                            [stream](auto ec2)
                             {
                                 if (!ec2)
                                 {
@@ -90,20 +90,20 @@ class Server::Impl
 
                                     auto& sock = stream->lowest_layer();
                                     std::cout << redsafe::apiserver::util::current_timestamp()
-                                              << "New connection from " 
+                                              << "New connection from "
                                               << sock.remote_endpoint().address().to_string()
-                                              << ":" 
-                                              << sock.remote_endpoint().port() 
+                                              << ":"
+                                              << sock.remote_endpoint().port()
                                               << "\n";
                                 }
                                 else
                                     std::cerr << "Handshake failed: " << ec2.message() << "\n";
                             });
-                    } 
-                    else
-                        std::cerr << "Accept failed: " << ec.message() << "\n";
+                }
+                else
+                    std::cerr << "Accept failed: " << ec.message() << "\n";
     
-                    do_accept();
+                do_accept();
             });
         }
 
@@ -124,12 +124,12 @@ class Server::Impl
 
     Server::~Server() = default;
 
-    void Server::start()
+    void Server::start() const
     {
         impl_->start();
     }
 
-    void Server::stop() 
+    void Server::stop() const
     {
         impl_->stop(); 
     }

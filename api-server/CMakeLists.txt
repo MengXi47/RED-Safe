@@ -39,7 +39,6 @@ endif()
 find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(PostgreSQL REQUIRED)
 find_package(libpqxx CONFIG QUIET)
 
 if(TARGET libpqxx::pqxx)                       # 成功找到
@@ -66,7 +65,6 @@ target_link_libraries(RED_Safe_apiserver
       ${OPENSSL_LIBRARIES}
       ${nlohmann_json_LIBS}
       ${PQXX_TARGET}
-      PostgreSQL::PostgreSQL
 )
 
 #-------------------- 複製憑證 ------------------
