@@ -29,7 +29,7 @@ namespace redsafe::apiserver
         auto self = shared_from_this();
         socket_->async_handshake(
             boost::asio::ssl::stream_base::server,
-            [self](boost::system::error_code ec)
+            [self](const boost::system::error_code &ec)
             {
                 if(ec)
                 {
@@ -48,7 +48,7 @@ namespace redsafe::apiserver
             *socket_,
             buffer_,
             req_,
-            [self](boost::system::error_code ec, std::size_t)
+            [self](const boost::system::error_code &ec, std::size_t)
             {
                 if(ec) {
                     std::cerr << "Read failure: " << ec.message() << "\n";
@@ -76,7 +76,7 @@ namespace redsafe::apiserver
         http::async_write(
             *socket_,
             *sp,
-            [self, sp](boost::system::error_code ec, std::size_t)
+            [self](boost::system::error_code ec, std::size_t)
             {
                 self->socket_->async_shutdown([self](boost::system::error_code) {});
             }

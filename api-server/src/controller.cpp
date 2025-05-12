@@ -15,7 +15,6 @@
 #include "controller.hpp"
 #include "service/service.hpp"
 
-#include <iostream>
 #include <nlohmann/json.hpp>
 #include <unordered_map>
 #include <functional>
@@ -26,7 +25,7 @@ using Handler = std::function<json(const json&)>;
 namespace redsafe::apiserver
 {
     Controller::Controller(http::request<http::string_body> req)
-        : req_(req)
+        : req_(std::move(req))
     {
     }
 
@@ -37,7 +36,7 @@ namespace redsafe::apiserver
         {
             req_body = json::parse(req_.body());
         }
-        catch (const nlohmann::json::parse_error& e)
+        catch ([[maybe_unused]] const nlohmann::json::parse_error& e)
         {
             return make_error_response(400, "Invalid JSON");
         }

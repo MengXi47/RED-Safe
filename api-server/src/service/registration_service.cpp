@@ -15,10 +15,12 @@
 #include "registration_service.hpp"
 #include "../model/model.hpp"
 
+#include <utility>
+
 namespace redsafe::apiserver::service
 {
     RegistrationService::RegistrationService(std::string serial_number)
-        : serial_number_(serial_number)
+        : serial_number_(std::move(serial_number))
     {
     }
 

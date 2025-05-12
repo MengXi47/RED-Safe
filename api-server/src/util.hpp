@@ -16,7 +16,6 @@
 
 #include <iostream>
 #include <chrono>
-#include <ctime>
 #include <iomanip>
 
 namespace redsafe::apiserver::util
