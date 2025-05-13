@@ -32,6 +32,7 @@ int main(int argc, char* argv[])
     {
         const redsafe::apiserver::Server server;
         server.start();
+        std::cin.get();
     }
     catch(const std::exception& e)
     {
