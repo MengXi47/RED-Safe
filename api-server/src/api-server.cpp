@@ -69,15 +69,17 @@ namespace redsafe::apiserver
 #elif SERVER_THREAD_TYPE == 2
             pool_ = std::make_unique<thread_pool>(numThreads);
             for (unsigned int i = 0; i < numThreads; ++i)
-                post(*pool_, [this]{ io_.run(); });
+                post(*pool_, [ctx = &io_]{ ctx->run(); });
 #endif
 #endif
         }
 
         void stop()
         {
+#if SERVER_THREAD_TYPE == 0 || SERVER_THREAD_TYPE == 1
             io_.stop();
-#if  SERVER_THREAD_TYPE == 2
+#elif SERVER_THREAD_TYPE == 2
+            io_.stop();
             if (pool_)
                 pool_->join();
 #endif
@@ -123,6 +125,7 @@ namespace redsafe::apiserver
         ip::tcp::acceptor              acceptor_;
         Options                        options_;
         std::unique_ptr<thread_pool>   pool_;
+        executor_work_guard<io_context::executor_type> guard_{io_.get_executor()};
     };
 
     Server::Server() : Server(Options{})
