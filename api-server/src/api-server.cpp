@@ -12,6 +12,7 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
+#include "../config.hpp"
 #include "../include/api-server.hpp"
 
 #include "session.hpp"
@@ -33,11 +34,25 @@ namespace redsafe::apiserver
         explicit Impl(const Server::Options& opt)
             : io_(),
               ssl_ctx_{ssl::context::tlsv12_server},
-              acceptor_{io_, {tcp::v4(), opt.port}},
+              acceptor_{io_},
               options_{opt}
         {
             ssl_ctx_.use_certificate_chain_file(opt.cert_file);
             ssl_ctx_.use_private_key_file(opt.key_file, ssl::context::pem);
+
+            // open acceptor with explicit steps to improve cross‑platform binding
+            boost::system::error_code ec;
+            acceptor_.open(tcp::v4(), ec);
+            if (ec) throw boost::system::system_error(ec, "open");
+
+            acceptor_.set_option(tcp::acceptor::reuse_address(true), ec);
+            if (ec) throw boost::system::system_error(ec, "set_option");
+
+            acceptor_.bind({tcp::v4(), opt.port}, ec);
+            if (ec) throw boost::system::system_error(ec, "bind");
+
+            acceptor_.listen(socket_base::max_listen_connections, ec);
+            if (ec) throw boost::system::system_error(ec, "listen");
         }
 
         ~Impl()
@@ -53,23 +68,24 @@ namespace redsafe::apiserver
 
             do_accept();
 
+#if  SERVER_THREAD_TYPE == 0
+            std::cout << "IO Threads: 1" << std::endl;
+            io_.run();
+#else
             unsigned int numThreads = std::thread::hardware_concurrency();
             if (numThreads == 0) numThreads = 2;
-
             std::cout << "IO Threads: " << numThreads << std::endl;
-
-            pool_ = std::make_unique<thread_pool>(numThreads);
-
-            // std::vector<std::jthread> workers;
-            // workers.reserve(numThreads);
+#if  SERVER_THREAD_TYPE == 1
+            std::vector<std::jthread> workers;
+            workers.reserve(numThreads);
             for (unsigned int i = 0; i < numThreads; ++i)
-            {
-                // workers.emplace_back([this](const std::stop_token&){ io_.run(); });
-                post(*pool_, [this]
-                {
-                    io_.run();
-                });
-            }
+                workers.emplace_back([this](const std::stop_token&){ io_.run(); });
+#elif SERVER_THREAD_TYPE == 2
+            pool_ = std::make_unique<thread_pool>(numThreads);
+            for (unsigned int i = 0; i < numThreads; ++i)
+                post(*pool_, [this]{ io_.run(); });
+#endif
+#endif
         }
 
         void stop()

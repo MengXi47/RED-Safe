@@ -17,3 +17,7 @@
 #ifndef SQL_CONNECTION_STR
 #define SQL_CONNECTION_STR "host=127.0.0.1 port=5432 dbname=boen user=boen password="
 #endif
+
+#ifndef SERVER_THREAD_TYPE
+#define SERVER_THREAD_TYPE 2 // 0 -> single_thread,  1 -> std::jthread, 2 -> boost.asio.thread_pool
+#endif
