@@ -32,6 +32,7 @@ int main(int argc, char* argv[])
     {
         const redsafe::apiserver::Server server;
         server.start();
+        std::cout << "Press any key to terminate the server." << std::endl;
         std::cin.get();
     }
     catch(const std::exception& e)
@@ -40,6 +41,5 @@ int main(int argc, char* argv[])
         std::cin.get();
         return 1;
     }
-    std::cin.get();
     return 0;
 }

@@ -77,8 +77,10 @@ namespace redsafe::apiserver
         void stop()
         {
             io_.stop();
+#if  SERVER_THREAD_TYPE == 2
             if (pool_)
                 pool_->join();
+#endif
         }
 
     private:
