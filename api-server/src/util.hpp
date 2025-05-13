@@ -31,9 +31,9 @@ namespace redsafe::apiserver::util
         auto in_time_t = system_clock::to_time_t(now);
         std::tm buf{};
 #if defined(_WIN32) || defined(_WIN64)
-    localtime_s(&buf, &in_time_t);
+        localtime_s(&buf, &in_time_t);
 #else
-    localtime_r(&in_time_t, &buf);
+        localtime_r(&in_time_t, &buf);
 #endif
         std::ostringstream strTime;
         strTime << '['

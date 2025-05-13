@@ -43,5 +43,6 @@ namespace redsafe::apiserver
         std::shared_ptr<ssl_stream>         socket_;
         beast::flat_buffer                  buffer_;
         http::request<http::string_body>    req_;
+        http::response<http::string_body>   res_;
     };
 }

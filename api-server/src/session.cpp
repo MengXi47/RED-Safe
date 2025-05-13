@@ -61,7 +61,7 @@ namespace redsafe::apiserver
 
     void Session::handle_request()
     {
-        http::response<http::string_body> res = 
+        http::response<http::string_body> res =
             std::make_shared<redsafe::apiserver::Controller>(req_)->handle_request();
 
         do_write(std::move(res));
@@ -76,7 +76,7 @@ namespace redsafe::apiserver
         http::async_write(
             *socket_,
             *sp,
-            [self](boost::system::error_code ec, std::size_t)
+            [self, sp](const boost::system::error_code &ec, std::size_t)
             {
                 self->socket_->async_shutdown([self](boost::system::error_code) {});
             }

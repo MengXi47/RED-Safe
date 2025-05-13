@@ -62,8 +62,7 @@ namespace redsafe::apiserver
 
         json ResponseBody;
 
-        const auto it = handlers.find(message_type);
-        if (it != handlers.end())
+        if (const auto it = handlers.find(message_type); it != handlers.end())
             ResponseBody = it->second(req_body);
         else 
             return make_error_response(400, "Unknown message_type");

@@ -18,9 +18,9 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
+#include <boost/asio/thread_pool.hpp>
 #include <memory>
 #include <thread>
-#include <vector>
 
 using namespace boost::asio;
 using tcp = ip::tcp;
@@ -42,32 +42,36 @@ namespace redsafe::apiserver
 
         void start()
         {
-            std::cout << "Server listening on port " 
+            std::cout << "Server listening on port: "
                       << acceptor_.local_endpoint().port() 
-                      << " …\n";
+                      << std::endl;
 
             do_accept();
 
             unsigned int numThreads = std::thread::hardware_concurrency();
             if (numThreads == 0) numThreads = 2;
 
-            std::cout << numThreads << std::endl;
+            std::cout << "IO Threads: " << numThreads << std::endl;
 
-            std::vector<std::jthread> workers;
-            workers.reserve(numThreads);
+            pool_ = std::make_unique<thread_pool>(numThreads);
+
+            // std::vector<std::jthread> workers;
+            // workers.reserve(numThreads);
             for (unsigned int i = 0; i < numThreads; ++i)
             {
-                workers.emplace_back(
-                    [this](const std::stop_token&)
-                    {
-                        io_.run();
-                    });
+                // workers.emplace_back([this](const std::stop_token&){ io_.run(); });
+                post(*pool_, [this]
+                {
+                    io_.run();
+                });
             }
         }
 
         void stop()
         {
             io_.stop();
+            if (pool_)
+                pool_->join();
         }
 
     private:
@@ -80,25 +84,23 @@ namespace redsafe::apiserver
                     auto stream = std::make_shared<ssl::stream<tcp::socket>>
                         (std::move(socket), ssl_ctx_);
 
-                        stream->async_handshake(ssl::stream_base::server,
-                            [stream](auto ec2)
+                        stream->async_handshake(ssl::stream_base::server, [stream](auto ec2)
+                        {
+                            if (!ec2)
                             {
-                                if (!ec2)
-                                {
-                                    std::make_shared<redsafe::apiserver::Session>
-                                        (stream)->start();
+                                std::make_shared<redsafe::apiserver::Session>(stream)->start();
 
-                                    auto& sock = stream->lowest_layer();
-                                    std::cout << redsafe::apiserver::util::current_timestamp()
-                                              << "New connection from "
-                                              << sock.remote_endpoint().address().to_string()
-                                              << ":"
-                                              << sock.remote_endpoint().port()
-                                              << "\n";
-                                }
-                                else
-                                    std::cerr << "Handshake failed: " << ec2.message() << "\n";
-                            });
+                                const auto& sock = stream->lowest_layer();
+                                std::cout << redsafe::apiserver::util::current_timestamp()
+                                          << "New connection from "
+                                          << sock.remote_endpoint().address().to_string()
+                                          << ":"
+                                          << sock.remote_endpoint().port()
+                                          << "\n";
+                            }
+                            else
+                                std::cerr << "Handshake failed: " << ec2.message() << "\n";
+                        });
                 }
                 else
                     std::cerr << "Accept failed: " << ec.message() << "\n";
@@ -107,10 +109,11 @@ namespace redsafe::apiserver
             });
         }
 
-        boost::asio::io_context           io_;
-        boost::asio::ssl::context         ssl_ctx_;
-        boost::asio::ip::tcp::acceptor    acceptor_;
-        Options                           options_;
+        io_context                     io_;
+        ssl::context                   ssl_ctx_;
+        ip::tcp::acceptor              acceptor_;
+        Options                        options_;
+        std::unique_ptr<thread_pool>   pool_;
     };
 
     Server::Server() : Server(Options{})

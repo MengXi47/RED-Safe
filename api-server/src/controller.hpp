@@ -29,7 +29,7 @@ namespace redsafe::apiserver
         explicit Controller(http::request<http::string_body> req);
         response handle_request();
     private:
-        static response make_error_response(int status_code, const std::string& message);
+        response make_error_response(int status_code, const std::string& message);
         std::string str_response = "ttttttttttttttttttt";
         http::request<http::string_body> req_;
     };
