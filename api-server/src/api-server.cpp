@@ -40,6 +40,11 @@ namespace redsafe::apiserver
             ssl_ctx_.use_private_key_file(opt.key_file, ssl::context::pem);
         }
 
+        ~Impl()
+        {
+            stop();
+        }
+
         void start()
         {
             std::cout << "Server listening on port: "

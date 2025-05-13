@@ -36,9 +36,9 @@ int main(int argc, char* argv[])
     catch(const std::exception& e)
     {
         std::cerr << "Server error: " << e.what() << "\n";
+        std::cin.get();
         return 1;
     }
+    std::cin.get();
     return 0;
 }
-
-// Hiiiiiiiiiiii
