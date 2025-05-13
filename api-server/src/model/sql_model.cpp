@@ -15,23 +15,22 @@
 #include "sql_model.hpp"
 #include <iostream>
 #include <pqxx/pqxx>
-#include <vector>
+#include <utility>
 
 namespace redsafe::apiserver::model::sql
 {
-    TableCreator::TableCreator(const std::string &table_name)
-        : ConnectionManager(), table_name_(table_name)
+    TableCreator::TableCreator(std::string table_name)
+        : table_name_(std::move(table_name))
     {
     }
 
-    bool TableCreator::CreateTable()
+    bool TableCreator::CreateTable() const
     {
         try
         {
             pqxx::work W{connection()};
-            std::string quotedName = W.quote_name(table_name_);
-            std::string createSql = "CREATE TABLE IF NOT EXISTS " + quotedName +
-                " ()";
+            const std::string quotedName = W.quote_name(table_name_);
+            const std::string createSql = "CREATE TABLE IF NOT EXISTS " + quotedName + " ()";
             auto R1 = W.exec(createSql);
             W.commit();
             return false;
@@ -48,18 +47,18 @@ namespace redsafe::apiserver::model::sql
         return true;
     }
 
-    TableDeleter::TableDeleter(const std::string &table_name)
-        : ConnectionManager(), table_name_(table_name)
+    TableDeleter::TableDeleter(std::string table_name)
+        : table_name_(std::move(table_name))
     {
     }
 
-    bool TableDeleter::DropTable()
+    bool TableDeleter::DropTable() const
     {
         try
         {
             pqxx::work W{connection()};
-            std::string quotedName = W.quote_name(table_name_);
-            std::string dropSql = "DROP TABLE IF EXISTS " + quotedName + ";";
+            const std::string quotedName = W.quote_name(table_name_);
+            const std::string dropSql = "DROP TABLE IF EXISTS " + quotedName + ";";
             W.exec(dropSql);
             W.commit();
             return false;
@@ -76,18 +75,18 @@ namespace redsafe::apiserver::model::sql
         return true;
     }
 
-    TableQuerier::TableQuerier(const std::string &table_name)
-        : ConnectionManager(), table_name_(table_name)
+    TableQuerier::TableQuerier(std::string table_name)
+        : table_name_(std::move(table_name))
     {
     }
 
-    bool TableQuerier::ColumnExists(const std::string &column_name)
+    bool TableQuerier::ColumnExists(const std::string &column_name) const
     {
         pqxx::work W{connection()};
-        pqxx::params params;
+        pqxx::params params{};
         params.append(table_name_);
         params.append(column_name);
-        auto R = W.exec(
+        const auto R = W.exec(
             "SELECT 1 FROM information_schema.columns "
             "WHERE table_schema = 'public' "
             "  AND table_name   = $1 "
@@ -98,25 +97,25 @@ namespace redsafe::apiserver::model::sql
     }
 
 
-    TableColumnAssigner::TableColumnAssigner(const std::string &table_name)
-        : ConnectionManager(), table_name_(table_name)
+    TableColumnAssigner::TableColumnAssigner(std::string table_name)
+        : table_name_(std::move(table_name))
     {
     }
 
     bool TableColumnAssigner::SetColumnValue(const std::string &column_name,
                                              const std::string &column_type,
-                                             const std::string &value)
+                                             const std::string &value) const
     {
         try
         {
             pqxx::work W{connection()};
-            std::string tableQuoted = W.quote_name(table_name_);
-            std::string colQuoted   = W.quote_name(column_name);
-            std::string alterSql = "ALTER TABLE " + tableQuoted +
+            const std::string tableQuoted = W.quote_name(table_name_);
+            const std::string colQuoted   = W.quote_name(column_name);
+            const std::string alterSql = "ALTER TABLE " + tableQuoted +
                 " ADD COLUMN IF NOT EXISTS " + colQuoted + " " + column_type + ";";
             W.exec(alterSql);
-            std::string valQuoted = W.quote(value);
-            std::string updateSql = "UPDATE " + tableQuoted +
+            const std::string valQuoted = W.quote(value);
+            const std::string updateSql = "UPDATE " + tableQuoted +
                 " SET " + colQuoted + " = " + valQuoted + ";";
             W.exec(updateSql);
             W.commit();
@@ -136,19 +135,18 @@ namespace redsafe::apiserver::model::sql
         return true;
     }
 
-    TableExists::TableExists(const std::string &table_name)
-        : ConnectionManager(), table_name_(table_name)
+    TableExists::TableExists(std::string table_name)
+        : table_name_(std::move(table_name))
     {
     }
 
-    bool TableExists::Exists()
-    {
+    bool TableExists::Exists() const {
         try
         {
             pqxx::work W{connection()};
             pqxx::params params;
             params.append(table_name_);
-            auto R = W.exec(
+            const auto R = W.exec(
                 "SELECT 1 FROM information_schema.tables "
                 "WHERE table_schema = 'public' AND table_name = $1 LIMIT 1;",
                 params);
@@ -163,29 +161,29 @@ namespace redsafe::apiserver::model::sql
         {
             std::cerr << "Error in TableExists::Exists: " << e.what() << std::endl;
         }
-        return false;
+        return true;
     }
 
-    ColumnAdder::ColumnAdder(const std::string &table_name)
-        : ConnectionManager(), table_name_(table_name)
+    ColumnAdder::ColumnAdder(std::string table_name)
+        : table_name_(std::move(table_name))
     {
     }
 
     // Add a column if it does not exist
     bool ColumnAdder::AddColumn(const std::string &column_name,
-                                const std::string &column_type)
+                                const std::string &column_type) const
     {
         try
         {
             pqxx::work W{connection()};
-            std::string tableQuoted = W.quote_name(table_name_);
-            std::string colQuoted   = W.quote_name(column_name);
-            std::string alterSql = "ALTER TABLE " + tableQuoted +
+            const std::string tableQuoted = W.quote_name(table_name_);
+            const std::string colQuoted   = W.quote_name(column_name);
+            const std::string alterSql = "ALTER TABLE " + tableQuoted +
                 " ADD COLUMN IF NOT EXISTS " + colQuoted +
                 " " + column_type + ";";
             W.exec(alterSql);
             W.commit();
-            return true;
+            return false;
         }
         catch (const pqxx::sql_error &e)
         {
@@ -196,26 +194,26 @@ namespace redsafe::apiserver::model::sql
         {
             std::cerr << "Error in ColumnAdder::AddColumn: " << e.what() << std::endl;
         }
-        return false;
+        return true;
     }
 
-    ColumnRemover::ColumnRemover(const std::string &table_name)
-        : ConnectionManager(), table_name_(table_name)
+    ColumnRemover::ColumnRemover(std::string table_name)
+        : table_name_(std::move(table_name))
     {
     }
 
-    bool ColumnRemover::RemoveColumn(const std::string &column_name)
+    bool ColumnRemover::RemoveColumn(const std::string &column_name) const
     {
         try
         {
             pqxx::work W{connection()};
-            std::string tableQuoted = W.quote_name(table_name_);
-            std::string colQuoted   = W.quote_name(column_name);
-            std::string alterSql = "ALTER TABLE " + tableQuoted +
+            const std::string tableQuoted = W.quote_name(table_name_);
+            const std::string colQuoted   = W.quote_name(column_name);
+            const std::string alterSql = "ALTER TABLE " + tableQuoted +
                 " DROP COLUMN IF EXISTS " + colQuoted + ";";
             W.exec(alterSql);
             W.commit();
-            return true;
+            return false;
         }
         catch (const pqxx::sql_error &e)
         {
@@ -226,26 +224,25 @@ namespace redsafe::apiserver::model::sql
         {
             std::cerr << "Error in ColumnRemover::RemoveColumn: " << e.what() << std::endl;
         }
-        return false;
+        return true;
     }
 
-    ColumnValueFetcher::ColumnValueFetcher(const std::string &table_name)
-        : ConnectionManager(), table_name_(table_name)
+    ColumnValueFetcher::ColumnValueFetcher(std::string table_name)
+        : table_name_(std::move(table_name))
     {
     }
 
-    std::string ColumnValueFetcher::FetchValue(const std::string &column_name)
+    std::string ColumnValueFetcher::FetchValue(const std::string &column_name) const
     {
         try
         {
             pqxx::work W{connection()};
-            std::string tableQuoted = W.quote_name(table_name_);
-            std::string colQuoted   = W.quote_name(column_name);
-            std::string selectSql = "SELECT " + colQuoted +
+            const std::string tableQuoted = W.quote_name(table_name_);
+            const std::string colQuoted   = W.quote_name(column_name);
+            const std::string selectSql = "SELECT " + colQuoted +
                 " FROM " + tableQuoted +
                 " LIMIT 1;";
-            auto R = W.exec(selectSql);
-            if (!R.empty())
+            if (const auto R = W.exec(selectSql); !R.empty())
                 return R[0][colQuoted].c_str();
         }
         catch (const pqxx::sql_error &e)

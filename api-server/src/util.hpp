@@ -29,7 +29,7 @@ namespace redsafe::apiserver::util
         auto now = system_clock::now();
         auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
         auto in_time_t = system_clock::to_time_t(now);
-        std::tm buf;
+        std::tm buf{};
 #if defined(_WIN32) || defined(_WIN64)
     localtime_s(&buf, &in_time_t);
 #else

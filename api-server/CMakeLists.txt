@@ -14,6 +14,8 @@ add_executable(RED_Safe_apiserver
     src/controller.cpp
     src/service/registration_service.cpp
     src/model/sql_model.cpp
+    src/view/view.cpp
+        src/view/view.hpp
 )
 
 if(APPLE)

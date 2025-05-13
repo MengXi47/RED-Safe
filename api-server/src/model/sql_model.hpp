@@ -23,8 +23,8 @@ namespace redsafe::apiserver::model::sql
     class TableCreator : public ConnectionManager
     {
     public:
-        explicit TableCreator(const std::string &table_name);
-        bool CreateTable();
+        explicit TableCreator(std::string table_name);
+        [[nodiscard]] bool CreateTable() const;
     private:
         std::string table_name_;
     };
@@ -33,8 +33,8 @@ namespace redsafe::apiserver::model::sql
     class TableDeleter : public ConnectionManager
     {
     public:
-        explicit TableDeleter(const std::string& table_name);
-        bool DropTable();
+        explicit TableDeleter(std::string  table_name);
+        [[nodiscard]] bool DropTable() const;
     private:
         std::string table_name_;
     };
@@ -43,8 +43,8 @@ namespace redsafe::apiserver::model::sql
     class TableQuerier : public ConnectionManager
     {
     public:
-        explicit TableQuerier(const std::string& table_name);
-        bool ColumnExists(const std::string& column_name);
+        explicit TableQuerier(std::string  table_name);
+        [[nodiscard]] bool ColumnExists(const std::string& column_name) const;
     private:
         std::string table_name_;
     };
@@ -53,10 +53,10 @@ namespace redsafe::apiserver::model::sql
     class TableColumnAssigner : public ConnectionManager
     {
     public:
-        explicit TableColumnAssigner(const std::string& table_name);
-        bool SetColumnValue(const std::string& column_name,
+        explicit TableColumnAssigner(std::string  table_name);
+        [[nodiscard]] bool SetColumnValue(const std::string& column_name,
                             const std::string& column_type,
-                            const std::string& value);
+                            const std::string& value) const;
     private:
         std::string table_name_;
     };
@@ -65,8 +65,8 @@ namespace redsafe::apiserver::model::sql
     class TableExists : public ConnectionManager
     {
     public:
-        explicit TableExists(const std::string& table_name);
-        bool Exists();
+        explicit TableExists(std::string  table_name);
+        [[nodiscard]] bool Exists() const;
     private:
         std::string table_name_;
     };
@@ -75,9 +75,9 @@ namespace redsafe::apiserver::model::sql
     class ColumnAdder : public ConnectionManager
     {
     public:
-        explicit ColumnAdder(const std::string& table_name);
-        bool AddColumn(const std::string& column_name,
-                       const std::string& column_type);
+        explicit ColumnAdder(std::string  table_name);
+        [[nodiscard]] bool AddColumn(const std::string& column_name,
+                       const std::string& column_type) const;
     private:
         std::string table_name_;
     };
@@ -86,8 +86,8 @@ namespace redsafe::apiserver::model::sql
     class ColumnRemover : public ConnectionManager
     {
     public:
-        explicit ColumnRemover(const std::string& table_name);
-        bool RemoveColumn(const std::string& column_name);
+        explicit ColumnRemover(std::string  table_name);
+        [[nodiscard]] bool RemoveColumn(const std::string& column_name) const;
     private:
         std::string table_name_;
     };
@@ -96,8 +96,8 @@ namespace redsafe::apiserver::model::sql
     class ColumnValueFetcher : public ConnectionManager
     {
     public:
-        explicit ColumnValueFetcher(const std::string& table_name);
-        std::string FetchValue(const std::string& column_name);
+        explicit ColumnValueFetcher(std::string  table_name);
+        [[nodiscard]] std::string FetchValue(const std::string& column_name) const;
     private:
         std::string table_name_;
     };

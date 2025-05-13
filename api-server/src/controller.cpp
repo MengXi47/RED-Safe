@@ -36,14 +36,14 @@ namespace redsafe::apiserver
         {
             req_body = json::parse(req_.body());
         }
-        catch ([[maybe_unused]] const nlohmann::json::parse_error& e)
+        catch ([[maybe_unused]] nlohmann::json::parse_error& e)
         {
             return make_error_response(400, "Invalid JSON");
         }
 
         if (!req_body.contains("message_type"))
             return make_error_response(400, "Missing message_type");
-        auto message_type = req_body.value("message_type", std::string{});
+        const auto message_type = req_body.value("message_type", std::string{});
 
         static const std::unordered_map<std::string, Handler> handlers =
         {
@@ -62,7 +62,7 @@ namespace redsafe::apiserver
 
         json ResponseBody;
 
-        auto it = handlers.find(message_type);
+        const auto it = handlers.find(message_type);
         if (it != handlers.end())
             ResponseBody = it->second(req_body);
         else 
@@ -80,7 +80,7 @@ namespace redsafe::apiserver
 
     response Controller::make_error_response(int status_code, const std::string &message)
     {
-        json j = { {"error", message} };
+        const json j = { {"error", message} };
         response res{ static_cast<http::status>(status_code), 11 };
         res.set(http::field::server, "RED-Safe");
         res.set(http::field::content_type, "application/json");
