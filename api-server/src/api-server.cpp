@@ -34,25 +34,11 @@ namespace redsafe::apiserver
         explicit Impl(const Server::Options& opt)
             : io_(),
               ssl_ctx_{ssl::context::tlsv12_server},
-              acceptor_{io_},
+              acceptor_{io_, {tcp::v4(), opt.port}},
               options_{opt}
         {
             ssl_ctx_.use_certificate_chain_file(opt.cert_file);
             ssl_ctx_.use_private_key_file(opt.key_file, ssl::context::pem);
-
-            // open acceptor with explicit steps to improve cross‑platform binding
-            boost::system::error_code ec;
-            acceptor_.open(tcp::v4(), ec);
-            if (ec) throw boost::system::system_error(ec, "open");
-
-            acceptor_.set_option(tcp::acceptor::reuse_address(true), ec);
-            if (ec) throw boost::system::system_error(ec, "set_option");
-
-            acceptor_.bind({tcp::v4(), opt.port}, ec);
-            if (ec) throw boost::system::system_error(ec, "bind");
-
-            acceptor_.listen(socket_base::max_listen_connections, ec);
-            if (ec) throw boost::system::system_error(ec, "listen");
         }
 
         ~Impl()
