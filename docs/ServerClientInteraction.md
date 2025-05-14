@@ -1,13 +1,12 @@
 ## Client 向 Server 註冊
 
-```json
-{
-    "client_version": "1.0.0",
-    "message_type": "register",
-    "message_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-    "serial_number": "RED-9F1A2B3C-4D5E6F70-1A2B3C4D-5E6F7081",
-    "timestamp": "2025-05-06T17:05:23+08:00"
-}
+```http request
+curl -X POST https://api.yourdomain.com/registerEdge \
+     -H "Content-Type: application/json" \
+     -d '{
+           "serial": "RED-1A2B3C4D",
+"version": "v1.0.0"
+}'
 ```
 
 ---

@@ -15,7 +15,7 @@
 #pragma once
 
 #ifndef SQL_CONNECTION_STR
-#define SQL_CONNECTION_STR "host=127.0.0.1 port=5432 dbname=boen user=boen password="
+#define SQL_CONNECTION_STR "host=127.0.0.1 port=5432 dbname=redsafedb user=redsafedb_user password=redsafedb_1204"
 #endif
 
 #ifndef SERVER_THREAD_TYPE
