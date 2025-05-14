@@ -76,10 +76,8 @@ namespace redsafe::apiserver
 
         void stop()
         {
-#if SERVER_THREAD_TYPE == 0 || SERVER_THREAD_TYPE == 1
             io_.stop();
-#elif SERVER_THREAD_TYPE == 2
-            io_.stop();
+#if SERVER_THREAD_TYPE == 2
             if (pool_)
                 pool_->join();
 #endif

@@ -19,5 +19,5 @@
 #endif
 
 #ifndef SERVER_THREAD_TYPE
-#define SERVER_THREAD_TYPE 2 // 0 -> single_thread,  1 -> std::jthread, 2 -> boost.asio.thread_pool
+#define SERVER_THREAD_TYPE 1 // 0 -> single_thread,  1 -> std::jthread, 2 -> boost.asio.thread_pool
 #endif

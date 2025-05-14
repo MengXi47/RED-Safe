@@ -19,8 +19,8 @@
 
 namespace redsafe::apiserver
 {
-    Session::Session(std::shared_ptr<ssl_stream> socket)
-        : socket_(std::move(socket))
+    Session::Session(std::shared_ptr<ssl_stream> sock)
+        : socket_(std::move(sock))
     {
     }
 
