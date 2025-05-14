@@ -37,7 +37,6 @@ endif()
 
 #-------------------- 依賴 --------------------
 find_package(Boost REQUIRED COMPONENTS system thread)
-find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(libpqxx CONFIG QUIET)
 
@@ -56,17 +55,11 @@ endif()
 target_include_directories(RED_Safe_apiserver
     PRIVATE
       ${Boost_INCLUDE_DIRS}
-      ${OPENSSL_INCLUDE_DIR}
       ${nlohmann_json_INCLUDE_DIRS}
 )
 target_link_libraries(RED_Safe_apiserver
     PRIVATE
       ${Boost_LIBRARIES}
-      ${OPENSSL_LIBRARIES}
       ${nlohmann_json_LIBS}
       ${PQXX_TARGET}
 )
-
-#-------------------- 複製憑證 ------------------
-configure_file(${CMAKE_SOURCE_DIR}/server.crt  server.crt  COPYONLY)
-configure_file(${CMAKE_SOURCE_DIR}/server.key  server.key  COPYONLY)

@@ -20,19 +20,17 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
-#include <boost/asio/ssl/stream.hpp>
 
 namespace redsafe::apiserver
 {
     namespace beast      = boost::beast;
     namespace http       = beast::http;
     using     tcp        = boost::asio::ip::tcp;
-    using     ssl_stream = boost::asio::ssl::stream<tcp::socket>;
 
     class Session : public std::enable_shared_from_this<Session>
     {
     public:
-        explicit Session(std::shared_ptr<ssl_stream> sock);
+        explicit Session(std::shared_ptr<tcp::socket> sock);
         void start();
     private:
         void do_read();
@@ -40,7 +38,7 @@ namespace redsafe::apiserver
         template<class Response>
         void do_write(Response&& res);
 
-        std::shared_ptr<ssl_stream>         socket_;
+        std::shared_ptr<tcp::socket>        socket_;
         beast::flat_buffer                  buffer_;
         http::request<http::string_body>    req_;
         http::response<http::string_body>   res_;

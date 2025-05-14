@@ -19,26 +19,14 @@
 
 namespace redsafe::apiserver
 {
-    Session::Session(std::shared_ptr<ssl_stream> sock)
+    Session::Session(std::shared_ptr<tcp::socket> sock)
         : socket_(std::move(sock))
     {
     }
 
     void Session::start()
     {
-        auto self = shared_from_this();
-        socket_->async_handshake(
-            boost::asio::ssl::stream_base::server,
-            [self](const boost::system::error_code &ec)
-            {
-                if(ec)
-                {
-                    std::cerr << "Handshake failed: " << ec.message() << "\n";
-                    return;
-                }
-                self->do_read();
-            }
-        );
+        do_read();
     }
 
     void Session::do_read()
@@ -48,7 +36,7 @@ namespace redsafe::apiserver
             *socket_,
             buffer_,
             req_,
-            [self](const boost::system::error_code &ec, std::size_t)
+            [self](const boost::system::error_code& ec, std::size_t)
             {
                 if(ec) {
                     std::cerr << "Read failure: " << ec.message() << "\n";
@@ -76,9 +64,13 @@ namespace redsafe::apiserver
         http::async_write(
             *socket_,
             *sp,
-            [self, sp](const boost::system::error_code &ec, std::size_t)
+            [self, sp](const boost::system::error_code& ec, std::size_t)
             {
-                self->socket_->async_shutdown([self](boost::system::error_code) {});
+                boost::system::error_code sec;
+                if (self->socket_->shutdown(boost::asio::ip::tcp::socket::shutdown_both, sec))
+                    std::cerr << "Shutdown failure: " << ec.message() << "\n";
+                if (self->socket_->close(sec))
+                    std::cerr << "Shutdown failure: " << sec.message() << "\n";
             }
         );
     }

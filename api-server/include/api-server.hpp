@@ -24,9 +24,7 @@ namespace redsafe::apiserver
     public:
         struct Options
         {
-            uint16_t    port      {443};
-            std::string cert_file {"server.crt"};
-            std::string key_file  {"server.key"};
+            uint16_t    port      {30678};
         };
 
         explicit Server(const Options&);

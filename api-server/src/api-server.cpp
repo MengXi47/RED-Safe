@@ -18,7 +18,6 @@
 #include "session.hpp"
 
 #include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
 #include <boost/asio/thread_pool.hpp>
 #include <memory>
 #include <thread>
@@ -33,12 +32,9 @@ namespace redsafe::apiserver
     public:
         explicit Impl(const Server::Options& opt)
             : io_(),
-              ssl_ctx_{ssl::context::tlsv12_server},
               acceptor_{io_, {tcp::v4(), opt.port}},
               options_{opt}
         {
-            ssl_ctx_.use_certificate_chain_file(opt.cert_file);
-            ssl_ctx_.use_private_key_file(opt.key_file, ssl::context::pem);
         }
 
         ~Impl()
@@ -86,30 +82,18 @@ namespace redsafe::apiserver
     private:
         void do_accept()
         {
-            acceptor_.async_accept([this](const boost::system::error_code &ec, tcp::socket socket)
+            acceptor_.async_accept([this](auto ec, tcp::socket socket)
             {
                 if (!ec)
                 {
-                    auto stream = std::make_shared<ssl::stream<tcp::socket>>
-                        (std::move(socket), ssl_ctx_);
-
-                        stream->async_handshake(ssl::stream_base::server, [stream](auto ec2)
-                        {
-                            if (!ec2)
-                            {
-                                std::make_shared<redsafe::apiserver::Session>(stream)->start();
-
-                                const auto& sock = stream->lowest_layer();
-                                std::cout << redsafe::apiserver::util::current_timestamp()
-                                          << "New connection from "
-                                          << sock.remote_endpoint().address().to_string()
-                                          << ":"
-                                          << sock.remote_endpoint().port()
-                                          << "\n";
-                            }
-                            else
-                                std::cerr << "Handshake failed: " << ec2.message() << "\n";
-                        });
+                    std::cout << util::current_timestamp()
+                              << "New connection from "
+                              << socket.remote_endpoint().address().to_string()
+                              << ":"
+                              << socket.remote_endpoint().port()
+                              << "\n";
+                    std::make_shared<Session>(
+                        std::make_shared<tcp::socket>(std::move(socket)))->start();
                 }
                 else
                     std::cerr << "Accept failed: " << ec.message() << "\n";
@@ -119,11 +103,9 @@ namespace redsafe::apiserver
         }
 
         io_context                     io_;
-        ssl::context                   ssl_ctx_;
         ip::tcp::acceptor              acceptor_;
         Options                        options_;
         std::unique_ptr<thread_pool>   pool_;
-        executor_work_guard<io_context::executor_type> guard_{io_.get_executor()};
     };
 
     Server::Server() : Server(Options{})
