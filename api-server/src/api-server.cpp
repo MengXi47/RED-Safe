@@ -31,8 +31,7 @@ namespace redsafe::apiserver
     {
     public:
         explicit Impl(const Server::Options& opt)
-            : io_(),
-              acceptor_{io_, {tcp::v4(), opt.port}},
+            : acceptor_{io_, {tcp::v4(), opt.port}},
               options_{opt}
         {
         }

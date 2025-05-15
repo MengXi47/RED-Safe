@@ -23,11 +23,11 @@ namespace redsafe::apiserver::util
     /**
     *   [YYYY-MM-DD HH:MM:SS:mmm]
     */
-    inline std::string current_timestamp()
+    inline std::string current_timestamp(bool iso = false)
     {
         using namespace std::chrono;
-        auto now = system_clock::now();
-        auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+        const auto now = system_clock::now();
+        const auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
         auto in_time_t = system_clock::to_time_t(now);
         std::tm buf{};
 #if defined(_WIN32) || defined(_WIN64)
@@ -35,11 +35,21 @@ namespace redsafe::apiserver::util
 #else
         localtime_r(&in_time_t, &buf);
 #endif
-        std::ostringstream strTime;
-        strTime << '['
-                << std::put_time(&buf, "%Y-%m-%d %H:%M:%S")
-                << ':' << std::setw(3) << std::setfill('0') << ms.count()
-                << "] ";
-        return strTime.str();
+        if (!iso)
+        {
+            std::ostringstream strTime;
+            strTime << '['
+                    << std::put_time(&buf, "%Y-%m-%d %H:%M:%S")
+                    << ':' << std::setw(3) << std::setfill('0') << ms.count()
+                    << "] ";
+            return strTime.str();
+        }
+        else
+        {
+            std::ostringstream strTime;
+            strTime << std::put_time(&buf, "%Y-%m-%dT%H:%M:%S")
+                    << "+08:00";
+            return strTime.str();
+        }
     }
 }

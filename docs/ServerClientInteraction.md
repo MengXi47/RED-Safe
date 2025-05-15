@@ -1,12 +1,10 @@
 ## Client 向 Server 註冊
 
-```http request
-curl -X POST https://api.yourdomain.com/registerEdge \
-     -H "Content-Type: application/json" \
-     -d '{
-           "serial": "RED-1A2B3C4D",
-"version": "v1.0.0"
-}'
+```json
+{
+  "version": "1.0.0",
+  "serial_number": "RED-1aaaaaaa"
+}
 ```
 
 ---

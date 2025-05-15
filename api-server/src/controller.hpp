@@ -16,11 +16,13 @@
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
+#include <nlohmann/json.hpp>
 
 namespace redsafe::apiserver
 {
     namespace beast = boost::beast;
     namespace http  = beast::http;
+    using json = nlohmann::json;
     using response = http::response<http::string_body>;
 
     class Controller
@@ -29,8 +31,7 @@ namespace redsafe::apiserver
         explicit Controller(http::request<http::string_body> req);
         response handle_request();
     private:
-        static response make_error_response(int status_code, const std::string& message);
-        std::string str_response = "ttttttttttttttttttt";
+        static response make_response(int status_code, const json& j);
         http::request<http::string_body> req_;
     };
 }

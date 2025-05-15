@@ -15,17 +15,25 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
+#include <regex>
 
 using json = nlohmann::json;
 
 namespace redsafe::apiserver::service
 {
-    class RegistrationService
+    class EdgeRegistrationService
     {
     public:
-        explicit RegistrationService(std::string serial_number);
-        json registerUser();
+        explicit EdgeRegistrationService(std::string version,
+                                         std::string serial_number,
+                                         std::string timestamp);
+
+        json start() const;
     private:
+        std::string version_;
         std::string serial_number_;
+        std::string timestamp_;
+        inline static const std::regex kSerialRe{R"(^RED-[0-9A-F]{8}$)"};
+        inline static const std::regex kVersionRe{R"(^\d+\.\d+\.\d+$)"};
     };
 }

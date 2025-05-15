@@ -14,4 +14,4 @@
 
 #pragma once
 
-#include "registration_service.hpp"
+#include "EdgeRegistrationService.hpp"

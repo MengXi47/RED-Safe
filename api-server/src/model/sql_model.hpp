@@ -19,86 +19,21 @@
 
 namespace redsafe::apiserver::model::sql
 {
-    // 創建Table
-    class TableCreator : public ConnectionManager
+    /// 專門處理 Edge 裝置註冊的 SQL Model
+    class EdgeDeviceRegistrar : public ConnectionManager
     {
     public:
-        explicit TableCreator(std::string table_name);
-        [[nodiscard]] bool CreateTable() const;
+        EdgeDeviceRegistrar();
+        /// 在 edge_devices 表註冊或更新裝置
+        /// @param serial Edge 裝置序號（RED-XXXXXXXX 格式）
+        /// @param version 韌體／軟體版本
+        /// @param timestamp 註冊時間 ISO 8601 格式
+        /// @return 若執行成功回傳 true，否則 false
+        [[nodiscard]] bool RegisterEdgeDevice(
+            const std::string& serial,
+            const std::string& version,
+            const std::string& timestamp) const;
     private:
-        std::string table_name_;
-    };
-
-    // 刪除Table
-    class TableDeleter : public ConnectionManager
-    {
-    public:
-        explicit TableDeleter(std::string  table_name);
-        [[nodiscard]] bool DropTable() const;
-    private:
-        std::string table_name_;
-    };
-
-    // 欄位是否存在 💩
-    class TableQuerier : public ConnectionManager
-    {
-    public:
-        explicit TableQuerier(std::string  table_name);
-        [[nodiscard]] bool ColumnExists(const std::string& column_name) const;
-    private:
-        std::string table_name_;
-    };
-    
-    // 對欄位賦值 (沒有則建立)
-    class TableColumnAssigner : public ConnectionManager
-    {
-    public:
-        explicit TableColumnAssigner(std::string  table_name);
-        [[nodiscard]] bool SetColumnValue(const std::string& column_name,
-                            const std::string& column_type,
-                            const std::string& value) const;
-    private:
-        std::string table_name_;
-    };
-
-    // 檢查Table是否存在
-    class TableExists : public ConnectionManager
-    {
-    public:
-        explicit TableExists(std::string  table_name);
-        [[nodiscard]] bool Exists() const;
-    private:
-        std::string table_name_;
-    };
-
-    // 新增欄位 (若不存在則新增)
-    class ColumnAdder : public ConnectionManager
-    {
-    public:
-        explicit ColumnAdder(std::string  table_name);
-        [[nodiscard]] bool AddColumn(const std::string& column_name,
-                       const std::string& column_type) const;
-    private:
-        std::string table_name_;
-    };
-
-    // 刪除欄位 (若存在則刪除)
-    class ColumnRemover : public ConnectionManager
-    {
-    public:
-        explicit ColumnRemover(std::string  table_name);
-        [[nodiscard]] bool RemoveColumn(const std::string& column_name) const;
-    private:
-        std::string table_name_;
-    };
-
-    // 查詢欄位的所有值並回傳
-    class ColumnValueFetcher : public ConnectionManager
-    {
-    public:
-        explicit ColumnValueFetcher(std::string  table_name);
-        [[nodiscard]] std::string FetchValue(const std::string& column_name) const;
-    private:
-        std::string table_name_;
+        static constexpr auto kTableName = "edge_devices";
     };
 }

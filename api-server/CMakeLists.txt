@@ -12,7 +12,7 @@ add_executable(RED_Safe_apiserver
     src/api-server.cpp
     src/session.cpp
     src/controller.cpp
-    src/service/registration_service.cpp
+        src/service/EdgeRegistrationService.cpp
     src/model/sql_model.cpp
 )
 

@@ -12,15 +12,12 @@
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
+#include "util.hpp"
 #include "controller.hpp"
 #include "service/service.hpp"
 
-#include <nlohmann/json.hpp>
 #include <unordered_map>
 #include <functional>
-
-using json = nlohmann::json;
-using Handler = std::function<json(const json&)>;
 
 namespace redsafe::apiserver
 {
@@ -31,55 +28,62 @@ namespace redsafe::apiserver
 
     response Controller::handle_request()
     {
-        json req_body;
-        try
+        static const std::unordered_map<std::string, std::function<json(const json&)>> handlers =
         {
-            req_body = json::parse(req_.body());
-        }
-        catch ([[maybe_unused]] nlohmann::json::parse_error& e)
-        {
-            return make_error_response(400, "Invalid JSON");
-        }
-
-        if (!req_body.contains("message_type"))
-            return make_error_response(400, "Missing message_type");
-        const auto message_type = req_body.value("message_type", std::string{});
-
-        static const std::unordered_map<std::string, Handler> handlers =
-        {
-            {"register", [this](const json& body)
+            {"/edge/register", [this](const json& body)
+            {
+                try
                 {
-                    return std::make_shared<service::RegistrationService>(
-                       body.value("serial_number", std::string{}))->registerUser();
+                    if (!body.contains("serial_number") || !body.contains("version"))
+                        throw std::invalid_argument("Missing serial_number or version");
+
+
+                    return std::make_shared<service::EdgeRegistrationService>(
+                        body.value("version", std::string{}),
+                        body.value("serial_number", std::string{}),
+                        util::current_timestamp(true))->start();
                 }
-            },
-            {"test", [this](const json& body)
+                catch (const std::invalid_argument& e)
                 {
-                    return json{{"response", "Hello from RED-Safe!"}};
+                    return json{{"error", e.what()}, {"code", 400}};
                 }
-            }
+                catch (const std::exception& e)
+                {
+                    return json{{"error", e.what()}, {"code", 500}};
+                }
+            }}
         };
 
+        const auto target = req_.target();
         json ResponseBody;
 
-        if (const auto it = handlers.find(message_type); it != handlers.end())
+        if (const auto it = handlers.find(target); it != handlers.end())
+        {
+            json req_body;
+            try
+            {
+                req_body = json::parse(req_.body());
+            }
+            catch ([[maybe_unused]] nlohmann::json::parse_error& e)
+            {
+                return make_response(400, {{"error", "Invalid JSON"}});
+            }
             ResponseBody = it->second(req_body);
-        else 
-            return make_error_response(400, "Unknown message_type");
+        }
+        else
+            return make_response(404, {{"error", "Unknown Unknown endpoint"}});
 
-        response res{ http::status::ok, req_.version() };
-        res.set(http::field::server, "RED-Safe");
-        res.set(http::field::content_type, "application/json");
-        res.keep_alive(req_.keep_alive());
-        res.body() = ResponseBody.dump();
-        res.prepare_payload();
-
-        return res;
+        if (ResponseBody.contains("error"))
+        {
+            const int status_code = ResponseBody.value("code", 500);
+            ResponseBody.erase("code");
+            return make_response(status_code, ResponseBody);
+        }
+        return make_response(200, ResponseBody);
     }
 
-    response Controller::make_error_response(int status_code, const std::string &message)
+    response Controller::make_response(int status_code, const json& j)
     {
-        const json j = { {"error", message} };
         response res{ static_cast<http::status>(status_code), 11 };
         res.set(http::field::server, "RED-Safe");
         res.set(http::field::content_type, "application/json");
