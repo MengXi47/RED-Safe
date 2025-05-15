@@ -21,19 +21,20 @@ using json = nlohmann::json;
 
 namespace redsafe::apiserver::service
 {
-    class EdgeRegistrationService
+    class EdgeDeviceRegistrationService
     {
     public:
-        explicit EdgeRegistrationService(std::string version,
-                                         std::string serial_number,
-                                         std::string timestamp);
+        explicit EdgeDeviceRegistrationService(
+            std::string version,
+            std::string serial_number,
+            std::string timestamp);
 
-        json start() const;
+        [[nodiscard]] json Register() const;
     private:
+        inline static const std::regex kSerialRe    {R"(^RED-[0-9A-F]{8}$)"};
+        inline static const std::regex kVersionRe   {R"(^\d+\.\d+\.\d+$)"};
         std::string version_;
         std::string serial_number_;
         std::string timestamp_;
-        inline static const std::regex kSerialRe{R"(^RED-[0-9A-F]{8}$)"};
-        inline static const std::regex kVersionRe{R"(^\d+\.\d+\.\d+$)"};
     };
 }

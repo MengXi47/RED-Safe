@@ -12,8 +12,13 @@ add_executable(RED_Safe_apiserver
     src/api-server.cpp
     src/session.cpp
     src/controller.cpp
-        src/service/EdgeRegistrationService.cpp
+        src/service/EdgeDeviceRegistrationService.cpp
+    src/service/UserRegistrationService.cpp
     src/model/sql_model.cpp
+        src/service/IOSDeviceRegistrationService.cpp
+        src/service/IOSDeviceRegistrationService.hpp
+        src/service/IOSDeviceBindService.cpp
+        src/service/IOSDeviceBindService.hpp
 )
 
 if(APPLE)
@@ -26,6 +31,7 @@ elseif(WIN32)
     WIN32_LEAN_AND_MEAN
   )
   target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_WINDOWS)
+  find_package(libsodium CONFIG REQUIRED)
 elseif(UNIX)
   message(STATUS "Building on Linux/Unix")
   target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_UNIX)
@@ -39,10 +45,11 @@ endif()
 find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(nlohmann_json REQUIRED)
 find_package(libpqxx CONFIG QUIET)
+find_package(libsodium CONFIG QUIET)
 
-if(TARGET libpqxx::pqxx)                       # 成功找到
+if (TARGET libpqxx::pqxx)                       # 成功找到
     set(PQXX_TARGET libpqxx::pqxx)
-else()                                         # 回退到 pkg-config
+else ()                                         # 回退到 pkg-config
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(PQXX REQUIRED libpqxx)
     add_library(pqxx INTERFACE)
@@ -51,6 +58,15 @@ else()                                         # 回退到 pkg-config
     set(PQXX_TARGET pqxx)
 endif()
 
+if (TARGET libsodium::libsodium)                       # 成功找到
+    set(sodium_PKG_TARGET libsodium::libsodium)
+else ()                                         # 回退到 pkg-config
+    pkg_check_modules(sodium_PKG QUIET libsodium)
+    add_library(sodium_PKG INTERFACE)
+    target_include_directories(sodium_PKG INTERFACE ${sodium_PKG_INCLUDE_DIRS})
+    target_link_libraries(sodium_PKG INTERFACE ${sodium_PKG_LINK_LIBRARIES})
+    set(sodium_PKG_TARGET sodium_PKG)
+endif()
 
 target_include_directories(RED_Safe_apiserver
     PRIVATE
@@ -62,4 +78,5 @@ target_link_libraries(RED_Safe_apiserver
       ${Boost_LIBRARIES}
       ${nlohmann_json_LIBS}
       ${PQXX_TARGET}
+      ${sodium_PKG_TARGET}
 )

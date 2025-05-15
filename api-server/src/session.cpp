@@ -64,6 +64,7 @@ namespace redsafe::apiserver
         http::async_write(
             *socket_,
             *sp,
+            // ReSharper disable once CppLambdaCaptureNeverUsed
             [self, sp](const boost::system::error_code& ec, std::size_t)
             {
                 boost::system::error_code sec;

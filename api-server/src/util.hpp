@@ -44,12 +44,9 @@ namespace redsafe::apiserver::util
                     << "] ";
             return strTime.str();
         }
-        else
-        {
-            std::ostringstream strTime;
-            strTime << std::put_time(&buf, "%Y-%m-%dT%H:%M:%S")
-                    << "+08:00";
-            return strTime.str();
-        }
+        std::ostringstream strTime;
+        strTime << std::put_time(&buf, "%Y-%m-%dT%H:%M:%S")
+                << "+08:00";
+        return strTime.str();
     }
 }

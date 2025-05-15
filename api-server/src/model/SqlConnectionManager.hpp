@@ -16,7 +16,6 @@
 
 #include "../../config.hpp"
 
-#include <iostream>
 #include <pqxx/pqxx>
 #include <memory>
 #include <string>

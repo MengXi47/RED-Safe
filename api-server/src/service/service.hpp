@@ -14,4 +14,7 @@
 
 #pragma once
 
-#include "EdgeRegistrationService.hpp"
+#include "EdgeDeviceRegistrationService.hpp"
+#include "UserRegistrationService.hpp"
+#include "IOSDeviceRegistrationService.hpp"
+#include "IOSDeviceBindService.hpp"

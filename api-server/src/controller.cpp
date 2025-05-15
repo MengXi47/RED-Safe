@@ -37,19 +37,111 @@ namespace redsafe::apiserver
                     if (!body.contains("serial_number") || !body.contains("version"))
                         throw std::invalid_argument("Missing serial_number or version");
 
-
-                    return std::make_shared<service::EdgeRegistrationService>(
+                    return std::make_shared<service::EdgeDeviceRegistrationService>(
                         body.value("version", std::string{}),
                         body.value("serial_number", std::string{}),
-                        util::current_timestamp(true))->start();
+                        util::current_timestamp(true))->Register();
                 }
                 catch (const std::invalid_argument& e)
                 {
-                    return json{{"error", e.what()}, {"code", 400}};
+                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
                 }
                 catch (const std::exception& e)
                 {
-                    return json{{"error", e.what()}, {"code", 500}};
+                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
+                }
+            }},
+
+            {"/user/register", [this](const json& body)
+            {
+                try
+                {
+                    if (!body.contains("email") || !body.contains("user_name") || !body.contains("password"))
+                        throw std::invalid_argument("Missing email or user_name or password");
+
+                    return std::make_shared<service::UserRegistrationService>(
+                        body.value("email", std::string{}),
+                        body.value("user_name", std::string{}),
+                        body.value("password", std::string{}),
+                        util::current_timestamp(true))->Register();
+                }
+                catch (const std::invalid_argument& e)
+                {
+                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
+                }
+                catch ([[maybe_unused]] const std::runtime_error& e)
+                {
+                    // log!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    return json{{"status", "error"}, {"message", "Service unavailable"}, {"code", 503}};
+                }
+                catch ([[maybe_unused]] const std::exception& e)
+                {
+                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
+                }
+            }},
+
+            {"/ios/register", [this](const json& body)
+            {
+                try
+                {
+                    if (!body.contains("user_id") || !body.contains("apns_token") || !body.contains("device_name"))
+                        throw std::invalid_argument("Missing user_id or apns_token or device_name");
+
+                    return std::make_shared<service::IOSDeviceRegistrationService>(
+                        body.value("user_id", std::string{}),
+                        body.value("apns_token", std::string{}),
+                        body.value("device_name", std::string{}),
+                        util::current_timestamp(true))->Register();
+                }
+                catch (const std::invalid_argument& e)
+                {
+                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
+                }
+                catch ([[maybe_unused]] const std::exception& e)
+                {
+                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
+                }
+            }},
+
+            {"/ios/bind", [this](const json& body)
+            {
+                try
+                {
+                    if (!body.contains("ios_device_id") || !body.contains("serial_number"))
+                        throw std::invalid_argument("Missing ios_device_id or serial_number");
+
+                    return std::make_shared<service::IOSDeviceBindService>(
+                        body.value("serial_number", std::string{}),
+                        body.value("ios_device_id", std::string{}))->bind();
+                }
+                catch (const std::invalid_argument& e)
+                {
+                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
+                }
+                catch ([[maybe_unused]] const std::exception& e)
+                {
+                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
+                }
+            }},
+
+            {"/ios/unbind", [this](const json& body)
+            {
+                try
+                {
+                    if (!body.contains("ios_device_id") || !body.contains("serial_number"))
+                        throw std::invalid_argument("Missing ios_device_id or serial_number");
+
+                    return std::make_shared<service::IOSDeviceBindService>(
+                        body.value("serial_number", std::string{}),
+                        body.value("ios_device_id", std::string{}))->unbind();
+                }
+                catch (const std::invalid_argument& e)
+                {
+                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
+                }
+                catch ([[maybe_unused]] const std::exception& e)
+                {
+                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
                 }
             }}
         };
@@ -66,14 +158,14 @@ namespace redsafe::apiserver
             }
             catch ([[maybe_unused]] nlohmann::json::parse_error& e)
             {
-                return make_response(400, {{"error", "Invalid JSON"}});
+                return make_response(400, {{"status", "error"}, {"message", "Invalid JSON"}});
             }
             ResponseBody = it->second(req_body);
         }
         else
-            return make_response(404, {{"error", "Unknown Unknown endpoint"}});
+            return make_response(404, {{"status", "error"}, {"message", "Unknown Unknown endpoint"}});
 
-        if (ResponseBody.contains("error"))
+        if (ResponseBody.contains("code"))
         {
             const int status_code = ResponseBody.value("code", 500);
             ResponseBody.erase("code");
