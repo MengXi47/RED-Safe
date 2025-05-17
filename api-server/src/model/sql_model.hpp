@@ -23,17 +23,12 @@ namespace redsafe::apiserver::model::sql
     class EdgeDeviceRegistrar : public ConnectionManager
     {
     public:
-        explicit EdgeDeviceRegistrar(
-            std::string serial,
-            std::string version,
-            std::string timestamp);
+        explicit EdgeDeviceRegistrar(std::string serial, std::string version);
 
         [[nodiscard]] bool RegisterEdgeDevice() const;
     private:
         std::string serial_number_;
         std::string version_;
-        std::string timestamp_;
-        static constexpr auto kTableName = "edge_devices";
     };
 
     // 使用者註冊
@@ -43,18 +38,16 @@ namespace redsafe::apiserver::model::sql
         explicit UserRegistrar(
             std::string email,
             std::string user_name,
-            std::string password_hash,
-            std::string timestamp);
+            std::string password_hash);
 
         [[nodiscard]] bool RegisterUser() const;
     private:
         std::string email_;
         std::string user_name_;
         std::string password_hash_;
-        std::string timestamp_;
-        static constexpr auto kTableName = "users";
     };
 
+    // 取得 User ID
     class UserIDFinder : public ConnectionManager
     {
     public:
@@ -63,26 +56,34 @@ namespace redsafe::apiserver::model::sql
         [[nodiscard]] std::string FetchUserId() const;
     private:
         std::string email_;
-        static constexpr auto kTableName = "users";
+    };
+
+    // 取得 User name
+    class UserNameFinder : public ConnectionManager
+    {
+    public:
+        explicit UserNameFinder(std::string email);
+
+        [[nodiscard]] std::string FetchUserName() const;
+    private:
+        std::string email_;
     };
 
     // IOS裝置註冊
     class IOSDeviceRegistrar : public ConnectionManager
     {
     public:
-        explicit IOSDeviceRegistrar(
-            std::string user_id,
-            std::string apns_token,
-            std::string device_name,
-            std::string timestamp);
+        IOSDeviceRegistrar(std::string ios_device_id,
+                           std::string user_id,
+                           std::string apns_token,
+                           std::string device_name);
 
         [[nodiscard]] bool RegisterIOSDevice() const;
     private:
+        std::string ios_device_id_;
         std::string user_id_;
         std::string apns_token_;
         std::string device_name_;
-        std::string timestamp_;
-        static constexpr auto kTableName = "ios_devices";
     };
 
     // 取得 iOS 裝置 ID
@@ -94,24 +95,40 @@ namespace redsafe::apiserver::model::sql
         [[nodiscard]] std::string FetchIOSDeviceId() const;
     private:
         std::string apns_token_;
-        static constexpr auto kTableName = "ios_devices";
     };
 
     // Edge ↔ iOS 裝置綁定
     class EdgeIOSBindingRegistrar : public ConnectionManager
     {
     public:
-        EdgeIOSBindingRegistrar(std::string edge_serial_number,
-                                std::string ios_device_id);
+        explicit EdgeIOSBindingRegistrar(std::string edge_serial_number, std::string user_id);
 
-        /// 建立綁定
-        [[nodiscard]] bool Bind()   const;
-
-        /// 解除綁定
-        [[nodiscard]] bool Unbind() const;
+        [[nodiscard]] bool bind()   const;
+        [[nodiscard]] bool unbind() const;
     private:
         std::string edge_serial_number_;
-        std::string ios_device_id_;
-        static constexpr auto kTableName = "edge_device_ios_devices";
+        std::string user_id;
+    };
+
+    // 依 email 取得密碼雜湊
+    class UserPasswordHashFinder : public ConnectionManager
+    {
+    public:
+        explicit UserPasswordHashFinder(std::string email);
+
+        [[nodiscard]] std::string FetchPasswordHash() const;
+    private:
+        std::string email_;
+    };
+
+    // 依 user_id 取回該帳號所有 Edge 序號
+    class UserEdgeListFinder : public ConnectionManager
+    {
+    public:
+        explicit UserEdgeListFinder(std::string user_id);
+
+        [[nodiscard]] std::vector<std::string> FetchEdges() const;
+    private:
+        std::string user_id_;
     };
 }

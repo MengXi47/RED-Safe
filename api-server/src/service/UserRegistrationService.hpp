@@ -27,8 +27,7 @@ namespace redsafe::apiserver::service
         explicit UserRegistrationService(
             std::string email,
             std::string user_name,
-            std::string password,
-            std::string timestamp);
+            std::string password);
 
         [[nodiscard]] json Register() const;
         [[nodiscard]] std::string PasswordHASH() const;
@@ -39,6 +38,5 @@ namespace redsafe::apiserver::service
         std::string email_;
         std::string user_name_;
         std::string password_;
-        std::string timestamp_;
     };
 }

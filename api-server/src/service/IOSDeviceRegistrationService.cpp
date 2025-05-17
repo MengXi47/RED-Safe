@@ -18,14 +18,14 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 namespace redsafe::apiserver::service
 {
-    IOSDeviceRegistrationService::IOSDeviceRegistrationService(std::string user_id,
+    IOSDeviceRegistrationService::IOSDeviceRegistrationService(std::string ios_device_id,
+                                                               std::string user_id,
                                                                std::string apns_token,
-                                                               std::string device_name,
-                                                               std::string timestamp)
-        : user_id_      (std::move(user_id)),
+                                                               std::string device_name)
+        : ios_device_id_(std::move(ios_device_id)),
+          user_id_      (std::move(user_id)),
           apns_token_   (std::move(apns_token)),
-          device_name_  (std::move(device_name)),
-          timestamp_    (std::move(timestamp))
+          device_name_  (std::move(device_name))
     {
         if (!std::regex_match(apns_token_, kApnsRe))
             throw std::invalid_argument("Invalid APNs token format");
@@ -34,7 +34,7 @@ namespace redsafe::apiserver::service
     json IOSDeviceRegistrationService::Register() const
     {
         if (!std::make_shared<model::sql::IOSDeviceRegistrar>
-            (user_id_, apns_token_, device_name_, timestamp_)->RegisterIOSDevice())
+            (ios_device_id_, user_id_, apns_token_, device_name_)->RegisterIOSDevice())
             throw std::invalid_argument("Registration failed");
 
         std::string ios_device_id = std::make_shared<model::sql::IOSDeviceFinder>
@@ -44,9 +44,9 @@ namespace redsafe::apiserver::service
 
         return json{
             {"status", "success"},
+            {"user_id", user_id_},
             {"apns_token", apns_token_},
-            {"ios_device_id", ios_device_id},
-            {"registration_time", timestamp_}
+            {"ios_device_id", ios_device_id}
         };
     }
 }

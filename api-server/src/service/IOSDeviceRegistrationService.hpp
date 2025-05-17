@@ -26,17 +26,17 @@ namespace redsafe::apiserver::service
     {
     public:
         explicit IOSDeviceRegistrationService(
+            std::string ios_device_id,
             std::string user_id,
             std::string apns_token,
-            std::string device_name,
-            std::string timestamp);
+            std::string device_name);
 
         [[nodiscard]] json Register() const;
     private:
         inline static const std::regex kApnsRe{R"(^[0-9a-f]{64}$)"};
+        std::string ios_device_id_;
         std::string user_id_;
         std::string apns_token_;
         std::string device_name_;
-        std::string timestamp_;
     };
 }

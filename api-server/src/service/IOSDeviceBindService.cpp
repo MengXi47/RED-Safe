@@ -18,8 +18,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 namespace redsafe::apiserver::service
 {
-    IOSDeviceBindService::IOSDeviceBindService(std::string serial_number, std::string ios_device_id)
-        : serial_number_(std::move(serial_number)), ios_device_id_(std::move(ios_device_id))
+    IOSDeviceBindService::IOSDeviceBindService(std::string serial_number, std::string user_id)
+        : serial_number_(std::move(serial_number)), user_id_(std::move(user_id))
     {
         if (!std::regex_match(serial_number_, kSerialRe))
             throw std::invalid_argument("Invalid serial_number format");
@@ -28,11 +28,11 @@ namespace redsafe::apiserver::service
     json IOSDeviceBindService::bind() const
     {
         if (std::make_unique<model::sql::EdgeIOSBindingRegistrar>
-            (serial_number_, ios_device_id_)->Bind())
+            (serial_number_, user_id_)->bind())
             return json{
-                    {"status", "success"},
-                    {"serial_number", serial_number_},
-                    {"ios_device_id", ios_device_id_}
+                            {"status", "success"},
+                            {"serial_number", serial_number_},
+                            {"user_id", user_id_}
             };
         throw std::invalid_argument("bind failed");
     }
@@ -40,11 +40,11 @@ namespace redsafe::apiserver::service
     json IOSDeviceBindService::unbind() const
     {
         if (std::make_unique<model::sql::EdgeIOSBindingRegistrar>
-            (serial_number_, ios_device_id_)->Unbind())
+            (serial_number_, user_id_)->unbind())
             return json{
                 {"status", "success"},
                 {"serial_number", serial_number_},
-                {"ios_device_id", ios_device_id_}
+                {"user_id", user_id_}
             };
         throw std::invalid_argument("unbind failed");
     }

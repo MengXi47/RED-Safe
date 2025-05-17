@@ -20,27 +20,29 @@
 namespace redsafe::apiserver::service
 {
     EdgeDeviceRegistrationService::EdgeDeviceRegistrationService(std::string version,
-                                                                 std::string serial_number,
-                                                                 std::string timestamp)
-        : version_      (std::move(version)),
-          serial_number_(std::move(serial_number)),
-          timestamp_    (std::move(timestamp))
+                                                                 std::string serial_number)
+        : version_(std::move(version)), serial_number_(std::move(serial_number))
     {
         if (!std::regex_match(serial_number_, kSerialRe))
             throw std::invalid_argument("Invalid serial_number format");
-        if (!std::regex_match(version_, kVersionRe))
-            throw std::invalid_argument("Invalid version format");
     }
 
     json EdgeDeviceRegistrationService::Register() const
     {
-        if (std::make_shared<model::sql::EdgeDeviceRegistrar>
-            (serial_number_, version_, timestamp_)->RegisterEdgeDevice())
-            return json{
-                {"status", "success"},
-                {"serial_number", serial_number_},
-                {"registration_time", timestamp_}
-            };
-        throw std::invalid_argument("Registration failed");
+        try
+        {
+            if (std::make_shared<model::sql::EdgeDeviceRegistrar>
+                (serial_number_, version_)->RegisterEdgeDevice())
+                return json{{"status", "success"}, {"serial_number", serial_number_}};
+            throw std::invalid_argument("Registration failed");
+        }
+        catch ([[maybe_unused]] const std::runtime_error &e)
+        {
+            throw;
+        }
+        catch ([[maybe_unused]] const std::invalid_argument &e)
+        {
+            throw;
+        }
     }
 }

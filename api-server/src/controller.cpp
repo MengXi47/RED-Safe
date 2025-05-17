@@ -39,14 +39,19 @@ namespace redsafe::apiserver
 
                     return std::make_shared<service::EdgeDeviceRegistrationService>(
                         body.value("version", std::string{}),
-                        body.value("serial_number", std::string{}),
-                        util::current_timestamp(true))->Register();
+                        body.value("serial_number", std::string{}))->Register();
+                }
+                catch (const std::runtime_error& e)
+                {
+                    if (std::string(e.what()) == "Edge device already registered")
+                        return json{{"status", "error"}, {"message", e.what()}, {"code", 409}};
+                    throw;
                 }
                 catch (const std::invalid_argument& e)
                 {
                     return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
                 }
-                catch (const std::exception& e)
+                catch ([[maybe_unused]] std::exception& e)
                 {
                     return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
                 }
@@ -62,17 +67,44 @@ namespace redsafe::apiserver
                     return std::make_shared<service::UserRegistrationService>(
                         body.value("email", std::string{}),
                         body.value("user_name", std::string{}),
-                        body.value("password", std::string{}),
-                        util::current_timestamp(true))->Register();
+                        body.value("password", std::string{}))->Register();
+                }
+                catch (const std::runtime_error& e)
+                {
+                    if (std::string(e.what()) == "Email already registered")
+                        return json{{"status", "error"}, {"message", e.what()}, {"code", 409}};
+                    throw;
                 }
                 catch (const std::invalid_argument& e)
                 {
                     return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
                 }
-                catch ([[maybe_unused]] const std::runtime_error& e)
+                catch ([[maybe_unused]] const std::exception& e)
                 {
-                    // log!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    return json{{"status", "error"}, {"message", "Service unavailable"}, {"code", 503}};
+                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
+                }
+            }},
+
+            {"/user/login", [this](const json& body)
+            {
+                try
+                {
+                    if (!body.contains("email") || !body.contains("password"))
+                        throw std::invalid_argument("Missing email or password");
+
+                    return std::make_shared<service::UserLoginLogoutService>(
+                        body.value("email", std::string{}),
+                        body.value("password", std::string{}))->login();
+                }
+                catch (const std::runtime_error& e)
+                {
+                    if (std::string(e.what()) == "Email or Password Error")
+                        return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
+                    throw;
+                }
+                catch (const std::invalid_argument& e)
+                {
+                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
                 }
                 catch ([[maybe_unused]] const std::exception& e)
                 {
@@ -84,14 +116,14 @@ namespace redsafe::apiserver
             {
                 try
                 {
-                    if (!body.contains("user_id") || !body.contains("apns_token") || !body.contains("device_name"))
-                        throw std::invalid_argument("Missing user_id or apns_token or device_name");
+                    if (!body.contains("user_id") || !body.contains("apns_token"))
+                        throw std::invalid_argument("Missing user_id or apns_token");
 
                     return std::make_shared<service::IOSDeviceRegistrationService>(
+                        body.value("ios_device_id", std::string{}),
                         body.value("user_id", std::string{}),
                         body.value("apns_token", std::string{}),
-                        body.value("device_name", std::string{}),
-                        util::current_timestamp(true))->Register();
+                        body.value("device_name", std::string{}))->Register();
                 }
                 catch (const std::invalid_argument& e)
                 {
@@ -99,7 +131,8 @@ namespace redsafe::apiserver
                 }
                 catch ([[maybe_unused]] const std::exception& e)
                 {
-                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
+                    return json{{"status", "error"}, {"message", e.what()}, {"code", 500}};
+                    //return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
                 }
             }},
 
@@ -107,12 +140,18 @@ namespace redsafe::apiserver
             {
                 try
                 {
-                    if (!body.contains("ios_device_id") || !body.contains("serial_number"))
-                        throw std::invalid_argument("Missing ios_device_id or serial_number");
+                    if (!body.contains("user_id") || !body.contains("serial_number"))
+                        throw std::invalid_argument("Missing user_id or serial_number");
 
                     return std::make_shared<service::IOSDeviceBindService>(
                         body.value("serial_number", std::string{}),
-                        body.value("ios_device_id", std::string{}))->bind();
+                        body.value("user_id", std::string{}))->bind();
+                }
+                catch (const std::runtime_error& e)
+                {
+                    if (std::string(e.what()) == "Binding already exists")
+                        return json{{"status", "error"}, {"message", e.what()}, {"code", 409}};
+                    throw;
                 }
                 catch (const std::invalid_argument& e)
                 {
@@ -145,6 +184,10 @@ namespace redsafe::apiserver
                 }
             }}
         };
+
+        std::cout << util::current_timestamp()
+                  << "New connection from "
+                  << req_.base()["X-Real-IP"] << std::endl;
 
         const auto target = req_.target();
         json ResponseBody;

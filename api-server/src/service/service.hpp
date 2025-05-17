@@ -18,3 +18,4 @@
 #include "UserRegistrationService.hpp"
 #include "IOSDeviceRegistrationService.hpp"
 #include "IOSDeviceBindService.hpp"
+#include "UserLoginLogoutService.hpp"

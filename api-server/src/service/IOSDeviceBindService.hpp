@@ -26,13 +26,13 @@ namespace redsafe::apiserver::service
     public:
         explicit IOSDeviceBindService(
             std::string serial_number,
-            std::string ios_device_id);
+            std::string user_id);
 
         [[nodiscard]] json bind()   const;
         [[nodiscard]] json unbind() const;
     private:
         inline static const std::regex kSerialRe    {R"(^RED-[0-9A-F]{8}$)"};
         std::string serial_number_;
-        std::string ios_device_id_;
+        std::string user_id_;
     };
 }

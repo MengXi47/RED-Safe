@@ -84,16 +84,8 @@ namespace redsafe::apiserver
             acceptor_.async_accept([this](auto ec, tcp::socket socket)
             {
                 if (!ec)
-                {
-                    std::cout << util::current_timestamp()
-                              << "New connection from "
-                              << socket.remote_endpoint().address().to_string()
-                              << ":"
-                              << socket.remote_endpoint().port()
-                              << "\n";
                     std::make_shared<Session>(
                         std::make_shared<tcp::socket>(std::move(socket)))->start();
-                }
                 else
                     std::cerr << "Accept failed: " << ec.message() << "\n";
     

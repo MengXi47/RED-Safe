@@ -8,17 +8,19 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 #-------------------- 來源檔 -------------------
 add_executable(RED_Safe_apiserver
-    main.cpp
-    src/api-server.cpp
-    src/session.cpp
-    src/controller.cpp
-        src/service/EdgeDeviceRegistrationService.cpp
-    src/service/UserRegistrationService.cpp
-    src/model/sql_model.cpp
-        src/service/IOSDeviceRegistrationService.cpp
-        src/service/IOSDeviceRegistrationService.hpp
-        src/service/IOSDeviceBindService.cpp
-        src/service/IOSDeviceBindService.hpp
+  main.cpp
+  src/api-server.cpp
+  src/session.cpp
+  src/controller.cpp
+  src/service/EdgeDeviceRegistrationService.cpp
+  src/service/UserRegistrationService.cpp
+  src/model/sql_model.cpp
+  src/service/IOSDeviceRegistrationService.cpp
+  src/service/IOSDeviceRegistrationService.hpp
+  src/service/IOSDeviceBindService.cpp
+  src/service/IOSDeviceBindService.hpp
+        src/service/UserLoginLogoutService.cpp
+        src/service/UserLoginLogoutService.hpp
 )
 
 if(APPLE)
@@ -61,6 +63,7 @@ endif()
 if (TARGET libsodium::libsodium)                       # 成功找到
     set(sodium_PKG_TARGET libsodium::libsodium)
 else ()                                         # 回退到 pkg-config
+    find_package(PkgConfig REQUIRED)    
     pkg_check_modules(sodium_PKG QUIET libsodium)
     add_library(sodium_PKG INTERFACE)
     target_include_directories(sodium_PKG INTERFACE ${sodium_PKG_INCLUDE_DIRS})
