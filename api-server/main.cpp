@@ -15,11 +15,7 @@
 #include "include/api-server.hpp"
 
 #include <iostream>
-
-#include "src/model/sql_model.hpp"
-#include <memory>
-#include "src/service/UserRegistrationService.hpp"
-#include "src/util.hpp"
+#include <string>
 
 /******************************************************************************
     💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩
@@ -37,8 +33,16 @@ int main(int argc, char* argv[])
     {
         const redsafe::apiserver::Server server;
         server.start();
-        std::cout << "Press any key to terminate the server." << std::endl;
-        std::cin.get();
+        while (true)
+        {
+            std::string input;
+            // std::cout << "RED-Safe~/$ ";
+            std::getline(std::cin, input);
+            if (input == "exit")
+                return 0;
+            if (input == "clear")
+                system("clear");
+        }
     }
     catch(const std::exception& e)
     {
@@ -46,5 +50,4 @@ int main(int argc, char* argv[])
         std::cin.get();
         return 1;
     }
-    return 0;
 }

@@ -12,9 +12,9 @@
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
-#include "util.hpp"
+#include "../util/timestamp.hpp"
 #include "controller.hpp"
-#include "service/service.hpp"
+#include "../service/service.hpp"
 
 #include <unordered_map>
 #include <functional>
@@ -131,8 +131,7 @@ namespace redsafe::apiserver
                 }
                 catch ([[maybe_unused]] const std::exception& e)
                 {
-                    return json{{"status", "error"}, {"message", e.what()}, {"code", 500}};
-                    //return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
+                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
                 }
             }},
 

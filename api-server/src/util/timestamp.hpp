@@ -21,7 +21,7 @@
 namespace redsafe::apiserver::util
 {
     /**
-    *   [YYYY-MM-DD HH:MM:SS:mmm]
+    *   [YYYY-MM-DD HH:MM:SS:mmm] or ISO
     */
     inline std::string current_timestamp(bool iso = false)
     {

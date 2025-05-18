@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "../config.hpp"
+
 #include <iostream>
 #include <memory>
 
@@ -22,13 +24,7 @@ namespace redsafe::apiserver
     class Server
     {
     public:
-        struct Options
-        {
-            uint16_t    port      {30678};
-        };
-
-        explicit Server(const Options&);
-        Server();
+        explicit Server(uint16_t port = SERVER_PORT);
         ~Server();
 
         void start() const;
