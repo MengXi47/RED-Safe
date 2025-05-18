@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "util.hpp"
+#include "../util/timestamp.hpp"
 
 #include <memory>
 #include <boost/asio/ip/tcp.hpp>
@@ -23,14 +23,10 @@
 
 namespace redsafe::apiserver
 {
-    namespace beast      = boost::beast;
-    namespace http       = beast::http;
-    using     tcp        = boost::asio::ip::tcp;
-
     class Session : public std::enable_shared_from_this<Session>
     {
     public:
-        explicit Session(std::shared_ptr<tcp::socket> sock);
+        explicit Session(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
         void start();
     private:
         void do_read();
@@ -38,9 +34,9 @@ namespace redsafe::apiserver
         template<class Response>
         void do_write(Response&& res);
 
-        std::shared_ptr<tcp::socket>        socket_;
-        beast::flat_buffer                  buffer_;
-        http::request<http::string_body>    req_;
-        http::response<http::string_body>   res_;
+        std::shared_ptr<boost::asio::ip::tcp::socket>                   socket_;
+        boost::beast::flat_buffer                                       buffer_;
+        boost::beast::http::request<boost::beast::http::string_body>    req_;
+        boost::beast::http::response<boost::beast::http::string_body>   res_;
     };
 }

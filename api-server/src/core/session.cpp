@@ -14,8 +14,13 @@
 
 #include "session.hpp"
 #include "controller.hpp"
+#include "../util/logger.hpp"
 
 #include <iostream>
+
+namespace beast      = boost::beast;
+namespace http       = beast::http;
+using     tcp        = boost::asio::ip::tcp;
 
 namespace redsafe::apiserver
 {
@@ -32,16 +37,26 @@ namespace redsafe::apiserver
     void Session::do_read()
     {
         auto self = shared_from_this();
+        req_ = {};
+        buffer_.consume(buffer_.size());
         http::async_read(
             *socket_,
             buffer_,
             req_,
-            [self](const boost::system::error_code& ec, std::size_t)
+            [this, self](const boost::system::error_code& ec, std::size_t)
             {
-                if(ec) {
-                    std::cerr << "Read failure: " << ec.message() << "\n";
+                if (ec)
+                {
+                    if(ec == http::error::end_of_stream || ec == boost::asio::error::connection_reset)
+                        return;
+                    util::log(util::LogFile::server, util::Level::ERROR)
+                        << "Read failure: " << ec.message();
+                    std::cerr << "Read failure: " << ec.message() << '\n';
                     return;
                 }
+                util::log(util::LogFile::access, util::Level::INFO)
+                    << req_.base()["X-Real-IP"]
+                    << " " << req_;
                 self->handle_request();
             }
         );
@@ -49,10 +64,7 @@ namespace redsafe::apiserver
 
     void Session::handle_request()
     {
-        http::response<http::string_body> res =
-            std::make_shared<redsafe::apiserver::Controller>(req_)->handle_request();
-
-        do_write(std::move(res));
+        do_write(std::move(std::make_shared<Controller>(req_)->handle_request()));
     }
 
     template<class Response>
@@ -60,18 +72,21 @@ namespace redsafe::apiserver
     {
         auto self = shared_from_this();
         auto sp = std::make_shared<std::decay_t<Response>>(std::forward<Response>(res));
-
         http::async_write(
             *socket_,
             *sp,
-            // ReSharper disable once CppLambdaCaptureNeverUsed
-            [self, sp](const boost::system::error_code& ec, std::size_t)
+            [this, self, sp]([[maybe_unused]] const auto ec, std::size_t)
             {
-                boost::system::error_code sec;
-                if (self->socket_->shutdown(boost::asio::ip::tcp::socket::shutdown_both, sec))
-                    std::cerr << "Shutdown failure: " << ec.message() << "\n";
-                if (self->socket_->close(sec))
-                    std::cerr << "Shutdown failure: " << sec.message() << "\n";
+                if (ec)
+                {
+                    if(ec == boost::asio::error::broken_pipe)
+                        return;
+                    util::log(util::LogFile::server, util::Level::ERROR)
+                        << " Write failure: " << ec.message();
+                    std::cerr << "Write failure: " << ec.message() << '\n';
+                    return;
+                }
+                self->do_read();
             }
         );
     }

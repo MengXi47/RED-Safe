@@ -14,6 +14,18 @@
 
 #pragma once
 
+#ifndef SERVER_PORT
+#define SERVER_PORT 30678
+#endif
+
+#ifndef SERVER_LOGFILE_PATH
+#define SERVER_LOGFILE_PATH "server.log"
+#endif
+
+#ifndef ACCESS_LOGFILE_PATH
+#define ACCESS_LOGFILE_PATH "access.log"
+#endif
+
 #ifndef SQL_CONNECTION_STR
 #define SQL_CONNECTION_STR "host=127.0.0.1 port=5432 dbname=redsafedb user=redsafedb_user password=redsafedb_1204"
 #endif

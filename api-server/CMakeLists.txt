@@ -9,18 +9,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 #-------------------- 來源檔 -------------------
 add_executable(RED_Safe_apiserver
   main.cpp
-  src/api-server.cpp
-  src/session.cpp
-  src/controller.cpp
+  src/core/api-server.cpp
+  src/core/session.cpp
+  src/core/controller.cpp
   src/service/EdgeDeviceRegistrationService.cpp
   src/service/UserRegistrationService.cpp
   src/model/sql_model.cpp
   src/service/IOSDeviceRegistrationService.cpp
-  src/service/IOSDeviceRegistrationService.hpp
   src/service/IOSDeviceBindService.cpp
-  src/service/IOSDeviceBindService.hpp
-        src/service/UserLoginLogoutService.cpp
-        src/service/UserLoginLogoutService.hpp
+  src/service/UserLoginLogoutService.cpp
 )
 
 if(APPLE)
@@ -54,7 +51,8 @@ if (TARGET libpqxx::pqxx)                       # 成功找到
 else ()                                         # 回退到 pkg-config
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(PQXX REQUIRED libpqxx)
-    add_library(pqxx INTERFACE)
+    add_library(pqxx INTERFACE
+            src/util/logger.hpp)
     target_include_directories(pqxx INTERFACE ${PQXX_INCLUDE_DIRS})
     target_link_libraries(pqxx INTERFACE ${PQXX_LINK_LIBRARIES})
     set(PQXX_TARGET pqxx)
