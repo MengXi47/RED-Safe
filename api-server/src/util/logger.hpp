@@ -20,7 +20,6 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #include <fstream>
 #include <sstream>
 #include <mutex>
-#include <chrono>
 #include <iomanip>
 #include <array>
 #include <string>
