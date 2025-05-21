@@ -1,0 +1,32 @@
+一鍵初始化專案資料夾與基本結構
+python D:\pytorch\init_project.py
+這會建立資料夾架構、放好範例影片或相關檔案。
+
+下載 YouTube 影片到 raw 資料夾（如果想用其他影片）
+python D:\pytorch\download_youtube.py
+或是你也可以自己手動放影片在 data/raw/。
+
+提取影片關鍵點，產生標註資料
+編輯 extract_keypoints.py，確定裡面有：
+process_video("data/raw/fall1.mp4", label=1)
+process_video("data/raw/normal1.mp4", label=0
+將原始關鍵點資料轉換成 npy 格式（數據格式化）
+python D:\pytorch\extract_data.py
+這會產生 data/processed/X.npy 和 data/processed/y.npy。
+
+開始訓練模型
+python D:\pytorch\train.py
+模型會用剛才產生的 npy 數據訓練。
+
+訓練完成後，啟動攝影機做即時跌倒偵測推論（會自動偵測 GPU）
+python D:\pytorch\main.py
+獨立打包專案成壓縮包（可做發佈或備份）
+python D:\pytorch\package_project.py 
+Mad_Dog[MEOW]
+ — 上午 01:36
+一鍵訓練腳本
+python D:/pytorch/run_all.py
+Mad_Dog[MEOW]
+ — 上午 02:02
+建立環境，自動安裝專案中所有需要的套件
+pip install -r requirements.txt
