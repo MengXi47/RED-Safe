@@ -13,7 +13,7 @@ def download_video(url, output_path):
         print(f"已儲存至: {output_path}")
 
 if __name__ == "__main__":
-    output_dir = Path("D:/pytorch/data/raw")  # ✅ 改成絕對路徑，且避免跳脫字元問題
+    output_dir = Path("data/raw")  # ✅ 改成絕對路徑，且避免跳脫字元問題
     output_dir.mkdir(parents=True, exist_ok=True)
 
     video_url = "https://youtu.be/ctniCxIdpTY?si=tRuD_r0iCOMrH_bg"

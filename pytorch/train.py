@@ -10,8 +10,8 @@ def main():
     print(f"使用裝置: {device}")
 
     # 載入資料
-    X = np.load("D:/pytorch/data/processed/X.npy", allow_pickle=True)
-    y = np.load("D:/pytorch/data/processed/y.npy", allow_pickle=True)
+    X = np.load("data/processed/X.npy", allow_pickle=True)
+    y = np.load("data/processed/y.npy", allow_pickle=True)
 
     # 把 numpy 轉成 tensor
     X_tensor = torch.tensor(X, dtype=torch.float32).to(device)
@@ -37,7 +37,7 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     model.train()
-    for epoch in range(10):
+    for epoch in range(30):
         total_loss = 0
         for inputs, labels in loader:
             inputs, labels = inputs.to(device), labels.to(device)
@@ -49,7 +49,7 @@ def main():
             total_loss += loss.item()
         print(f"Epoch {epoch+1}, Loss: {total_loss/len(loader):.4f}")
 
-    torch.save(model.state_dict(), "D:/pytorch/model/trained_model.pth")
+    torch.save(model.state_dict(), "model/trained_model.pth")
 
 if __name__ == "__main__":
     main()

@@ -2,18 +2,18 @@ import os
 
 def create_folders():
     folders = [
-        "D:/pytorch/data/raw",
-        "D:/pytorch/data/processed",
-        "D:/pytorch/model",
-        "D:/pytorch/output",
-        "D:/pytorch/output/fall_frames"
+        "data/raw",
+        "data/processed",
+        "model",
+        "output",
+        "output/fall_frames"
     ]
     for folder in folders:
         os.makedirs(folder, exist_ok=True)
     print("資料夾建立完成")
 
 def list_raw_videos():
-    raw_dir = "D:/pytorch/data/raw"
+    raw_dir = "data/raw"
     videos = [f for f in os.listdir(raw_dir) if f.endswith(".mp4")]
     if not videos:
         print("data/raw 目錄中沒有 mp4 影片，請手動放入影片檔")

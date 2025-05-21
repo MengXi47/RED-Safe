@@ -6,8 +6,8 @@ import subprocess
 from utils.extract_keypoints import process_video, X, y
 
 def extract_keypoints_and_save():
-    DATA_RAW = "D:/pytorch/data/raw"
-    DATA_PROCESSED = "D:/pytorch/data/processed"
+    DATA_RAW = "data/raw"
+    DATA_PROCESSED = "data/processed"
     os.makedirs(DATA_PROCESSED, exist_ok=True)
 
     # 清空舊資料
@@ -36,7 +36,7 @@ def extract_keypoints_and_save():
 
 # 3. 執行 train.py 來訓練模型
 def train_model():
-    train_script = "D:/pytorch/train.py"
+    train_script = "train.py"
     print("開始訓練模型...")
     result = subprocess.run([sys.executable, train_script], capture_output=True, text=True)
     print(result.stdout)

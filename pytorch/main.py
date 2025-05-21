@@ -27,7 +27,7 @@ class SimpleLSTM(torch.nn.Module):
         return out
 
 model = SimpleLSTM().to(device)
-model.load_state_dict(torch.load("D:/pytorch/model/trained_model.pth", map_location=device))
+model.load_state_dict(torch.load("model/trained_model.pth", map_location=device))
 model.eval()
 
 def predict_fall(model, sequence, device):
@@ -38,7 +38,7 @@ def predict_fall(model, sequence, device):
         pred = torch.argmax(probs, dim=1).item()
         return pred == 1  # 1表示跌倒
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1, cv2.CAP_AVFOUNDATION)
 if not cap.isOpened():
     print("Error: 無法讀取攝影機")
     exit()
