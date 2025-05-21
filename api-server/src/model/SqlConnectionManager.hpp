@@ -48,6 +48,6 @@ namespace redsafe::apiserver::model::sql
             return *conn_;
         }
     private:
-        static inline std::unique_ptr<pqxx::connection> conn_{nullptr};
+        static inline thread_local std::unique_ptr<pqxx::connection> conn_{nullptr};
     };
 }

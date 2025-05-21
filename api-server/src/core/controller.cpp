@@ -184,10 +184,6 @@ namespace redsafe::apiserver
             }}
         };
 
-        std::cout << util::current_timestamp()
-                  << "New connection from "
-                  << req_.base()["X-Real-IP"] << std::endl;
-
         const auto target = req_.target();
         json ResponseBody;
 
@@ -205,7 +201,7 @@ namespace redsafe::apiserver
             ResponseBody = it->second(req_body);
         }
         else
-            return make_response(404, {{"status", "error"}, {"message", "Unknown Unknown endpoint"}});
+            return make_response(404, {{"status", "error"}, {"message", "Unknown endpoint"}});
 
         if (ResponseBody.contains("code"))
         {
@@ -219,6 +215,7 @@ namespace redsafe::apiserver
     response Controller::make_response(int status_code, const json& j)
     {
         response res{ static_cast<http::status>(status_code), 11 };
+        res.keep_alive(true);
         res.set(http::field::server, "RED-Safe");
         res.set(http::field::content_type, "application/json");
         res.body() = j.dump();

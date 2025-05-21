@@ -10,7 +10,7 @@
      3. Distribute, display, or otherwise use this source code or its derivatives in any form.
   
    For licensing inquiries or to obtain a formal license, please contact:
-*******************************************************************************/
+******************************************************************************/
 
 #pragma once
 
@@ -20,23 +20,20 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
+#include <boost/asio/awaitable.hpp>
 
 namespace redsafe::apiserver
 {
     class Session : public std::enable_shared_from_this<Session>
     {
     public:
-        explicit Session(std::shared_ptr<boost::asio::ip::tcp::socket> sock);
+        explicit Session(boost::asio::ip::tcp::socket sock);
         void start();
     private:
-        void do_read();
-        void handle_request();
-        template<class Response>
-        void do_write(Response&& res);
+        boost::asio::awaitable<void> run();
 
-        std::shared_ptr<boost::asio::ip::tcp::socket>                   socket_;
+        boost::asio::ip::tcp::socket                                    socket_;
         boost::beast::flat_buffer                                       buffer_;
         boost::beast::http::request<boost::beast::http::string_body>    req_;
-        boost::beast::http::response<boost::beast::http::string_body>   res_;
     };
 }

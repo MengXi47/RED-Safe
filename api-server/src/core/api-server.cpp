@@ -33,6 +33,7 @@ namespace redsafe::apiserver
         explicit Impl(const uint16_t port)
             : acceptor_{io_, {tcp::v4(), port}}
         {
+            acceptor_.listen(1024);
         }
 
         ~Impl()
@@ -73,8 +74,11 @@ namespace redsafe::apiserver
                                 << "Accept failed: " << ec.message();
                         std::cerr << "Accept failed: " << ec.message() << '\n';
                     }
-                    std::make_shared<Session>(std::make_shared<tcp::socket>
-                        (std::move(socket)))->start();
+                    std::cout << util::current_timestamp()
+                        << "nginx connection: "
+                        << socket.remote_endpoint().address().to_string() << ':'
+                        << socket.remote_endpoint().port() << '\n';
+                    std::make_shared<Session>(std::move(socket))->start();
                     do_accept();
                 }
             );

@@ -10,7 +10,7 @@
      3. Distribute, display, or otherwise use this source code or its derivatives in any form.
   
    For licensing inquiries or to obtain a formal license, please contact:
-*******************************************************************************/
+******************************************************************************/
 
 #include "session.hpp"
 #include "controller.hpp"
@@ -18,76 +18,60 @@
 
 #include <iostream>
 
+#include <boost/asio/co_spawn.hpp>
+#include <boost/asio/detached.hpp>
+#include <boost/asio/use_awaitable.hpp>
+#include <boost/beast/http.hpp>
+
 namespace beast      = boost::beast;
 namespace http       = beast::http;
 using     tcp        = boost::asio::ip::tcp;
 
 namespace redsafe::apiserver
 {
-    Session::Session(std::shared_ptr<tcp::socket> sock)
+    Session::Session(tcp::socket sock)
         : socket_(std::move(sock))
     {
     }
 
     void Session::start()
     {
-        do_read();
+        boost::asio::co_spawn(socket_.get_executor(),
+                              [self = shared_from_this()]() { return self->run(); },
+                              boost::asio::detached);
     }
 
-    void Session::do_read()
+    boost::asio::awaitable<void> Session::run()
     {
-        auto self = shared_from_this();
-        req_ = {};
-        buffer_.consume(buffer_.size());
-        http::async_read(
-            *socket_,
-            buffer_,
-            req_,
-            [this, self](const boost::system::error_code& ec, std::size_t)
+        try
+        {
+            for (;;)
             {
-                if (ec)
+                req_ = {};
+                buffer_.consume(buffer_.size());
+                co_await http::async_read(socket_, buffer_, req_, boost::asio::use_awaitable);
+                auto raw_req = req_;
+                boost::asio::post(socket_.get_executor(),[raw_req = std::move(raw_req)]()
                 {
-                    if(ec == http::error::end_of_stream || ec == boost::asio::error::connection_reset)
-                        return;
-                    util::log(util::LogFile::server, util::Level::ERROR)
-                        << "Read failure: " << ec.message();
-                    std::cerr << "Read failure: " << ec.message() << '\n';
-                    return;
-                }
-                util::log(util::LogFile::access, util::Level::INFO)
-                    << req_.base()["X-Real-IP"]
-                    << " " << req_;
-                self->handle_request();
+                    std::cout << util::current_timestamp()
+                        << raw_req.base()["X-Real-IP"] << " " << raw_req.method() << " "
+                        << raw_req.target() << " " << raw_req.body() << '\n';
+                    util::log(util::LogFile::access, util::Level::INFO)
+                        << raw_req.base()["X-Real-IP"] << " " << raw_req.method() << " "
+                        << raw_req.target() << " " << raw_req.body();
+                });
+                auto response = std::make_shared<Controller>(req_)->handle_request();
+                co_await http::async_write(socket_, response, boost::asio::use_awaitable);
+                buffer_.consume(buffer_.size());
             }
-        );
-    }
-
-    void Session::handle_request()
-    {
-        do_write(std::move(std::make_shared<Controller>(req_)->handle_request()));
-    }
-
-    template<class Response>
-    void Session::do_write(Response&& res)
-    {
-        auto self = shared_from_this();
-        auto sp = std::make_shared<std::decay_t<Response>>(std::forward<Response>(res));
-        http::async_write(
-            *socket_,
-            *sp,
-            [this, self, sp]([[maybe_unused]] const auto ec, std::size_t)
-            {
-                if (ec)
-                {
-                    if(ec == boost::asio::error::broken_pipe)
-                        return;
-                    util::log(util::LogFile::server, util::Level::ERROR)
-                        << " Write failure: " << ec.message();
-                    std::cerr << "Write failure: " << ec.message() << '\n';
-                    return;
-                }
-                self->do_read();
-            }
-        );
+        }
+        catch (...)
+        {
+            std::cout << util::current_timestamp()
+                << "nginx disconnection: "
+                << socket_.remote_endpoint().address().to_string() << ':'
+                << socket_.remote_endpoint().port() << '\n';
+            socket_.close();
+        }
     }
 }
