@@ -20,22 +20,9 @@
 
 namespace redsafe::apiserver::model::sql
 {
-
     EdgeDeviceRegistrar::EdgeDeviceRegistrar(std::string serial, std::string version)
         : serial_number_(std::move(serial)), version_(std::move(version))
     {
-        auto& conn = connection();
-        static bool prepared = false;
-        if (!prepared)
-        {
-            conn.prepare(
-                "register_edge",
-                "INSERT INTO edge_devices "
-                "(edge_serial_number, version) "
-                "VALUES ($1, $2) "
-                "ON CONFLICT (edge_serial_number) DO NOTHING");
-            prepared = true;
-        }
     }
 
     bool EdgeDeviceRegistrar::RegisterEdgeDevice() const

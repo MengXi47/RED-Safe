@@ -16,6 +16,8 @@
 
 #include <iostream>
 #include <string>
+#include <cerrno>
+#include <limits>
 
 /******************************************************************************
     💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩
@@ -27,11 +29,27 @@
     💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩💩
 *******************************************************************************/
 
-int main(int argc, char* argv[])
+int main(const int argc, char* argv[])
 {
+    int port = SERVER_PORT;
+    for (int i = 1; i < argc; ++i)
+        if (std::strcmp(argv[i], "-p") == 0 && i + 1 < argc)
+        {
+            const char* arg = argv[++i];
+            errno = 0;
+            char* endptr = nullptr;
+            const long val = std::strtol(arg, &endptr, 10);
+            if (errno != 0 || endptr == arg || *endptr != '\0' ||
+                val < std::numeric_limits<int>::min() ||
+                val > std::numeric_limits<int>::max()) {
+                std::cerr << "Invalid port number: " << arg << std::endl;
+                return 1;
+            }
+            port = static_cast<int>(val);
+        }
     try
     {
-        const redsafe::apiserver::Server server;
+        const redsafe::apiserver::Server server(port);
         server.start();
         while (true)
         {

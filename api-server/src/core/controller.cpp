@@ -45,7 +45,8 @@ namespace redsafe::apiserver
                 {
                     if (std::string(e.what()) == "Edge device already registered")
                         return json{{"status", "error"}, {"message", e.what()}, {"code", 409}};
-                    throw;
+                    std::cout << e.what() << std::endl;
+                    return json{{"status", "error"}, {"message", e.what()}, {"code", 409}};
                 }
                 catch (const std::invalid_argument& e)
                 {

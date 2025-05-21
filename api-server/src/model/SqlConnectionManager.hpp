@@ -26,11 +26,6 @@ namespace redsafe::apiserver::model::sql
     class ConnectionManager
     {
     public:
-        explicit ConnectionManager()
-        {
-            initConnection(SQL_CONNECTION_STR);
-        }
-
         static void initConnection(const std::string& conn_str)
         {
             if (!conn_)
@@ -38,16 +33,36 @@ namespace redsafe::apiserver::model::sql
                 conn_ = std::make_unique<pqxx::connection>(conn_str);
                 if (!conn_->is_open())
                     throw std::runtime_error("DB connection failed: " + conn_str);
+                SQLinit(*conn_);
             }
         }
 
         static pqxx::connection& connection()
         {
             if (!conn_)
-                throw std::runtime_error("DB connection not initialized");
+                initConnection(SQL_CONNECTION_STR);
             return *conn_;
         }
     private:
         static inline thread_local std::unique_ptr<pqxx::connection> conn_{nullptr};
+
+        static void SQLinit(pqxx::connection& conn)
+        {
+            try
+            {
+                conn.prepare(
+                    "register_edge",
+                    "INSERT INTO edge_devices "
+                    "(edge_serial_number, version) "
+                    "VALUES ($1, $2) "
+                    "ON CONFLICT (edge_serial_number) DO NOTHING"
+                );
+            }
+            catch (const pqxx::sql_error &e)
+            {
+                if (e.sqlstate() != "42P05")
+                    throw;
+            }
+        }
     };
 }

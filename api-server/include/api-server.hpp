@@ -24,7 +24,7 @@ namespace redsafe::apiserver
     class Server
     {
     public:
-        explicit Server(uint16_t port = SERVER_PORT);
+        explicit Server(uint16_t port);
         ~Server();
 
         void start() const;

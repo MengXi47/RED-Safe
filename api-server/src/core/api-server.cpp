@@ -16,6 +16,7 @@
 #include "../../include/api-server.hpp"
 #include "../util/logger.hpp"
 #include "session.hpp"
+#include "../model/model.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/asio/thread_pool.hpp>
