@@ -21,7 +21,8 @@
 namespace redsafe::apiserver::model::sql
 {
     EdgeDeviceRegistrar::EdgeDeviceRegistrar(std::string serial, std::string version)
-        : serial_number_(std::move(serial)), version_(std::move(version))
+        : serial_number_(std::move(serial))
+        , version_(std::move(version))
     {
     }
 

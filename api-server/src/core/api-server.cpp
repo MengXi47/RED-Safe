@@ -75,6 +75,7 @@ namespace redsafe::apiserver
                                 << "Accept failed: " << ec.message();
                         std::cerr << "Accept failed: " << ec.message() << '\n';
                     }
+
                     std::cout << util::current_timestamp()
                         << "nginx connection: "
                         << socket.remote_endpoint().address().to_string() << ':'
