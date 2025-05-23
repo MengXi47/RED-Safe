@@ -12,16 +12,15 @@
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
-#include "session.hpp"
-#include "controller.hpp"
-#include "../util/logger.hpp"
-
-#include <iostream>
-
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/beast/http.hpp>
+
+#include "session.hpp"
+#include "controller.hpp"
+#include "../util/logger.hpp"
+#include "../util/IOstream.hpp"
 
 namespace beast      = boost::beast;
 namespace http       = beast::http;
@@ -53,7 +52,7 @@ namespace redsafe::apiserver
                 auto raw_req = req_;
                 boost::asio::post(socket_.get_executor(),[raw_req = std::move(raw_req)]()
                 {
-                    std::cout << util::current_timestamp()
+                    util::cout() << util::current_timestamp()
                         << raw_req.base()["X-Real-IP"] << " " << raw_req.method() << " "
                         << raw_req.target() << " " << raw_req.body() << '\n';
                     util::log(util::LogFile::access, util::Level::INFO)
@@ -67,7 +66,7 @@ namespace redsafe::apiserver
         }
         catch (...)
         {
-            std::cout << util::current_timestamp()
+            util::cout() << util::current_timestamp()
                 << "nginx disconnection: "
                 << socket_.remote_endpoint().address().to_string() << ':'
                 << socket_.remote_endpoint().port() << '\n';

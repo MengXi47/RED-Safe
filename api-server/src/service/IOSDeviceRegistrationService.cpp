@@ -12,41 +12,68 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include "IOSDeviceRegistrationService.hpp"
-#include "../model/model.hpp"
+#include <nlohmann/json.hpp>
 
+#include "IOSDeviceRegistrationService.hpp"
+#include "../util/response.hpp"
+#include "../model/sql/RegistrarModels.hpp"
+#include "../model/sql/FinderModels.hpp"
+#include "../model/validator/ParameterValidation.hpp"
 
 namespace redsafe::apiserver::service
 {
-    IOSDeviceRegistrationService::IOSDeviceRegistrationService(std::string ios_device_id,
-                                                               std::string user_id,
-                                                               std::string apns_token,
-                                                               std::string device_name)
-        : ios_device_id_(std::move(ios_device_id)),
-          user_id_      (std::move(user_id)),
-          apns_token_   (std::move(apns_token)),
-          device_name_  (std::move(device_name))
+    util::Result IOSDeviceRegistrationService::start(
+        const std::string &ios_device_id,
+        const std::string &user_id,
+        const std::string &apns_token,
+        const std::string &device_name
+    )
     {
-        if (!std::regex_match(apns_token_, kApnsRe))
-            throw std::invalid_argument("Invalid APNs token format");
-    }
+        using namespace model::validator;
+        using namespace model::sql::reg;
+        using namespace model::sql::fin;
+        using json = nlohmann::json;
 
-    json IOSDeviceRegistrationService::Register() const
-    {
-        if (!std::make_shared<model::sql::IOSDeviceRegistrar>
-            (ios_device_id_, user_id_, apns_token_, device_name_)->RegisterIOSDevice())
-            throw std::invalid_argument("Registration failed");
+        if (!is_vaild_apns(apns_token))
+            return util::Result{
+                util::status_code::BadRequest,
+                util::error_code::Invalid_apnstoken_format,
+                json{}
+            };
 
-        std::string ios_device_id = std::make_shared<model::sql::IOSDeviceFinder>
-            (apns_token_)->FetchIOSDeviceId();
+        if (IOSDeviceRegistrar::start(ios_device_id, user_id, apns_token, device_name) == 1)
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+
         if (ios_device_id.empty())
-            throw std::runtime_error("Failed to retrieve ios_device_id");
+            if (auto ios_device_id_ = IOSDeviceIDFinder::start(apns_token); ios_device_id_.empty())
+                return util::Result{
+                    util::status_code::InternalServerError,
+                    util::error_code::Internal_server_error,
+                    json{}
+                };
+            else
+                return util::Result{
+                    util::status_code::Success,
+                    util::error_code::Success,
+                    json{
+                        {"user_id", user_id},
+                        {"apns_token", apns_token},
+                        {"ios_device_id", ios_device_id_}
+                    }
+                };
 
-        return json{
-            {"status", "success"},
-            {"user_id", user_id_},
-            {"apns_token", apns_token_},
-            {"ios_device_id", ios_device_id}
+        return util::Result{
+            util::status_code::Success,
+            util::error_code::Success,
+            json{
+                {"user_id", user_id},
+                {"apns_token", apns_token},
+                {"ios_device_id", ios_device_id}
+            }
         };
     }
 }

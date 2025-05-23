@@ -14,22 +14,13 @@
 
 #pragma once
 
-#include <nlohmann/json.hpp>
-#include <regex>
-
-using json = nlohmann::json;
+#include "../util/response.hpp"
 
 namespace redsafe::apiserver::service
 {
     class EdgeDeviceRegistrationService
     {
     public:
-        explicit EdgeDeviceRegistrationService(std::string version, std::string serial_number);
-
-        [[nodiscard]] json Register() const;
-    private:
-        inline static const std::regex kSerialRe {R"(^RED-[0-9A-F]{8}$)"};
-        std::string version_;
-        std::string serial_number_;
+        [[nodiscard]] static util::Result start(const std::string &version, const std::string &serial_number);
     };
 }

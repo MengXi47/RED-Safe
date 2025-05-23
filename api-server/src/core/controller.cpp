@@ -12,12 +12,17 @@
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
-#include "../util/timestamp.hpp"
-#include "controller.hpp"
-#include "../service/service.hpp"
-
 #include <unordered_map>
 #include <functional>
+
+#include "controller.hpp"
+#include "../service/EdgeDeviceRegistrationService.hpp"
+#include "../service/IOSDeviceBindService.hpp"
+#include "../service/IOSDeviceRegistrationService.hpp"
+#include "../service/UserLoginLogoutService.hpp"
+#include "../service/UserRegistrationService.hpp"
+#include "../util/logger.hpp"
+#include "../util/response.hpp"
 
 namespace redsafe::apiserver
 {
@@ -28,165 +33,112 @@ namespace redsafe::apiserver
 
     response Controller::handle_request()
     {
-        static const std::unordered_map<std::string, std::function<json(const json&)>> handlers =
+        static const std::unordered_map<
+            std::string,
+            std::function<util::Result(const json&)>> handlers =
         {
             {"/edge/register", [this](const json& body)
             {
-                try
-                {
-                    if (!body.contains("serial_number") || !body.contains("version"))
-                        throw std::invalid_argument("Missing serial_number or version");
+                if (!body.contains("serial_number") || !body.contains("version"))
+                    return util::Result{
+                        util::status_code::BadRequest,
+                        util::error_code::Missing_serial_number_or_version,
+                        json{}
+                    };
 
-                    return std::make_shared<service::EdgeDeviceRegistrationService>(
-                        body.value("version", std::string{}),
-                        body.value("serial_number", std::string{}))->Register();
-                }
-                catch (const std::runtime_error& e)
-                {
-                    if (std::string(e.what()) == "Edge device already registered")
-                        return json{{"status", "error"}, {"message", e.what()}, {"code", 409}};
-                    std::cout << e.what() << std::endl;
-                    return json{{"status", "error"}, {"message", e.what()}, {"code", 409}};
-                }
-                catch (const std::invalid_argument& e)
-                {
-                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
-                }
-                catch ([[maybe_unused]] std::exception& e)
-                {
-                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
-                }
+                return service::EdgeDeviceRegistrationService::start(
+                    body.value("version", std::string{}),
+                    body.value("serial_number", std::string{})
+                );
             }},
 
             {"/user/register", [this](const json& body)
             {
-                try
-                {
-                    if (!body.contains("email") || !body.contains("user_name") || !body.contains("password"))
-                        throw std::invalid_argument("Missing email or user_name or password");
+                if (!body.contains("email")     ||
+                    !body.contains("user_name") ||
+                    !body.contains("password"))
+                    return util::Result{
+                        util::status_code::BadRequest,
+                        util::error_code::Missing_email_or_user_name_or_password,
+                        json{}
+                    };
 
-                    return std::make_shared<service::UserRegistrationService>(
-                        body.value("email", std::string{}),
-                        body.value("user_name", std::string{}),
-                        body.value("password", std::string{}))->Register();
-                }
-                catch (const std::runtime_error& e)
-                {
-                    if (std::string(e.what()) == "Email already registered")
-                        return json{{"status", "error"}, {"message", e.what()}, {"code", 409}};
-                    throw;
-                }
-                catch (const std::invalid_argument& e)
-                {
-                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
-                }
-                catch ([[maybe_unused]] const std::exception& e)
-                {
-                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
-                }
+                const service::UserRegistrationService FUCK{
+                    body.value("email", std::string{}),
+                    body.value("user_name", std::string{}),
+                    body.value("password", std::string{})
+                };
+
+                return FUCK.start();
             }},
 
             {"/user/login", [this](const json& body)
             {
-                try
-                {
-                    if (!body.contains("email") || !body.contains("password"))
-                        throw std::invalid_argument("Missing email or password");
+                if (!body.contains("email") || !body.contains("password"))
+                    return util::Result{
+                        util::status_code::BadRequest,
+                        util::error_code::Missing_email_or_password,
+                        json{}
+                    };
 
-                    return std::make_shared<service::UserLoginLogoutService>(
-                        body.value("email", std::string{}),
-                        body.value("password", std::string{}))->login();
-                }
-                catch (const std::runtime_error& e)
-                {
-                    if (std::string(e.what()) == "Email or Password Error")
-                        return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
-                    throw;
-                }
-                catch (const std::invalid_argument& e)
-                {
-                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
-                }
-                catch ([[maybe_unused]] const std::exception& e)
-                {
-                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
-                }
+                const service::UserLoginLogoutService FUCK{
+                    body.value("email", std::string{}),
+                    body.value("password", std::string{})
+                };
+
+                return FUCK.login();
             }},
 
             {"/ios/register", [this](const json& body)
             {
-                try
-                {
-                    if (!body.contains("user_id") || !body.contains("apns_token"))
-                        throw std::invalid_argument("Missing user_id or apns_token");
+                if (!body.contains("user_id") || !body.contains("apns_token"))
+                    return util::Result{
+                        util::status_code::BadRequest,
+                        util::error_code::Missing_user_id_or_apns_token,
+                        json{}
+                    };
 
-                    return std::make_shared<service::IOSDeviceRegistrationService>(
-                        body.value("ios_device_id", std::string{}),
-                        body.value("user_id", std::string{}),
-                        body.value("apns_token", std::string{}),
-                        body.value("device_name", std::string{}))->Register();
-                }
-                catch (const std::invalid_argument& e)
-                {
-                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
-                }
-                catch ([[maybe_unused]] const std::exception& e)
-                {
-                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
-                }
+                return service::IOSDeviceRegistrationService::start(
+                    body.value("ios_device_id", std::string{}),
+                    body.value("user_id", std::string{}),
+                    body.value("apns_token", std::string{}),
+                    body.value("device_name", std::string{})
+                );
             }},
 
             {"/ios/bind", [this](const json& body)
             {
-                try
-                {
-                    if (!body.contains("user_id") || !body.contains("serial_number"))
-                        throw std::invalid_argument("Missing user_id or serial_number");
+                if (!body.contains("user_id") || !body.contains("serial_number"))
+                    return util::Result{
+                        util::status_code::BadRequest,
+                        util::error_code::Missing_user_id_or_serial_number,
+                        json{}
+                    };
 
-                    return std::make_shared<service::IOSDeviceBindService>(
-                        body.value("serial_number", std::string{}),
-                        body.value("user_id", std::string{}))->bind();
-                }
-                catch (const std::runtime_error& e)
-                {
-                    if (std::string(e.what()) == "Binding already exists")
-                        return json{{"status", "error"}, {"message", e.what()}, {"code", 409}};
-                    throw;
-                }
-                catch (const std::invalid_argument& e)
-                {
-                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
-                }
-                catch ([[maybe_unused]] const std::exception& e)
-                {
-                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
-                }
+                return service::IOSDeviceBindService::bind(
+                    body.value("serial_number", std::string{}),
+                    body.value("user_id", std::string{})
+                );
             }},
 
             {"/ios/unbind", [this](const json& body)
             {
-                try
-                {
-                    if (!body.contains("ios_device_id") || !body.contains("serial_number"))
-                        throw std::invalid_argument("Missing ios_device_id or serial_number");
+                if (!body.contains("user_id") || !body.contains("serial_number"))
+                    return util::Result{
+                        util::status_code::BadRequest,
+                        util::error_code::Missing_user_id_or_serial_number,
+                        json{}
+                    };
 
-                    return std::make_shared<service::IOSDeviceBindService>(
-                        body.value("serial_number", std::string{}),
-                        body.value("ios_device_id", std::string{}))->unbind();
-                }
-                catch (const std::invalid_argument& e)
-                {
-                    return json{{"status", "error"}, {"message", e.what()}, {"code", 400}};
-                }
-                catch ([[maybe_unused]] const std::exception& e)
-                {
-                    return json{{"status", "error"}, {"message", "Internal server error"}, {"code", 500}};
-                }
+                return service::IOSDeviceBindService::unbind(
+                    body.value("serial_number", std::string{}),
+                    body.value("user_id", std::string{})
+                );
             }}
         };
 
         const auto target = req_.target();
-        json ResponseBody;
+        util::Result ResponseBody;
 
         if (const auto it = handlers.find(target); it != handlers.end())
         {
@@ -204,13 +156,9 @@ namespace redsafe::apiserver
         else
             return make_response(404, {{"status", "error"}, {"message", "Unknown endpoint"}});
 
-        if (ResponseBody.contains("code"))
-        {
-            const int status_code = ResponseBody.value("code", 500);
-            ResponseBody.erase("code");
-            return make_response(status_code, ResponseBody);
-        }
-        return make_response(200, ResponseBody);
+        // ReSharper disable once CppRedundantCastExpression
+        ResponseBody.body["error_code"] = static_cast<int>(ResponseBody.ec);
+        return make_response(static_cast<int>(ResponseBody.sc), ResponseBody.body);
     }
 
     response Controller::make_response(int status_code, const json& j)

@@ -19,18 +19,21 @@
 
 namespace redsafe::apiserver
 {
-    namespace   beast       = boost::beast;
-    namespace   http        = beast::http;
-    using       json        = nlohmann::json;
-    using       response    = http::response<http::string_body>;
+    namespace beast = boost::beast;
+    namespace http = beast::http;
+    using json = nlohmann::json;
+    using response = http::response<http::string_body>;
 
     class Controller
     {
     public:
         explicit Controller(http::request<http::string_body> req);
+
         response handle_request();
+
     private:
-        static response make_response(int status_code, const json& j);
+        static response make_response(int status_code, const json &j);
+
         http::request<http::string_body> req_;
     };
 }

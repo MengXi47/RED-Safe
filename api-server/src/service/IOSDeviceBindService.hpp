@@ -14,25 +14,14 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 #pragma once
 
-#include <nlohmann/json.hpp>
-#include <regex>
-
-using json = nlohmann::json;
+#include "../util/response.hpp"
 
 namespace redsafe::apiserver::service
 {
     class IOSDeviceBindService
     {
     public:
-        explicit IOSDeviceBindService(
-            std::string serial_number,
-            std::string user_id);
-
-        [[nodiscard]] json bind()   const;
-        [[nodiscard]] json unbind() const;
-    private:
-        inline static const std::regex kSerialRe    {R"(^RED-[0-9A-F]{8}$)"};
-        std::string serial_number_;
-        std::string user_id_;
+        [[nodiscard]] static util::Result bind   (const std::string &serial_number, const std::string &user_id);
+        [[nodiscard]] static util::Result unbind (const std::string &serial_number, const std::string &user_id);
     };
 }

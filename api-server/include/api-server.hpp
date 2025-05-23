@@ -14,9 +14,6 @@
 
 #pragma once
 
-#include "../config.hpp"
-
-#include <iostream>
 #include <memory>
 
 namespace redsafe::apiserver

@@ -14,10 +14,7 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 #pragma once
 
-#include <nlohmann/json.hpp>
-#include <regex>
-
-using json = nlohmann::json;
+#include "../util/response.hpp"
 
 namespace redsafe::apiserver::service
 {
@@ -29,12 +26,9 @@ namespace redsafe::apiserver::service
             std::string user_name,
             std::string password);
 
-        [[nodiscard]] json Register() const;
-        [[nodiscard]] std::string PasswordHASH() const;
+        [[nodiscard]] util::Result start() const;
     private:
-        inline static const std::regex kEmailRe {R"(^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$)"};
-        inline static const std::regex kUserRe  {R"(^[A-Za-z0-9_-]{4,30}$)"};
-        inline static const std::regex kPwdRe   {R"(^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d]{8,}$)"};
+        [[nodiscard]] std::string PasswordHASH() const;
         std::string email_;
         std::string user_name_;
         std::string password_;

@@ -12,69 +12,102 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
-#include "UserLoginLogoutService.hpp"
-
+#include <nlohmann/json.hpp>
 #include <sodium.h>
 #include <vector>
+
+#include "UserLoginLogoutService.hpp"
+#include "../model/sql/FinderModels.hpp"
+#include "../model/validator/ParameterValidation.hpp"
 
 namespace redsafe::apiserver::service
 {
     UserLoginLogoutService::UserLoginLogoutService(std::string email, std::string password)
         : email_(std::move(email)), password_(std::move(password))
     {
-        if (!std::regex_match(email_, kEmailRe))
-            throw std::invalid_argument("Invalid email format");
     }
 
-    json UserLoginLogoutService::login() const
+    util::Result UserLoginLogoutService::login() const
     {
-        try
-        {
-            const std::string pwdhash =
-                std::make_unique<model::sql::UserPasswordHashFinder>(email_)->FetchPasswordHash();
-            if (!VerifyPassword(pwdhash, password_))
-                throw std::runtime_error("Email or Password Error");
+        using namespace model::validator;
+        using namespace model::sql::fin;
+        using json = nlohmann::json;
 
-            const std::string user_id =
-                std::make_unique<model::sql::UserIDFinder>(email_)->FetchUserId();
+        if (!is_vaild_email(email_))
+            return util::Result{
+                util::status_code::BadRequest,
+                util::error_code::Invalid_email_format,
+                json{}
+            };
 
-            const std::string user_name =
-                std::make_unique<model::sql::UserNameFinder>(email_)->FetchUserName();
+        const auto password_hash = UserPasswordHashFinder::start(email_);
+        if (password_hash.empty())
+            return util::Result{
+                util::status_code::BadRequest,
+                util::error_code::Email_or_Password_Error,
+                json{}
+            };
 
-            const std::vector<std::string> serial_number =
-                std::make_unique<model::sql::UserEdgeListFinder>(user_id)->FetchEdges();
+        if (!VerifyPassword(password_hash, password_))
+            return util::Result{
+                util::status_code::BadRequest,
+                util::error_code::Email_or_Password_Error,
+                json{}
+            };
 
-            return json{
-                {"status", "success"},
+        const auto user_id = UserIDFinder::start(email_);
+        if (user_id.empty())
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+
+        const auto user_name = UserNameFinder::start(email_);
+        if (user_name.empty())
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+
+        const auto serial_number = UserEdgeListFinder::start(email_);
+
+        return util::Result{
+            util::status_code::Success,
+            util::error_code::Success,
+            json{
                 {"user_id", user_id},
                 {"user_name", user_name},
                 {"serial_number", serial_number}
-            };
-        }
-        catch ([[maybe_unused]] std::exception &e)
-        {
-            throw;
-        }
+            }
+        };
     }
 
-    json UserLoginLogoutService::logout()
+    util::Result UserLoginLogoutService::logout()
     {
-        return json{};
+        return util::Result{
+            util::status_code::BadRequest,
+            util::error_code::Internal_server_error,
+            nlohmann::json{}
+        };
     }
 
     /// @brief  驗證明文密碼是否與儲存雜湊相符
     /// @param  pwdhash   從資料庫撈出的 Argon2id 雜湊字串
     /// @param  password  使用者輸入的明文密碼
     /// @return true = 密碼正確；false = 不符
-    bool UserLoginLogoutService::VerifyPassword(std::string pwdhash, std::string password)
+    bool UserLoginLogoutService::VerifyPassword(const std::string &pwdhash, const std::string &password)
     {
         if (sodium_init() < 0)
-            throw std::runtime_error("Failed to initialize sodium");
+            return false;
+        // throw std::runtime_error("Failed to initialize sodium");
 
         // crypto_pwhash_str_verify 內部做常數時間比較 防止 timing attack
         return crypto_pwhash_str_verify(
-            pwdhash.c_str(),
-            password.c_str(),
-            password.size()) == 0;
+                   pwdhash.c_str(),
+                   password.c_str(),
+                   password.size()
+               ) == 0;
     }
 }

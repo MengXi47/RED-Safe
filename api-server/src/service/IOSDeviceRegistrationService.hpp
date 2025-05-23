@@ -12,31 +12,19 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-
 #pragma once
 
-#include <nlohmann/json.hpp>
-#include <regex>
-
-using json = nlohmann::json;
+#include "../util/response.hpp"
 
 namespace redsafe::apiserver::service
 {
     class IOSDeviceRegistrationService
     {
     public:
-        explicit IOSDeviceRegistrationService(
-            std::string ios_device_id,
-            std::string user_id,
-            std::string apns_token,
-            std::string device_name);
-
-        [[nodiscard]] json Register() const;
-    private:
-        inline static const std::regex kApnsRe{R"(^[0-9a-f]{64}$)"};
-        std::string ios_device_id_;
-        std::string user_id_;
-        std::string apns_token_;
-        std::string device_name_;
+        [[nodiscard]] static util::Result start(
+            const std::string &ios_device_id,
+            const std::string &user_id,
+            const std::string &apns_token,
+            const std::string &device_name);
     };
 }

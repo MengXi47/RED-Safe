@@ -12,37 +12,47 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include "EdgeDeviceRegistrationService.hpp"
-#include "../model/model.hpp"
+#include <nlohmann/json.hpp>
 
-#include <utility>
+#include "EdgeDeviceRegistrationService.hpp"
+#include "../model/sql/RegistrarModels.hpp"
+#include "../model/validator/ParameterValidation.hpp"
 
 namespace redsafe::apiserver::service
 {
-    EdgeDeviceRegistrationService::EdgeDeviceRegistrationService(std::string version,
-                                                                 std::string serial_number)
-        : version_(std::move(version)), serial_number_(std::move(serial_number))
+    util::Result EdgeDeviceRegistrationService::start(
+        const std::string &version,
+        const std::string &serial_number
+    )
     {
-        if (!std::regex_match(serial_number_, kSerialRe))
-            throw std::invalid_argument("Invalid serial_number format");
-    }
+        using namespace model::validator;
+        using namespace model::sql::reg;
+        using json = nlohmann::json;
 
-    json EdgeDeviceRegistrationService::Register() const
-    {
-        try
-        {
-            if (std::make_shared<model::sql::EdgeDeviceRegistrar>
-                (serial_number_, version_)->RegisterEdgeDevice())
-                return json{{"status", "success"}, {"serial_number", serial_number_}};
-            throw std::invalid_argument("Registration failed");
-        }
-        catch ([[maybe_unused]] const std::runtime_error &e)
-        {
-            throw;
-        }
-        catch ([[maybe_unused]] const std::invalid_argument &e)
-        {
-            throw;
-        }
+        if (!is_vaild_serial_number(serial_number))
+            return util::Result{
+                util::status_code::BadRequest,
+                util::error_code::Invalid_serialnumber_format,
+                json{}
+            };
+
+        if (const auto a = EdgeDeviceRegistrar::start(serial_number, version); a == 1)
+            return util::Result{
+                util::status_code::Conflict,
+                util::error_code::Edge_device_already_registered,
+                json{}
+            };
+        else if (a == 2)
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+
+        return util::Result{
+            util::status_code::Success,
+            util::error_code::Success,
+            json{{"serial_number", serial_number}}
+        };
     }
 }

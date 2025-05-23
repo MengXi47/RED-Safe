@@ -12,14 +12,18 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-
-#include "UserRegistrationService.hpp"
-#include "../model/model.hpp"
-
+#include <nlohmann/json.hpp>
 #include <iostream>
 #include <regex>
 #include <sodium.h>
 #include <vector>
+
+#include "UserRegistrationService.hpp"
+#include "../model/sql/RegistrarModels.hpp"
+#include "../model/sql/FinderModels.hpp"
+#include "../model/validator/ParameterValidation.hpp"
+#include "../util/IOstream.hpp"
+#include "../util/logger.hpp"
 
 namespace redsafe::apiserver::service
 {
@@ -30,42 +34,81 @@ namespace redsafe::apiserver::service
           user_name_(std::move(user_name)),
           password_ (std::move(password))
     {
-        if (!std::regex_match(email_, kEmailRe))
-            throw std::invalid_argument("Invalid email format");
-        if (!std::regex_match(user_name_, kUserRe))
-            throw std::invalid_argument("Invalid user_name format");
-        if (!std::regex_match(password_, kPwdRe))
-            // 8位密碼 至少一個大寫字母、一個小寫字母、一個數字與
-            throw std::invalid_argument("Invalid password format");
     }
 
-    json UserRegistrationService::Register() const
+    util::Result UserRegistrationService::start() const
     {
-        std::string passwordhash;
+        using namespace model::validator;
+        using namespace model::sql::reg;
+        using namespace model::sql::fin;
+        using json = nlohmann::json;
+
+        if (!is_vaild_email(email_))
+            return util::Result{
+                util::status_code::BadRequest,
+                util::error_code::Invalid_email_format,
+                json{}
+            };
+
+        if (!is_vaild_user_name(user_name_))
+            return util::Result{
+                util::status_code::BadRequest,
+                util::error_code::Invalid_username_format,
+                json{}
+            };
+
+        if (!is_vaild_password(password_))
+            return util::Result{
+                util::status_code::BadRequest,
+                util::error_code::Invalid_password_format,
+                json{}
+            };
+
+        std::string password_hash;
         try
         {
-            passwordhash = PasswordHASH();
+            password_hash = PasswordHASH();
         }
-        catch (const std::runtime_error& e)
+        catch (const std::exception &e)
         {
-            std::cerr << e.what() << std::endl;
+            util::cerr() << e.what() << std::endl;
+            util::log(util::LogFile::server, util::Level::ERROR) << e.what();
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
         }
 
-        if (!std::make_shared<model::sql::UserRegistrar>
-            (email_, user_name_, passwordhash)->RegisterUser())
-            throw std::invalid_argument("Registration failed");
+        if (const auto e = UserRegistrar::start(email_, user_name_, password_hash); e == 1)
+            return util::Result{
+                util::status_code::Conflict,
+                util::error_code::Email_already_registered,
+                json{}
+            };
+        else if (e == 2)
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
 
-        std::string user_id = std::make_shared<model::sql::UserIDFinder>
-            (email_)->FetchUserId();
-        if (user_id.empty())
-            throw std::invalid_argument("Registration failed");
-
-        return json{
-            {"status", "success"},
-            {"email", email_},
-            {"user_name", user_name_},
-            {"user_id", user_id}
-        };
+        if (const auto user_id = UserIDFinder::start(email_); user_id.empty())
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+        else
+            return util::Result{
+                util::status_code::Success,
+                util::error_code::Success,
+                json{
+                        {"email", email_},
+                        {"user_name", user_name_},
+                        {"user_id", user_id}
+                }
+            };
     }
 
     std::string UserRegistrationService::PasswordHASH() const
@@ -77,7 +120,8 @@ namespace redsafe::apiserver::service
                 hashBuf.data(),
                 password_.c_str(), password_.size(),
                 crypto_pwhash_OPSLIMIT_INTERACTIVE,
-                crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0)
+                crypto_pwhash_MEMLIMIT_INTERACTIVE
+            ) != 0)
             throw std::runtime_error("Password hashing failed");
         return {hashBuf.data()};
     }

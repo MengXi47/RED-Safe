@@ -12,16 +12,16 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include "../../config.hpp"
-#include "../../include/api-server.hpp"
-#include "../util/logger.hpp"
-#include "session.hpp"
-#include "../model/model.hpp"
-
 #include <boost/asio.hpp>
 #include <boost/asio/thread_pool.hpp>
 #include <memory>
 #include <thread>
+
+#include "session.hpp"
+#include "../util/logger.hpp"
+#include "../util/IOstream.hpp"
+#include "../../config.hpp"
+#include "../../include/api-server.hpp"
 
 using namespace boost::asio;
 using tcp = ip::tcp;
@@ -67,21 +67,25 @@ namespace redsafe::apiserver
     private:
         void do_accept()
         {
-            acceptor_.async_accept([this](auto ec, tcp::socket socket)
+            acceptor_.async_accept(
+                [this](auto ec, tcp::socket socket)
                 {
                     if (ec)
                     {
                         util::log(util::LogFile::server, util::Level::ERROR)
-                                << "Accept failed: " << ec.message();
+                                  << "Accept failed: " << ec.message();
                         std::cerr << "Accept failed: " << ec.message() << '\n';
                     }
-
-                    std::cout << util::current_timestamp()
-                        << "nginx connection: "
-                        << socket.remote_endpoint().address().to_string() << ':'
-                        << socket.remote_endpoint().port() << '\n';
+                    boost::asio::post(io_, [this]() { do_accept(); });
+                    auto addr = socket.remote_endpoint().address().to_string();
+                    auto port = socket.remote_endpoint().port();
                     std::make_shared<Session>(std::move(socket))->start();
-                    do_accept();
+                    boost::asio::post(socket.get_executor(), [this, addr, port]()
+                    {
+                        util::cout() << util::current_timestamp()
+                                     << "nginx connection: "
+                                     << addr << ':' << port << '\n';
+                    });
                 }
             );
         }

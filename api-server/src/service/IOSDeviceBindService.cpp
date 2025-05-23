@@ -12,40 +12,78 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#include "IOSDeviceBindService.hpp"
+#include <nlohmann/json.hpp>
 
-#include "../model/sql_model.hpp"
+#include "IOSDeviceBindService.hpp"
+#include "../util/response.hpp"
+#include "../model/sql/RegistrarModels.hpp"
+#include "../model/validator/ParameterValidation.hpp"
 
 namespace redsafe::apiserver::service
 {
-    IOSDeviceBindService::IOSDeviceBindService(std::string serial_number, std::string user_id)
-        : serial_number_(std::move(serial_number)), user_id_(std::move(user_id))
+    util::Result IOSDeviceBindService::bind(const std::string &serial_number, const std::string &user_id)
     {
-        if (!std::regex_match(serial_number_, kSerialRe))
-            throw std::invalid_argument("Invalid serial_number format");
+        using namespace model::validator;
+        using namespace model::sql::reg;
+        using json = nlohmann::json;
+
+        if (!is_vaild_serial_number(serial_number))
+            return {
+                util::status_code::BadRequest,
+                util::error_code::Invalid_serialnumber_format,
+                json{}
+            };
+
+        if (const auto a = EdgeIOSBindingRegistrar::bind(serial_number, user_id); a == 1)
+            return {
+                util::status_code::Conflict,
+                util::error_code::Binding_already_exists,
+                json{}
+            };
+        else if (a == 2)
+            return {
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+
+        return {
+            util::status_code::Success,
+            util::error_code::Success,
+            json{
+                {"serial_number", serial_number},
+                {"user_id", user_id}
+            }
+        };
     }
 
-    json IOSDeviceBindService::bind() const
+    util::Result IOSDeviceBindService::unbind(const std::string &serial_number, const std::string &user_id)
     {
-        if (std::make_unique<model::sql::EdgeIOSBindingRegistrar>
-            (serial_number_, user_id_)->bind())
-            return json{
-                            {"status", "success"},
-                            {"serial_number", serial_number_},
-                            {"user_id", user_id_}
-            };
-        throw std::invalid_argument("bind failed");
-    }
+        using namespace model::validator;
+        using namespace model::sql::reg;
+        using json = nlohmann::json;
 
-    json IOSDeviceBindService::unbind() const
-    {
-        if (std::make_unique<model::sql::EdgeIOSBindingRegistrar>
-            (serial_number_, user_id_)->unbind())
-            return json{
-                {"status", "success"},
-                {"serial_number", serial_number_},
-                {"user_id", user_id_}
+        if (!is_vaild_serial_number(serial_number))
+            return {
+                util::status_code::BadRequest,
+                util::error_code::Invalid_serialnumber_format,
+                json{}
             };
-        throw std::invalid_argument("unbind failed");
+
+        if (const auto a = EdgeIOSBindingRegistrar::unbind(serial_number, user_id); a == 1)
+            return {
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+
+        return util::Result{
+            util::status_code::Success,
+            util::error_code::Success,
+            json{
+                    {"serial_number", serial_number},
+                    {"user_id", user_id}
+            }
+        };
     }
 }

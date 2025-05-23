@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include "../util/timestamp.hpp"
-
 #include <memory>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
@@ -31,7 +29,6 @@ namespace redsafe::apiserver
         void start();
     private:
         boost::asio::awaitable<void> run();
-
         boost::asio::ip::tcp::socket                                    socket_;
         boost::beast::flat_buffer                                       buffer_;
         boost::beast::http::request<boost::beast::http::string_body>    req_;
