@@ -31,7 +31,7 @@ namespace redsafe::apiserver::util
         {
         }
 
-        cout(const cout&) = delete;
+        explicit cout(const cout&) = delete;
         ~cout() = default;
 
         template<typename T>
@@ -58,7 +58,7 @@ namespace redsafe::apiserver::util
         {
         }
 
-        cerr(const cout&) = delete;
+        explicit cerr(const cout&) = delete;
         ~cerr() = default;
 
         template<typename T>
