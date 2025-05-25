@@ -48,34 +48,34 @@ namespace redsafe::apiserver::service
                 json{}
             };
 
-        if (ios_device_id.empty())
-        {
-            if (auto ios_device_id_ = IOSDeviceIDFinder::start(apns_token); ios_device_id_.empty())
-                return util::Result{
-                    util::status_code::InternalServerError,
-                    util::error_code::Internal_server_error,
-                    json{}
-                };
-            else
-                return util::Result{
-                    util::status_code::Success,
-                    util::error_code::Success,
-                    json{
-                        {"user_id", user_id},
-                        {"apns_token", apns_token},
-                        {"ios_device_id", ios_device_id_}
-                    }
-                };
-        }
+        if (!ios_device_id.empty())
+            return util::Result{
+                util::status_code::Success,
+                util::error_code::Success,
+                json{
+                    {"user_id", user_id},
+                    {"apns_token", apns_token},
+                    {"ios_device_id", ios_device_id}
+                }
+            };
 
-        return util::Result{
-            util::status_code::Success,
-            util::error_code::Success,
-            json{
-                {"user_id", user_id},
-                {"apns_token", apns_token},
-                {"ios_device_id", ios_device_id}
-            }
-        };
+        if (auto ios_device_id_ = IOSDeviceIDFinder::start(apns_token); ios_device_id_.empty())
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+        else
+            return util::Result{
+                util::status_code::Success,
+                util::error_code::Success,
+                json{
+                    {"user_id", user_id},
+                    {"apns_token", apns_token},
+                    {"ios_device_id", ios_device_id_}
+                }
+            };
+
+
     }
 }

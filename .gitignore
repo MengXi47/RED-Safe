@@ -21,9 +21,8 @@ data/
 
 model/
 
-# build & DerivedData
+# DerivedData
 DerivedData/
-build/
 
 # Xcode user data
 *.xcuserstate
