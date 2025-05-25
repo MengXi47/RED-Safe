@@ -15,10 +15,17 @@ cmake-build-debug/
 
 test/
 
-iOS/
-
 venv/
 
 data/
 
 model/
+
+# build & DerivedData
+DerivedData/
+build/
+
+# Xcode user data
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+xcschemamanagement.plist
