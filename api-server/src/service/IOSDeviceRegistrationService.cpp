@@ -49,6 +49,7 @@ namespace redsafe::apiserver::service
             };
 
         if (ios_device_id.empty())
+        {
             if (auto ios_device_id_ = IOSDeviceIDFinder::start(apns_token); ios_device_id_.empty())
                 return util::Result{
                     util::status_code::InternalServerError,
@@ -65,6 +66,7 @@ namespace redsafe::apiserver::service
                         {"ios_device_id", ios_device_id_}
                     }
                 };
+        }
 
         return util::Result{
             util::status_code::Success,
