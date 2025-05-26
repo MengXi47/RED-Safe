@@ -106,6 +106,12 @@ namespace redsafe::apiserver::model::sql
                     "FROM users "
                     "WHERE email = $1"
                 );
+                conn.prepare(
+                    "find_user_edges",
+                    "SELECT edge_serial_number "
+                    "FROM edge_users "
+                    "WHERE user_id = $1"
+                );
             }
             catch (const pqxx::sql_error &e)
             {

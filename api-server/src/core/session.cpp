@@ -50,15 +50,12 @@ namespace redsafe::apiserver
                 buffer_.consume(buffer_.size());
                 co_await http::async_read(socket_, buffer_, req_, boost::asio::use_awaitable);
                 auto raw_req = req_;
-                boost::asio::post(socket_.get_executor(),[raw_req = std::move(raw_req)]()
-                {
-                    util::cout() << util::current_timestamp()
+                util::cout() << util::current_timestamp()
                         << raw_req.base()["X-Real-IP"] << " " << raw_req.method() << " "
                         << raw_req.target() << " " << raw_req.body() << '\n';
-                    util::log(util::LogFile::access, util::Level::INFO)
+                util::log(util::LogFile::access, util::Level::INFO)
                         << raw_req.base()["X-Real-IP"] << " " << raw_req.method() << " "
                         << raw_req.target() << " " << raw_req.body();
-                });
                 auto response = std::make_shared<Controller>(req_)->handle_request();
                 co_await http::async_write(socket_, response, boost::asio::use_awaitable);
                 buffer_.consume(buffer_.size());
