@@ -4,13 +4,14 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 import os
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"🚀 使用裝置: {device}")
 
-    # 載入資料 (請確認路徑與格式正確)
+    # 載入資料
     print("📂 載入資料中...")
     X = np.load("D:/pytorch/data/processed/X.npy", allow_pickle=True)
     y = np.load("D:/pytorch/data/processed/y.npy", allow_pickle=True)
@@ -19,7 +20,6 @@ def main():
     y_tensor = torch.tensor(y, dtype=torch.long)
 
     dataset = TensorDataset(X_tensor, y_tensor)
-
     train_size = int(0.8 * len(dataset))
     val_size = len(dataset) - train_size
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
@@ -61,10 +61,13 @@ def main():
     best_val_loss = float('inf')
 
     for epoch in range(200):
-        print(f"⏳ 執行第 {epoch+1}/200 次訓練...")
+        print(f"\n⏳ 執行第 {epoch+1}/200 次訓練...")
+
+        # === 訓練階段 ===
         model.train()
         train_loss = 0
-        for inputs, labels in train_loader:
+        train_loop = tqdm(train_loader, desc=f"訓練 Epoch {epoch+1}", leave=False)
+        for inputs, labels in train_loop:
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -72,15 +75,18 @@ def main():
             loss.backward()
             optimizer.step()
             train_loss += loss.item()
+            train_loop.set_postfix(loss=loss.item())
 
         train_loss /= len(train_loader)
 
+        # === 驗證階段 ===
         model.eval()
         val_loss = 0
         correct = 0
         total = 0
+        val_loop = tqdm(val_loader, desc=f"驗證 Epoch {epoch+1}", leave=False)
         with torch.no_grad():
-            for inputs, labels in val_loader:
+            for inputs, labels in val_loop:
                 inputs, labels = inputs.to(device), labels.to(device)
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
@@ -90,10 +96,12 @@ def main():
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
+                val_loop.set_postfix(loss=loss.item())
+
         val_loss /= len(val_loader)
         val_acc = correct / total
 
-        print(f" Epoch {epoch+1}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
+        print(f"📊 Epoch {epoch+1} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.4f}")
 
         writer.add_scalar("Loss/Train", train_loss, epoch+1)
         writer.add_scalar("Loss/Val", val_loss, epoch+1)
@@ -103,10 +111,10 @@ def main():
         if val_loss < best_val_loss:
             best_val_loss = val_loss
             torch.save(model.state_dict(), model_path)
-            print(f"💾 Epoch {epoch+1} - 儲存最佳模型，Val Loss: {val_loss:.4f}")
+            print(f"💾 儲存最佳模型 @ Epoch {epoch+1} - Val Loss: {val_loss:.4f}")
 
     writer.close()
-    print("✅ 訓練完成，模型已儲存。")
+    print("\n✅ 訓練完成，模型已儲存。")
 
 if __name__ == "__main__":
     main()

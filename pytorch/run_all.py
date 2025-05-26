@@ -3,16 +3,20 @@ import sys
 import subprocess
 
 # ========== 路徑設定 ==========
-BATCH_SCRIPT = "D:/pytorch/bath_extract.py"  # 這個處理所有影片並輸出 X.npy, y.npy
-TRAIN_SCRIPT = "D:/pytorch/train.py"          # 模型訓練腳本
+BATCH_SCRIPT = "D:/pytorch/bath_extract.py"
+TRAIN_SCRIPT = "D:/pytorch/train.py"
 
 # ========== 執行腳本 ==========
 def run_script(script_path, name):
     print(f"\n====== 開始執行：{name} ======")
-    result = subprocess.run([sys.executable, script_path], capture_output=True, text=True)
-    print(result.stdout)
-    if result.returncode != 0:
-        print(f"{name} 發生錯誤：\n{result.stderr}")
+    process = subprocess.Popen(
+        [sys.executable, script_path],
+        stdout=sys.stdout,
+        stderr=sys.stderr
+    )
+    process.communicate()
+    if process.returncode != 0:
+        print(f"{name} 發生錯誤（代碼 {process.returncode}）")
     else:
         print(f"{name} 執行完成！")
 

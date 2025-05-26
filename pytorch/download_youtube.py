@@ -16,7 +16,7 @@ if __name__ == "__main__":
     output_dir = Path("D:/pytorch/data/raw")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    video_url = "https://youtu.be/9BVWTdnYVIE?si=A2cqxVY-EptvKEqB"
-    output_path = output_dir / "demo_fall().mp4"
+    video_url = "https://youtu.be/yTE4at69uu0?si=KnISQiUd7dW85Sr6"
+    output_path = output_dir / "How to walk on the outside of your feet.mp4"
 
     download_video(video_url, output_path)

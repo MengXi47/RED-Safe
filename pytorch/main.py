@@ -10,11 +10,16 @@ import threading
 # 1 = 同時開啟所有可用攝像頭
 mode = 0
 
-# 初始化 MediaPipe Pose
+# 初始化 MediaPipe Pose（提高精準度）
 mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(static_image_mode=False,
-                    min_detection_confidence=0.5,
-                    min_tracking_confidence=0.5)
+pose = mp_pose.Pose(
+    static_image_mode=False,
+    model_complexity=2,
+    smooth_landmarks=True,
+    enable_segmentation=False,
+    min_detection_confidence=0.7,
+    min_tracking_confidence=0.7
+)
 
 # 模型架構
 class SimpleLSTM(torch.nn.Module):
@@ -39,11 +44,11 @@ model.eval()
 # 預測函數
 def predict_fall(model, sequence, device):
     with torch.no_grad():
-        inputs = torch.tensor(sequence, dtype=torch.float32).unsqueeze(0).to(device)  # (1, 30, 132)
+        inputs = torch.tensor(sequence, dtype=torch.float32).unsqueeze(0).to(device)
         outputs = model(inputs)
         probs = torch.softmax(outputs, dim=1)
         pred = torch.argmax(probs, dim=1).item()
-        return pred == 1  # 1 表示跌倒
+        return pred == 1
 
 # 列出可用攝像頭
 def list_cameras(max_index=5):
@@ -55,7 +60,7 @@ def list_cameras(max_index=5):
             cap.release()
     return available
 
-# 每個攝像頭的處理函數
+# 攝像頭處理
 def camera_loop(camera_index):
     cap = cv2.VideoCapture(camera_index)
     local_deque = deque(maxlen=30)
@@ -103,7 +108,6 @@ if __name__ == "__main__":
         exit()
 
     if mode == 0:
-        # 單攝像頭模式
         print("可用攝像頭：", camera_indices)
         selected = int(input("請輸入要使用的攝像頭編號："))
         if selected not in camera_indices:
@@ -112,15 +116,12 @@ if __name__ == "__main__":
         camera_loop(selected)
 
     elif mode == 1:
-        # 多攝像頭模式
         print("啟動所有攝像頭：", camera_indices)
         threads = []
         for idx in camera_indices:
             t = threading.Thread(target=camera_loop, args=(idx,))
             t.start()
             threads.append(t)
-
-        # 等待所有執行緒完成
         for t in threads:
             t.join()
 
