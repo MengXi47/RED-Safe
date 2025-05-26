@@ -34,7 +34,7 @@ namespace redsafe::apiserver::model::validator
     // true : 合法
     inline bool is_vaild_email(const std::string& email)
     {
-        return std::regex_match(email, std::regex{R"(^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$)"});
+        return std::regex_match(email, std::regex{R"(^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$)"});
     }
 
     // trun : 合法
@@ -46,6 +46,6 @@ namespace redsafe::apiserver::model::validator
     // true : 合法
     inline bool is_vaild_user_name(const std::string& user_name)
     {
-        return std::regex_match(user_name, std::regex{R"(^[A-Za-z0-9\u4E00-\u9FFF\-_\.]{1,16}$)"});
+        return std::regex_match(user_name, std::regex{R"(^[A-Za-z0-9._\-]{1,16}$)"});
     }
 }
