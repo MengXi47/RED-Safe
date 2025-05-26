@@ -160,7 +160,17 @@ struct SignUpView: View {
 
                 // Submit 按鈕
                 Button(action: {
-                    // TODO: 提交註冊
+                    Network.shared.signUp(email: email, userName: username, password: password) { result in
+                        DispatchQueue.main.async {
+                            switch result {
+                            case .success(let response):
+                                print("註冊成功，Token = \(response.token)")
+                                // TODO: 註冊成功後的處理（例如返回上一頁或顯示成功訊息）
+                            case .failure(let error):
+                                print("註冊失敗：\(error)")
+                            }
+                        }
+                    }
                 }) {
                     Text("Submit")
                         .font(.headline)
