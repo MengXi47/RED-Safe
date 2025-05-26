@@ -37,7 +37,7 @@ namespace redsafe::apiserver
             std::string,
             std::function<util::Result(const json&)>> handlers =
         {
-            {"/edge/register", [this](const json& body)
+            {"/edge/signup", [this](const json& body)
             {
                 if (!body.contains("serial_number") || !body.contains("version"))
                     return util::Result{
@@ -52,7 +52,7 @@ namespace redsafe::apiserver
                 );
             }},
 
-            {"/user/register", [this](const json& body)
+            {"/user/signup", [this](const json& body)
             {
                 if (!body.contains("email")     ||
                     !body.contains("user_name") ||
@@ -72,7 +72,7 @@ namespace redsafe::apiserver
                 return FUCK.start();
             }},
 
-            {"/user/login", [this](const json& body)
+            {"/user/signin", [this](const json& body)
             {
                 if (!body.contains("email") || !body.contains("password"))
                     return util::Result{
@@ -89,7 +89,7 @@ namespace redsafe::apiserver
                 return FUCK.login();
             }},
 
-            {"/ios/register", [this](const json& body)
+            {"/ios/signup", [this](const json& body)
             {
                 if (!body.contains("user_id") || !body.contains("apns_token"))
                     return util::Result{

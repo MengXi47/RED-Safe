@@ -4,7 +4,7 @@ import SwiftUI
 struct RED_SafeApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            SignInView()
         }
     }
 }
