@@ -71,7 +71,7 @@ namespace redsafe::apiserver::service
                 json{}
             };
 
-        const auto serial_number = UserEdgeListFinder::start(email_);
+        const auto serial_number = UserEdgeListFinder::start(user_id);
 
         return util::Result{
             util::status_code::Success,
