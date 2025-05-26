@@ -16,9 +16,12 @@ struct SignInView: View {
 
     @State private var emailSubmitted: Bool = false
     @State private var passwordSubmitted: Bool = false
+    
+    @State private var isLoading = false
+    @State private var errorMessage: String?
 
     var isEmailValid: Bool {
-        let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+        let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
         return NSPredicate(format: "SELF MATCHES %@", emailRegEx).evaluate(with: email)
     }
     var isPasswordValid: Bool {
@@ -115,7 +118,7 @@ struct SignInView: View {
 
                     // 5. Sign In 按鈕
                     Button(action: {
-                        // 處理登入動作
+                        signIn()
                     }) {
                         Text("Sign In")
                             .font(.headline)
@@ -164,6 +167,37 @@ struct SignInView: View {
                 }
                 .onAppear {
                     animate = true
+                }
+            }
+        }
+    }
+    
+    private func signIn() {
+        // 先重置錯誤及顯示 loading
+        errorMessage = nil
+        isLoading = true
+        Network.shared.signIn(email: email, password: password) { result in
+            DispatchQueue.main.async {
+                isLoading = false
+                switch result {
+                case .success(let response):
+                    // 成功：拿到 token 可以儲存起來，或直接切換至主畫面
+                    print("登入成功，Token = \(response.token)")
+                    // e.g. 儲存到 UserDefaults
+                    UserDefaults.standard.set(response.token, forKey: "userToken")
+                    // 跳轉到下一個畫面...
+                case .failure(let error):
+                    // 失敗：顯示錯誤訊息
+                    switch error {
+                    case .invalidURL:
+                        errorMessage = "無效的伺服器位址"
+                    case .serverError(let status):
+                        errorMessage = "伺服器錯誤 (\(status))"
+                    case .decodingError:
+                        errorMessage = "資料解析失敗"
+                    case .unknown(let err):
+                        errorMessage = "發生錯誤：\(err.localizedDescription)"
+                    }
                 }
             }
         }
