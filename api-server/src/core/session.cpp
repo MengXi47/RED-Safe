@@ -58,11 +58,11 @@ namespace redsafe::apiserver
                     << raw_req.target() << " " << raw_req.body();
                 auto response = std::make_shared<Controller>(req_)->handle_request();
                 co_await http::async_write(socket_, response, boost::asio::use_awaitable);
-                buffer_.consume(buffer_.size());
             }
         }
-        catch (...)
+        catch (const std::exception& e)
         {
+            util::cout() << e.what() << '\n';
             util::cout() << util::current_timestamp()
                 << "nginx disconnection: "
                 << socket_.remote_endpoint().address().to_string() << ':'
