@@ -80,12 +80,9 @@ namespace redsafe::apiserver
                     auto addr = socket.remote_endpoint().address().to_string();
                     auto port = socket.remote_endpoint().port();
                     std::make_shared<Session>(std::move(socket))->start();
-                    boost::asio::post(socket.get_executor(), [this, addr, port]()
-                    {
-                        util::cout() << util::current_timestamp()
-                                     << "nginx connection: "
-                                     << addr << ':' << port << '\n';
-                    });
+                    util::cout() << util::current_timestamp()
+                            << "nginx connection: "
+                            << addr << ':' << port << '\n';
                 }
             );
         }
