@@ -117,7 +117,7 @@ namespace redsafe::apiserver
 
         static void clearandprintlogo(const std::string &port, const std::string &threadnumbers)
         {
-            system("clear");
+            (void)system("clear");
             std::cout
                     << " _____   ______  _____            _____          __\n"
                     << "|  __ \\ |  ____||  __ \\          / ____|        / _|\n"

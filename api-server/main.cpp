@@ -13,6 +13,7 @@
 *******************************************************************************/
 
 #include <iostream>
+#include <cstring>
 #include <string>
 #include <cerrno>
 #include <limits>
@@ -50,7 +51,7 @@ int main(const int argc, char* argv[])
             if (input == "exit")
                 return 0;
             if (input == "clear")
-                system("clear");
+                (void)system("clear");
         }
     }
     catch(const std::exception& e)
