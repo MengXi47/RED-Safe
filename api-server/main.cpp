@@ -51,7 +51,7 @@ int main(const int argc, char* argv[])
             if (input == "exit")
                 return 0;
             if (input == "clear")
-                (void)system("clear");
+                [[maybe_unused]] auto e = system("clear");
         }
     }
     catch(const std::exception& e)
