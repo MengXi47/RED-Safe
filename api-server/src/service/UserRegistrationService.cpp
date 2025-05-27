@@ -50,12 +50,12 @@ namespace redsafe::apiserver::service
                 json{}
             };
 
-        if (!is_vaild_user_name(user_name_))
-            return util::Result{
-                util::status_code::BadRequest,
-                util::error_code::Invalid_username_format,
-                json{}
-            };
+        // if (!is_vaild_user_name(user_name_))
+        //     return util::Result{
+        //         util::status_code::BadRequest,
+        //         util::error_code::Invalid_username_format,
+        //         json{}
+        //     };
 
         if (!is_vaild_password(password_))
             return util::Result{

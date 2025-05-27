@@ -10,6 +10,8 @@ import SwiftUI
 import UIKit
 
 struct SignUpView: View {
+    /// 用於關閉當前視圖，回到 SignInView
+    @Environment(\.dismiss) private var dismiss
     @State private var email: String = ""
     @State private var username: String = ""
     @State private var password: String = ""
@@ -17,6 +19,9 @@ struct SignUpView: View {
     @State private var emailSubmitted: Bool = false
     @State private var usernameSubmitted: Bool = false
     @State private var passwordSubmitted: Bool = false
+    
+    @State private var errorMessage: String?
+    @State private var isLoading: Bool = false
 
     var isEmailValid: Bool {
         let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
@@ -36,13 +41,16 @@ struct SignUpView: View {
 
     @State private var animate: Bool = false
     @State private var isPasswordVisible: Bool = false
+    @State private var showResponseAlert = false
+    @State private var responseMessage = ""
+    @State private var shouldDismiss = false   // Alert 按下確定後是否返回登入
 
     var body: some View {
         ZStack {
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(red: 10/255, green: 60/255, blue: 110/255),
-                    Color(red: 10/255, green: 30/255, blue: 60/255)
+                    Color(red: 240/255, green: 248/255, blue: 255/255),
+                    Color(red: 210/255, green: 235/255, blue: 250/255)
                 ]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -160,17 +168,7 @@ struct SignUpView: View {
 
                 // Submit 按鈕
                 Button(action: {
-                    Network.shared.signUp(email: email, userName: username, password: password) { result in
-                        DispatchQueue.main.async {
-                            switch result {
-                            case .success(let response):
-                                print("註冊成功，Token = \(response.token)")
-                                // TODO: 註冊成功後的處理（例如返回上一頁或顯示成功訊息）
-                            case .failure(let error):
-                                print("註冊失敗：\(error)")
-                            }
-                        }
-                    }
+                    signUp()
                 }) {
                     Text("Submit")
                         .font(.headline)
@@ -180,10 +178,10 @@ struct SignUpView: View {
                 }
                 .background(
                     LinearGradient(
-                        gradient: Gradient(colors: isFormValid
-                                           ? [Color(red: 40/255, green: 120/255, blue: 200/255),
-                                              Color(red: 20/255, green: 80/255, blue: 160/255)]
-                                           : [Color.gray.opacity(0.6), Color.gray.opacity(0.3)]),
+                        gradient: Gradient(colors: !isFormValid
+                                           ? [Color.gray.opacity(0.6), Color.gray.opacity(0.3)]
+                                           : [Color(red: 65/255, green: 160/255, blue: 255/255),
+                                              Color(red: 120/255, green: 190/255, blue: 255/255)]),
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -191,13 +189,52 @@ struct SignUpView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .offset(y: animate ? 0 : 50)
                 .opacity(animate ? 1 : 0)
-                .animation(.easeOut(duration: 0.5).delay(0.5), value: animate)
+                .animation(.easeOut(duration: 0.5).delay(0.4), value: animate)
                 .padding(.horizontal)
-                .disabled(!isFormValid)
+                .disabled(email.isEmpty || password.isEmpty)
                 .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
             }
+            
             .onAppear {
                 animate = true
+            }
+        }
+        .alert("伺服器回應", isPresented: $showResponseAlert) {
+            Button("確定") {
+                if shouldDismiss {
+                    dismiss()
+                }
+            }
+        } message: {
+            Text(responseMessage)
+        }
+    }
+    
+    private func signUp() {
+        // 先重置錯誤及顯示 loading
+        errorMessage = nil
+        Network.shared.signUp(email: email, userName: username, password: password) { result in
+            DispatchQueue.main.async {
+                isLoading = false
+                switch result {
+                case .success(let response):
+                    responseMessage = "\(response.error_code.localizedDescription)"
+                    // 若為成功則設定 shouldDismiss = true，否則 false
+                    shouldDismiss = (response.error_code == .success)
+                    showResponseAlert = true
+                case .failure(let error):
+                    // 失敗：顯示錯誤訊息
+                    switch error {
+                    case .invalidURL:
+                        print("無效的伺服器位址")
+                    case .serverError(let status):
+                        print("伺服器錯誤 (\(status))")
+                    case .decodingError:
+                        print("資料解析失敗")
+                    case .unknown(let err):
+                        print("發生錯誤：\(err.localizedDescription)")
+                    }
+                }
             }
         }
     }
