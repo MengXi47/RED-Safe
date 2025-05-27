@@ -42,7 +42,7 @@
 
 ## 系統架構
 
-![RED‑Safe Architecture](docs/redsafe‑architecture_v1.png)
+![RED‑Safe Architecture](docs/RED_Safe_01.jpeg)
 
 ---
 
