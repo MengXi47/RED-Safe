@@ -1,7 +1,13 @@
 # RED-Safe
 
-> **Real-time Edge Computing & Deep Learning-based Elderly Safety Notification Platform**  
-> **基於邊緣運算與深度學習的老人安全即時通報平台**
+
+![RED‑Safe Architecture](docs/RED_Safe_01.jpeg)
+
+🔗 **[前往 RedSafe 官方網站](https://www.redsafe-tw.com/)**
+
+---
+
+**基於邊緣運算與深度學習的老人安全即時通報平台**
 
 ---
 
