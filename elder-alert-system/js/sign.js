@@ -1,5 +1,5 @@
 // sign.js
-let signControl = 1; // 0=只阻止表單送出, 1=發送API
+let signControl = 0; // 0=只阻止表單送出, 1=發送API
 
 const ERROR_MESSAGES = {
   0:   "成功",
