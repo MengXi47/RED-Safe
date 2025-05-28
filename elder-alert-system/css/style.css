@@ -1,0 +1,305 @@
+/* 全局設定，移除邊距，設置字型，背景及文字顏色 */
+body, html {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #0b0c10;
+  color: #ffffff;
+  scroll-behavior: smooth; /* 滾動時平滑效果 */
+}
+
+/* 高度填滿視窗，高度100vh */
+.hero {
+  height: 100vh;
+  background: #0b0c10;
+  display: flex;               /* 使用 flex 排版 */
+  justify-content: center;     /* 水平置中 */
+  align-items: center;         /* 垂直置中 */
+  overflow: hidden;            /* 隱藏溢出 */
+}
+
+/* 內部區塊使用垂直堆疊 */
+.hero-inner {
+  display: flex;
+  flex-direction: column;      /* 垂直排列 */
+  align-items: center;         /* 置中對齊 */
+  text-align: center;
+}
+
+/* 通用漸顯元素預設為隱藏並往下位移 */
+.fade-element {
+  opacity: 0;
+  transform: translateY(60px);
+  transition: all 1s ease-out;
+}
+
+/* 當元素可見時移除透明和位移 */
+.fade-element.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 圖片 */
+.hero img {
+  width: 180px;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 0 20px red); /* 紅色陰影效果 */
+}
+
+/* 主標題字體 */
+.hero h1 {
+  font-size: 96px;
+  margin: 1rem 0;
+  line-height: 1.1;
+}
+
+/* 副標題 */
+.hero p {
+  font-size: 24px;
+  opacity: 0.85;
+}
+
+/* 滾動區塊基本設定 */
+.scroll-section {
+  height: 100vh;
+  padding: 2rem;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* 垂直置中 */
+  scroll-snap-align: start; /* 滾動時對齊 */
+  background-color: #111317;
+}
+
+/* #flow 區塊橫向排列 */
+#flow {
+  flex-direction: row;     /* 改成橫向排列 */
+  justify-content: center;
+  align-items: center;
+  gap: 3rem;              /* 元素間距 */
+  padding: 0 2rem;
+  user-select: none;
+}
+
+/* 調整大小容器 */
+.resize-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 2rem; /* 跟流程項目間距 */
+  color: #fff;
+  font-size: 18pt;
+  user-select: none;
+  min-width: 140px;
+}
+
+/* 滑桿寬度 */
+.resize-control input[type=range] {
+  width: 140px;
+  margin-top: 0.5rem;
+  cursor: pointer;
+}
+
+.flow-item {
+  display: flex;
+  flex-direction: column; /* 圖片上，文字下 */
+  align-items: center;
+  min-width: 160px;
+}
+
+.flow-item img {
+  width: 140px;
+  margin-bottom: 0.5rem;
+  filter: drop-shadow(0 0 10px #ff0000);
+}
+
+.flow-item p {
+  font-size: 28pt;
+  font-weight: 700;
+  white-space: nowrap;
+  margin: 0;
+  color: #fff;
+}
+
+/* 箭頭樣式 */
+.arrow {
+  font-size: 48pt;
+  color: #ff0000;
+  user-select: none;
+  line-height: 1;
+}
+
+/* 滾動區塊2 - 警示文字和按鈕 */
+#alert .phone-sim {
+  text-align: center;
+  font-size: 30pt; /* 字體放大 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem; /* 元素間距 */
+}
+
+/* 按鈕樣式放大，紅底白字 */
+#alert button {
+  font-size: 25pt;
+  padding: 0.5rem 1.5rem;
+  cursor: pointer;
+  border-radius: 12px;
+  border: none;
+  background-color: #ff0000;
+  color: white;
+  box-shadow: 0 0 10px #ff0000;
+  transition: background-color 0.3s ease;
+}
+
+/* 按鈕滑鼠懸停時顏色變深 */
+#alert button:hover {
+  background-color: #cc0000;
+}
+
+/* 卡片區塊容器，垂直堆疊並置中 */
+#value {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 0;
+}
+
+/* 卡片樣式及動畫初始狀態 */
+#value .card {
+  font-size: 30pt;              /* 文字放大 */
+  text-align: center;
+  width: 80%;
+  max-width: 600px;
+  margin: 0;
+  background-color: #1c1f24;
+  color: #ffffff;
+  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(255, 0, 0, 0.3);
+  opacity: 0;                  /* 初始隱藏 */
+  transform: translateY(30px); /* 初始向下位移 */
+  transition: all 0.6s ease;   /* 漸變動畫 */
+}
+
+/* 卡片進入可視區塊後顯示動畫 */
+#value .card.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 頁尾區塊 */
+.footer {
+  text-align: center;
+  padding: 2rem;
+  font-size: 18pt;
+  color: #ff0000;
+  background-color: #111317;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 1s ease-out;
+}
+
+/* 頁尾區塊 */
+.footer {
+  text-align: center;
+  padding: 2rem;
+  font-size: 22pt; /* 字體稍微放大 */
+  font-weight: 700;
+  color: #ff1a1a; /* 亮紅色 */
+  background-color: #0b0c10; /* 跟整體頁面一致的黑色底 */
+  box-shadow: 0 0 15px 5px rgba(255, 0, 0, 0.6);
+  border-radius: 12px;
+  letter-spacing: 0.12em;
+  text-shadow:
+    0 0 8px #ff4d4d,
+    0 0 15px #ff1a1a,
+    0 0 20px #ff0000;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 1s ease-out;
+  user-select: none;
+  cursor: default;
+}
+
+/* 頁尾可見時動畫 */
+.footer.visible {
+  opacity: 1;
+  transform: translateY(0);
+  animation: pulseRedSafe 2.5s ease-in-out infinite alternate;
+}
+
+/* 頁尾文字微微閃爍動畫 */
+@keyframes pulseRedSafe {
+  0% {
+    text-shadow:
+      0 0 10px #ff6666,
+      0 0 20px #ff3333,
+      0 0 30px #ff0000;
+  }
+  100% {
+    text-shadow:
+      0 0 20px #ff9999,
+      0 0 30px #ff4d4d,
+      0 0 40px #ff0000;
+  }
+}
+
+/* 手機版（螢幕寬度小於等於768px）修正 */
+@media (max-width: 768px) {
+  /* hero 區塊圖片與文字縮小 */
+  .hero img {
+    width: 120px;
+  }
+
+  .hero h1 {
+    font-size: 48px;
+  }
+
+  .hero p {
+    font-size: 18px;
+  }
+
+  /* flow 橫向排版改為直向（避免手機版左右擠壓） */
+  #flow {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .arrow {
+    transform: rotate(90deg); /* 箭頭改成往下 */
+    font-size: 36pt;
+  }
+
+  /* flow-item 縮小圖片 */
+  .flow-item img {
+    width: 100px;
+  }
+
+  .flow-item p {
+    font-size: 18pt;
+  }
+
+  /* alert 區塊按鈕與文字縮放 */
+  #alert .phone-sim {
+    font-size: 20pt;
+  }
+
+  #alert button {
+    font-size: 18pt;
+    padding: 0.4rem 1rem;
+  }
+
+  /* value 區塊卡片寬度自適應 */
+  #value .card {
+    width: 90%;
+    padding: 1.5rem;
+    font-size: 22pt;
+  }
+
+  /* footer 區塊字體縮小 */
+  .footer {
+    font-size: 16pt;
+    padding: 1.5rem;
+  }
+}
