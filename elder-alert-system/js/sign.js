@@ -2,24 +2,24 @@
 let signControl = 0; // 0=只阻止表單送出, 1=發送API
 
 const ERROR_MESSAGES = {
-  0:   "成功",
-  99:  "未知的 API 端點",
-  100: "JSON 格式錯誤",
-  101: "序號格式錯誤",
-  102: "APNS Token 格式錯誤",
-  103: "Email 格式錯誤",
-  104: "使用者名稱格式錯誤",
-  105: "密碼格式錯誤",
-  201: "Email 或密碼錯誤",
-  301: "裝置已註冊",
-  302: "Email 已註冊",
-  303: "綁定已存在",
-  401: "缺少序號或版本資訊",
-  402: "缺少 Email、使用者名稱或密碼",
-  403: "缺少 Email 或密碼",
-  404: "缺少使用者 ID 或 APNS Token",
-  405: "缺少使用者 ID 或序號",
-  500: "伺服器內部錯誤"
+  0:   "Success",
+  99:  "Unknown_endpoint",
+  100: "Invalid_JSON",
+  101: "Invalid_serialnumber_format",
+  102: "Invalid_apnstoken_format",
+  103: "Invalid_email_format",
+  104: "Invalid_username_format",
+  105: "Invalid_password_format",
+  201: "Email Email_or_Password_Error",
+  301: "Edge_device_already_registered",
+  302: "Email Email_already_registered",
+  303: "Binding_already_exists",
+  401: "Missing_serial_number_or_version",
+  402: "Missing_email_or_user_name_or_password",
+  403: "Missing_email_or_password",
+  404: "Missing_user_id_or_apns_token",
+  405: "Missing_user_id_or_serial_number",
+  500: "Internal_server_error"
 };
 
 function getErrorMessage(code) {
