@@ -33,15 +33,15 @@ extension ErrorCode {
     /// 依錯誤碼回傳中文描述
     var localizedDescription: String {
         switch self {
-            case .success:                        return "成功"
-            case .emailAlreadyRegistered:         return "此 Email 已被註冊"
-            case .edgeDeviceAlreadyRegistered:    return "裝置已註冊"
-            case .bindingAlreadyExists:           return "綁定已存在"
-            case .emailOrPasswordError:           return "Email 或 Password 錯誤"
-            case .invalidEmailFormat:             return "Email 格式不正確"
-            case .invalidPasswordFormat:          return "密碼格式不正確"
-                // 其他常見錯誤
-            default:                              return "未知錯誤（\(rawValue)）"
+        case .success:                        return "成功"
+        case .emailAlreadyRegistered:         return "此 Email 已被註冊"
+        case .edgeDeviceAlreadyRegistered:    return "裝置已註冊"
+        case .bindingAlreadyExists:           return "綁定已存在"
+        case .emailOrPasswordError:           return "Email 或 Password 錯誤"
+        case .invalidEmailFormat:             return "Email 格式不正確"
+        case .invalidPasswordFormat:          return "密碼格式不正確"
+        case .internalServerError:            return "伺服器發生錯誤"
+        default:                              return "未知錯誤（\(rawValue)）"
         }
     }
 }
@@ -76,7 +76,7 @@ struct SignUpResponse: Codable {
 /// 網路錯誤自訂列舉
 enum NetworkError: Error {
     case invalidURL                     // URL 無效
-    case serverError(statusCode: Int)   // 伺服器回傳非 2xx 狀態碼
+    case serverError(statusCode: Int)   // 伺服器錯誤
     case decodingError                  // JSON 資料解碼失敗
     case unknown(Error)                 // 其他未知錯誤
 }
@@ -119,13 +119,11 @@ class Network: NSObject {
                 completion(.failure(.unknown(error)))
                 return
             }
-
             // 驗證 HTTP 狀態碼
             guard let http = response as? HTTPURLResponse else {
                 completion(.failure(.serverError(statusCode: -1)))
                 return
             }
-
             // 解析 JSON
             guard let data = data else {
                 completion(.failure(.serverError(statusCode: http.statusCode)))
@@ -187,7 +185,6 @@ class Network: NSObject {
             }
             do {
                 let result = try JSONDecoder().decode(SignUpResponse.self, from: data)
-                // 解析成功，將結果直接交給呼叫端處理（僅本地錯誤在此截斷）
                 completion(.success(result))
             } catch {
                 completion(.failure(.decodingError))

@@ -10,7 +10,6 @@ import SwiftUI
 import UIKit
 
 struct SignUpView: View {
-    /// 用於關閉當前視圖，回到 SignInView
     @Environment(\.dismiss) private var dismiss
     @State private var email: String = ""
     @State private var username: String = ""
@@ -22,21 +21,20 @@ struct SignUpView: View {
     
     @State private var errorMessage: String?
     @State private var isLoading: Bool = false
+    
+    // 用來控制箭頭透明度
+    @State private var popProgress: CGFloat = 0
 
     var isEmailValid: Bool {
         let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         return NSPredicate(format: "SELF MATCHES %@", emailRegEx).evaluate(with: email)
-    }
-    var isUsernameValid: Bool {
-        let usernameRegEx = "^[A-Za-z0-9\\u4E00-\\u9FFF\\-_\\.]{1,16}$"
-        return NSPredicate(format: "SELF MATCHES %@", usernameRegEx).evaluate(with: username)
     }
     var isPasswordValid: Bool {
         let passwordRegEx = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d!@#$%^&*()_+=-]{8,}$"
         return NSPredicate(format: "SELF MATCHES %@", passwordRegEx).evaluate(with: password)
     }
     var isFormValid: Bool {
-        isEmailValid && isUsernameValid && isPasswordValid
+        isEmailValid && isPasswordValid
     }
 
     @State private var animate: Bool = false
@@ -126,7 +124,7 @@ struct SignUpView: View {
                 }
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke((usernameSubmitted && !username.isEmpty && !isUsernameValid) ? Color.red : Color.clear, lineWidth: 2)
+                        .stroke((usernameSubmitted && !username.isEmpty) ? Color.red : Color.clear, lineWidth: 2)
                 )
                 .cornerRadius(10)
                 .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
@@ -170,7 +168,7 @@ struct SignUpView: View {
                 Button(action: {
                     signUp()
                 }) {
-                    Text("Submit")
+                    Text("註冊")
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -191,12 +189,18 @@ struct SignUpView: View {
                 .opacity(animate ? 1 : 0)
                 .animation(.easeOut(duration: 0.5).delay(0.4), value: animate)
                 .padding(.horizontal)
-                .disabled(email.isEmpty || password.isEmpty)
+                .disabled(email.isEmpty || username.isEmpty || password.isEmpty)
                 .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
             }
             
             .onAppear {
                 animate = true
+            }
+            .onDisappear(){
+                email = ""
+                username = ""
+                password = ""
+                errorMessage = nil
             }
         }
         .alert("伺服器回應", isPresented: $showResponseAlert) {
@@ -208,6 +212,15 @@ struct SignUpView: View {
         } message: {
             Text(responseMessage)
         }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Image(systemName: "chevron.left")
+                    .font(.title2.weight(.semibold))
+                    .opacity(1 - popProgress)        // 隨進度淡出：滑一半時透明度 0.5
+                    .onTapGesture { dismiss() }        // 點擊仍可返回
+            }
+        }
+        .navigationBarBackButtonHidden(true)           // 只藏系統箭頭
     }
     
     private func signUp() {

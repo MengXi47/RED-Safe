@@ -11,14 +11,17 @@ import UIKit
 struct SignInView: View {
     @State private var email: String = ""
     @State private var password: String = ""
+    
     @State private var isPasswordVisible: Bool = false
+    
     @State private var animate: Bool = false
 
     @State private var emailSubmitted: Bool = false
     @State private var passwordSubmitted: Bool = false
     
-    @State private var isLoading = false
-    @State private var errorMessage: String?
+    @State private var isLoading = false        // 網路請求中
+    @State private var errorMessage: String?    // 錯誤訊息
+    
     @State private var navigateHome = false               // 觸發跳轉
     @State private var homeUserName = ""                  // 傳給 HomeView 的使用者名稱
     @State private var homeDevices: [DeviceStatus] = []   // 傳給 HomeView 的裝置清單
@@ -33,6 +36,9 @@ struct SignInView: View {
     var isPasswordValid: Bool {
         let passwordRegEx = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d!@#$%^&*()_+=-]{8,}$"
         return NSPredicate(format: "SELF MATCHES %@", passwordRegEx).evaluate(with: password)
+    }
+    var isFormValid: Bool {
+        isEmailValid && isPasswordValid
     }
 
     var body: some View {
@@ -66,6 +72,12 @@ struct SignInView: View {
                         .scaleEffect(animate ? 1 : 0.5)
                         .opacity(animate ? 1 : 0)
                         .animation(.spring(response: 0.6, dampingFraction: 0.6).delay(0.1), value: animate)
+                        .onTapGesture {
+                            // 點擊 Logo 隱藏鍵盤並驗證已輸入欄位
+                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                            if !email.isEmpty { emailSubmitted = true }
+                            if !password.isEmpty { passwordSubmitted = true }
+                        }
 
                     // 3. Email 輸入框
                     HStack {
@@ -126,7 +138,7 @@ struct SignInView: View {
                     Button(action: {
                         signIn()
                     }) {
-                        Text("Sign In")
+                        Text("登入")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -134,7 +146,7 @@ struct SignInView: View {
                     }
                     .background(
                         LinearGradient(
-                            gradient: Gradient(colors: email.isEmpty || password.isEmpty
+                            gradient: Gradient(colors: email.isEmpty || password.isEmpty || !isFormValid
                                                ? [Color.gray.opacity(0.6), Color.gray.opacity(0.3)]
                                                : [Color(red: 65/255, green: 160/255, blue: 255/255),
                                                   Color(red: 120/255, green: 190/255, blue: 255/255)]),
@@ -147,32 +159,32 @@ struct SignInView: View {
                     .opacity(animate ? 1 : 0)
                     .animation(.easeOut(duration: 0.5).delay(0.4), value: animate)
                     .padding(.horizontal)
-                    .disabled(email.isEmpty || password.isEmpty)
+                    .disabled(email.isEmpty || password.isEmpty || !isFormValid)
                     .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
 
                     // 6. Sign Up 按鈕 (NavigationLink)
                     NavigationLink(
                         destination: SignUpView()
                     ) {
-                        Text("Sign Up")
+                        Text("註冊")
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(.blue)
                             .frame(maxWidth: .infinity)
                             .padding()
                     }
-                    .background(Color.clear)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color(red: 65/255, green: 160/255, blue: 255/255), lineWidth: 2)
-                    )
                     .offset(y: animate ? 0 : 50)
                     .opacity(animate ? 1 : 0)
                     .animation(.easeOut(duration: 0.5).delay(0.5), value: animate)
                     .cornerRadius(10)
-                    .padding(.horizontal)
+                    .padding(.top, -10)          // 讓「註冊」貼近「登入」
                 }
-                .onAppear {
+                .onAppear(){
                     animate = true
+                }
+                .onAppear(){
+                    // 清除資料
+                    email = ""
+                    password = ""
                 }
             }
             // 登入結果 Alert
@@ -193,18 +205,16 @@ struct SignInView: View {
     }
     
     private func signIn() {
-        // 先重置錯誤及顯示 loading
-        errorMessage = nil
-        isLoading = true
+        signInMessage   = ""
+        errorMessage    = nil
+        isLoading       = true
         Network.shared.signIn(email: email, password: password) { result in
             DispatchQueue.main.async {
                 isLoading = false
                 switch result {
                 case .success(let response):
-                    // 顯示伺服器回傳訊息
                     signInMessage = response.error_code.localizedDescription
                     if response.error_code == .success {
-                        // 成功時預先設定資料，待使用者按確定後跳轉
                         homeUserName = response.user_name ?? "Unknown User"
                         homeDevices = [
                             DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
@@ -216,16 +226,15 @@ struct SignInView: View {
                     }
                     showSignInAlert = true
                 case .failure(let error):
-                    // 失敗：顯示錯誤訊息
                     switch error {
                     case .invalidURL:
-                        errorMessage = "無效的伺服器位址"
+                        print("無效的伺服器位址")
                     case .serverError(let status):
-                        errorMessage = "伺服器錯誤 (\(status))"
+                        print("伺服器錯誤 (\(status))")
                     case .decodingError:
-                        errorMessage = "資料解析失敗"
+                        print("資料解析失敗")
                     case .unknown(let err):
-                        errorMessage = "發生錯誤：\(err.localizedDescription)"
+                        print("發生錯誤：\(err.localizedDescription)")
                     }
                 }
             }
