@@ -62,26 +62,32 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm.onsubmit = async (e) => {
       e.preventDefault();
       if (signControl === 0) {
-        alert('目前為測試模式，僅阻止送出，不發送API');
+        alert('目前為測試模式，阻止送出，不發送API');
         return;
       }
       const email = loginForm.querySelector('input[type="text"], input[type="email"]').value;
       const password = loginForm.querySelector('input[type="password"]').value;
 
       try {
-        const res = await fetch('https://api.redsafe-tw.com/user/signin', {
+        const response = await fetch('https://api.redsafe-tw.com/user/signin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
         });
-        const data = await res.json();
-        if (typeof data.error_code !== "undefined") {
-          if (data.error_code === 0 && data.token) {
-            localStorage.setItem('token', data.token);
-            alert('登入成功！');
+
+        if (!response.ok) {
+          alert('HTTP 錯誤：' + response.status);
+          return;
+        }
+
+        const body = await response.json();
+
+        if (typeof body.error_code !== "undefined") {
+          if (body.error_code === 0) {
+            alert('登入成功！\n用戶名稱：' + body.user_name + '\nEmail：' + body.email);
             signModal.style.display = 'none';
           } else {
-            alert(getErrorMessage(data.error_code));
+            alert(getErrorMessage(body.error_code));
           }
         } else {
           alert('伺服器回傳格式異常');
@@ -95,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     registerForm.onsubmit = async (e) => {
       e.preventDefault();
       if (signControl === 0) {
-        alert('目前為測試模式，僅阻止送出，不發送API');
+        alert('目前為測試模式，阻止送出，不發送API');
         return;
       }
       const inputs = registerForm.querySelectorAll('input');
@@ -108,19 +114,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       try {
-        const res = await fetch('https://api.redsafe-tw.com/user/signup', {
+        const response = await fetch('https://api.redsafe-tw.com/user/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, user_name, password })
         });
-        const data = await res.json();
-        if (typeof data.error_code !== "undefined") {
-          if (data.error_code === 0 && data.token) {
-            localStorage.setItem('token', data.token);
-            alert('註冊成功，自動登入！');
-            signModal.style.display = 'none';
+
+        if (!response.ok) {
+          alert('HTTP 錯誤：' + response.status);
+          return;
+        }
+
+        const body = await response.json();
+
+        if (typeof body.error_code !== "undefined") {
+          if (body.error_code === 0) {
+            alert('註冊成功，請登入');
+            loginTab.classList.add('active');
+            signupTab.classList.remove('active');
+            loginForm.classList.add('active');
+            registerForm.classList.remove('active');
           } else {
-            alert(getErrorMessage(data.error_code));
+            alert(getErrorMessage(body.error_code));
           }
         } else {
           alert('伺服器回傳格式異常');
