@@ -303,3 +303,144 @@ body, html {
     padding: 1.5rem;
   }
 }
+/* Sign In / Sign Up 彈窗設計與動畫 */
+.sign-header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background: rgba(28, 31, 36, 0.95);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1rem 2rem 1rem 2rem;
+  z-index: 2000;
+  box-shadow: 0 2px 16px rgba(255,0,0,0.10);
+}
+.sign-btn {
+  background: linear-gradient(90deg, #ff4d4d 0%, #ff1a1a 100%);
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  padding: 0.4rem 1.1rem;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(255,0,0,0.2);
+  transition: background 0.3s, transform 0.2s;
+  margin-right: 2rem;
+}
+
+.sign-btn:hover {
+  background: linear-gradient(90deg, #ff1a1a 0%, #ff4d4d 100%);
+  transform: scale(1.05);
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 3000;
+  left: 0; top: 0; width: 100vw; height: 100vh;
+  background: rgba(0,0,0,0.7);
+  animation: fadeIn 0.5s;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.modal-content {
+  background: #22232a;
+  margin: 5% auto;
+  padding: 2rem 2.5rem;
+  border-radius: 18px;
+  width: 360px;
+  box-shadow: 0 8px 32px rgba(255,0,0,0.3);
+  position: relative;
+  animation: slideDown 0.6s;
+}
+@keyframes slideDown {
+  from { transform: translateY(-60px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.close {
+  position: absolute;
+  right: 1.2rem; top: 1.2rem;
+  font-size: 2rem;
+  color: #ff4d4d;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.close:hover { color: #fff; }
+
+.tab-group {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+.tab {
+  flex: 1;
+  padding: 0.7rem 0;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.1rem;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+.tab.active {
+  border-bottom: 2px solid #ff4d4d;
+  color: #ff4d4d;
+}
+.form-container {
+  position: relative;
+}
+.form {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  animation: fadeForm 0.5s;
+}
+@keyframes fadeForm {
+  from { opacity: 0; transform: translateY(30px);}
+  to   { opacity: 1; transform: translateY(0);}
+}
+.form.active { display: flex; }
+input {
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: #292b33;
+  color: #fff;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus { border-color: #ff4d4d; }
+button[type="submit"] {
+  background: #ff4d4d;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+button[type="submit"]:hover {
+  background: #ff1a1a;
+  transform: scale(1.03);
+}
+.note {
+  font-size: 0.95rem;
+  color: #ffb3b3;
+  margin-top: 0.3rem;
+  text-align: left;
+}
+@media (max-width: 500px) {
+  .modal-content {
+    width: 92vw;
+    padding: 1.2rem 0.5rem;
+  }
+  .sign-header {
+    padding: 0.5rem 1rem;
+  }
+}

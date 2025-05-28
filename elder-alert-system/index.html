@@ -9,6 +9,37 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+  <!-- Sign In / Sign Up 彈窗元件 -->
+  <div class="sign-header">
+    <button id="signBtn" class="sign-btn">Sign In / Sign Up</button>
+  </div>
+  <div id="signModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeModal">&times;</span>
+      <div class="tab-group">
+        <button class="tab active" id="loginTab">登入</button>
+        <button class="tab" id="signupTab">註冊</button>
+      </div>
+      <div class="form-container">
+        <!-- 登入表單 -->
+        <form id="loginForm" class="form active" autocomplete="off">
+          <input type="text" placeholder="使用者名稱" required>
+          <input type="password" placeholder="密碼" required>
+          <button type="submit">登入</button>
+          <div class="note">請輸入您的帳號資訊進行登入。</div>
+        </form>
+        <!-- 註冊表單 -->
+        <form id="registerForm" class="form" autocomplete="off">
+          <input type="text" placeholder="使用者名稱" required>
+          <input type="password" placeholder="密碼" required>
+          <input type="password" placeholder="確認密碼" required>
+          <button type="submit">註冊</button>
+          <div class="note">請填寫完整資訊以註冊新帳號。</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <main>
     <!-- 英雄區塊（首頁大圖和標題） -->
     <section class="hero">
@@ -70,5 +101,6 @@
 
   <!-- 引入 JavaScript -->
   <script src="js/scroll.js" type="module"></script>
+  <script src="js/sign.js"></script>
 </body>
 </html>
