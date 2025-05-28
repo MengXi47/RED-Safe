@@ -244,3 +244,62 @@ body, html {
       0 0 40px #ff0000;
   }
 }
+
+/* 手機版（螢幕寬度小於等於768px）修正 */
+@media (max-width: 768px) {
+  /* hero 區塊圖片與文字縮小 */
+  .hero img {
+    width: 120px;
+  }
+
+  .hero h1 {
+    font-size: 48px;
+  }
+
+  .hero p {
+    font-size: 18px;
+  }
+
+  /* flow 橫向排版改為直向（避免手機版左右擠壓） */
+  #flow {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .arrow {
+    transform: rotate(90deg); /* 箭頭改成往下 */
+    font-size: 36pt;
+  }
+
+  /* flow-item 縮小圖片 */
+  .flow-item img {
+    width: 100px;
+  }
+
+  .flow-item p {
+    font-size: 18pt;
+  }
+
+  /* alert 區塊按鈕與文字縮放 */
+  #alert .phone-sim {
+    font-size: 20pt;
+  }
+
+  #alert button {
+    font-size: 18pt;
+    padding: 0.4rem 1rem;
+  }
+
+  /* value 區塊卡片寬度自適應 */
+  #value .card {
+    width: 90%;
+    padding: 1.5rem;
+    font-size: 22pt;
+  }
+
+  /* footer 區塊字體縮小 */
+  .footer {
+    font-size: 16pt;
+    padding: 1.5rem;
+  }
+}
