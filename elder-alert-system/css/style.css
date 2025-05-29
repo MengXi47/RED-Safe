@@ -444,3 +444,44 @@ button[type="submit"]:hover {
     padding: 0.5rem 1rem;
   }
 }
+.sign-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 左右兩端對齊 */
+  padding: 1rem 2rem;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background: rgba(28, 31, 36, 0.95);
+  z-index: 2000;
+  box-shadow: 0 2px 16px rgba(255,0,0,0.10);
+}
+
+.sign-mark {
+  display: flex;
+  align-items: center;
+}
+
+.sign-icon {
+  width: 35px;
+  height: 35px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.sign-btn {
+  background: linear-gradient(90deg, #ff4d4d 0%, #ff1a1a 100%);
+  color: #fff;
+  border: none;
+  border-radius: 18px;
+  padding: 0.4rem 1.1rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(255,0,0,0.2);
+  transition: background 0.3s, transform 0.2s;
+}
+
+.sign-btn:hover {
+  background: linear-gradient(90deg, #ff1a1a 0%, #ff4d4d 100%);
+  transform: scale(1.05);
+}

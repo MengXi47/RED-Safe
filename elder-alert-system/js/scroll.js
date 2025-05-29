@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (entry.isIntersecting) {
         // 元素進入視窗時，加上 visible 類別觸發 CSS 動畫
         entry.target.classList.add('visible');
+      } else {
+        // 元素離開視窗時，移除 visible 類別
+        entry.target.classList.remove('visible');
       }
     });
   }, { threshold: 0.3 }); // 30% 可見時觸發

@@ -1,25 +1,24 @@
-// sign.js
 let signControl = 0; // 0=只阻止表單送出, 1=發送API
 
 const ERROR_MESSAGES = {
   0:   "Success",
-  99:  "Unknown_endpoint",
-  100: "Invalid_JSON",
-  101: "Invalid_serialnumber_format",
-  102: "Invalid_apnstoken_format",
-  103: "Invalid_email_format",
-  104: "Invalid_username_format",
-  105: "Invalid_password_format",
-  201: "Email Email_or_Password_Error",
-  301: "Edge_device_already_registered",
-  302: "Email Email_already_registered",
-  303: "Binding_already_exists",
-  401: "Missing_serial_number_or_version",
-  402: "Missing_email_or_user_name_or_password",
-  403: "Missing_email_or_password",
-  404: "Missing_user_id_or_apns_token",
-  405: "Missing_user_id_or_serial_number",
-  500: "Internal_server_error"
+  99:  "Unknown API endpoint",
+  100: "Invalid JSON format",
+  101: "Invalid serial number format",
+  102: "Invalid APNS token format",
+  103: "Invalid email format",
+  104: "Invalid username format",
+  105: "Invalid password format",
+  201: "Email or password incorrect",
+  301: "Device already registered",
+  302: "Email already registered",
+  303: "Binding already exists",
+  401: "Missing serial number or version",
+  402: "Missing email, username, or password",
+  403: "Missing email or password",
+  404: "Missing user ID or APNS token",
+  405: "Missing user ID or serial number",
+  500: "Internal server error"
 };
 
 function getErrorMessage(code) {
@@ -27,7 +26,23 @@ function getErrorMessage(code) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // 彈窗開關
+  // --- goTopBtn 回首頁/滾頂功能 ---
+  const goTopBtn = document.getElementById('goTopBtn');
+  if (goTopBtn) {
+    goTopBtn.addEventListener('click', () => {
+      // 判斷是否在首頁
+      const path = window.location.pathname.replace(/\/+$/, ''); // 移除結尾斜線
+      if (path === '' || path === '/index.html') {
+        // 在首頁，滾動到頂端
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        // 不在首頁，跳轉首頁
+        window.location.href = '/';
+      }
+    });
+  }
+
+  // --- sign 彈窗開關 ---
   const signBtn = document.getElementById('signBtn');
   const signModal = document.getElementById('signModal');
   const closeModal = document.getElementById('closeModal');
@@ -39,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // 登入/註冊 tab 切換
+  // --- 登入/註冊 tab 切換 ---
   const loginTab = document.getElementById('loginTab');
   const signupTab = document.getElementById('signupTab');
   const loginForm = document.getElementById('loginForm');
@@ -58,11 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
       loginForm.classList.remove('active');
     };
 
-    // 登入表單送出
+    // --- 登入表單送出 ---
     loginForm.onsubmit = async (e) => {
       e.preventDefault();
       if (signControl === 0) {
-        alert('目前為測試模式，阻止送出，不發送API');
+        alert('目前為測試模式，僅測試不發送API');
         return;
       }
       const email = loginForm.querySelector('input[type="text"], input[type="email"]').value;
@@ -97,11 +112,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    // 註冊表單送出
+    // --- 註冊表單送出 ---
     registerForm.onsubmit = async (e) => {
       e.preventDefault();
       if (signControl === 0) {
-        alert('目前為測試模式，阻止送出，不發送API');
+        alert('目前為測試模式，僅測試不發送API');
         return;
       }
       const inputs = registerForm.querySelectorAll('input');
