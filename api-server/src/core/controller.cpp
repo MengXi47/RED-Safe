@@ -16,11 +16,9 @@
 #include <functional>
 
 #include "controller.hpp"
-#include "../service/EdgeDeviceRegistrationService.hpp"
-#include "../service/IOSDeviceBindService.hpp"
-#include "../service/IOSDeviceRegistrationService.hpp"
-#include "../service/UserLoginLogoutService.hpp"
-#include "../service/UserRegistrationService.hpp"
+#include "../service/EdgeService.hpp"
+#include "../service/IOSAPPService.hpp"
+#include "../service/UserService.hpp"
 #include "../util/logger.hpp"
 #include "../util/response.hpp"
 
@@ -46,7 +44,7 @@ namespace redsafe::apiserver
                         json{}
                     };
 
-                return service::EdgeDeviceRegistrationService::start(
+                return service::edge::Register::start(
                     body.value("version", std::string{}),
                     body.value("serial_number", std::string{})
                 );
@@ -63,13 +61,10 @@ namespace redsafe::apiserver
                         json{}
                     };
 
-                const service::UserRegistrationService FUCK{
+                return service::User::signup::start(
                     body.value("email", std::string{}),
                     body.value("user_name", std::string{}),
-                    body.value("password", std::string{})
-                };
-
-                return FUCK.start();
+                    body.value("password", std::string{}));
             }},
 
             {"/user/signin", [this](const json& body)
@@ -81,12 +76,9 @@ namespace redsafe::apiserver
                         json{}
                     };
 
-                const service::UserLoginLogoutService FUCK{
+                return service::User::signin::start(
                     body.value("email", std::string{}),
-                    body.value("password", std::string{})
-                };
-
-                return FUCK.login();
+                    body.value("password", std::string{}));
             }},
 
             {"/ios/signup", [this](const json& body)
@@ -98,7 +90,7 @@ namespace redsafe::apiserver
                         json{}
                     };
 
-                return service::IOSDeviceRegistrationService::start(
+                return service::IOSAPP::IOSAPPService::start(
                     body.value("ios_device_id", std::string{}),
                     body.value("user_id", std::string{}),
                     body.value("apns_token", std::string{}),
@@ -115,7 +107,7 @@ namespace redsafe::apiserver
                         json{}
                     };
 
-                return service::IOSDeviceBindService::bind(
+                return service::User::Bind::bind(
                     body.value("serial_number", std::string{}),
                     body.value("user_id", std::string{})
                 );
@@ -130,7 +122,7 @@ namespace redsafe::apiserver
                         json{}
                     };
 
-                return service::IOSDeviceBindService::unbind(
+                return service::User::Bind::unbind(
                     body.value("serial_number", std::string{}),
                     body.value("user_id", std::string{})
                 );

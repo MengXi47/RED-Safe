@@ -10,27 +10,21 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
      3. Distribute, display, or otherwise use this source code or its derivatives in any form.
 
    For licensing inquiries or to obtain a formal license, please contact:
-******************************************************************************/
+*******************************************************************************/
 
 #pragma once
 
 #include "../util/response.hpp"
 
-namespace redsafe::apiserver::service
+namespace redsafe::apiserver::service::IOSAPP
 {
-    class UserRegistrationService
+    class IOSAPPService
     {
     public:
-        explicit UserRegistrationService(
-            std::string email,
-            std::string user_name,
-            std::string password);
-
-        [[nodiscard]] util::Result start() const;
-    private:
-        [[nodiscard]] std::string PasswordHASH() const;
-        std::string email_;
-        std::string user_name_;
-        std::string password_;
+        [[nodiscard]] static util::Result start(
+            const std::string &ios_device_id,
+            const std::string &user_id,
+            const std::string &apns_token,
+            const std::string &device_name);
     };
 }

@@ -12,13 +12,12 @@ add_executable(RED_Safe_apiserver
   src/core/api-server.cpp
   src/core/session.cpp
   src/core/controller.cpp
-  src/service/EdgeDeviceRegistrationService.cpp
-  src/service/UserRegistrationService.cpp
-  src/service/IOSDeviceRegistrationService.cpp
-  src/service/IOSDeviceBindService.cpp
-  src/service/UserLoginLogoutService.cpp
-  src/model/sql/RegistrarModels.cpp
-  src/model/sql/FinderModels.cpp
+  src/service/EdgeService.cpp
+  src/service/IOSAPPService.cpp
+  src/service/UserService.cpp
+        src/model/sql/RegistrarModels.cpp
+        src/model/sql/FinderModels.cpp
+  src/model/validator/token.cpp
 )
 
 if(APPLE)
