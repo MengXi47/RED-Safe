@@ -14,6 +14,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 #pragma once
 
+#include <nlohmann/json.hpp>
+
 namespace redsafe::apiserver::util
 {
     enum class status_code : int

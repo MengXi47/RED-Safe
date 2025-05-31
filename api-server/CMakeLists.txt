@@ -15,9 +15,9 @@ add_executable(RED_Safe_apiserver
   src/service/EdgeService.cpp
   src/service/IOSAPPService.cpp
   src/service/UserService.cpp
-        src/model/sql/RegistrarModels.cpp
-        src/model/sql/FinderModels.cpp
-  src/model/validator/token.cpp
+  src/model/sql/RegistrarModels.cpp
+  src/model/sql/FinderModels.cpp
+  src/service/TokenService.cpp
 )
 
 if(APPLE)
@@ -42,6 +42,7 @@ endif()
 
 #-------------------- 依賴 --------------------
 find_package(Boost REQUIRED COMPONENTS system thread)
+find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(libpqxx CONFIG QUIET)
 find_package(libsodium CONFIG QUIET)
@@ -51,9 +52,7 @@ if (TARGET libpqxx::pqxx)                       # 成功找到
 else ()                                         # 回退到 pkg-config
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(PQXX REQUIRED libpqxx)
-    add_library(pqxx INTERFACE
-            src/util/logger.hpp
-    )
+    add_library(pqxx INTERFACE)
     target_include_directories(pqxx INTERFACE ${PQXX_INCLUDE_DIRS})
     target_link_libraries(pqxx INTERFACE ${PQXX_LINK_LIBRARIES})
     set(PQXX_TARGET pqxx)
@@ -77,6 +76,7 @@ target_include_directories(RED_Safe_apiserver
 )
 target_link_libraries(RED_Safe_apiserver
     PRIVATE
+        OpenSSL::Crypto
       ${Boost_LIBRARIES}
       ${nlohmann_json_LIBS}
       ${PQXX_TARGET}
