@@ -11,34 +11,24 @@ import UIKit
 struct SignInView: View {
     @State private var email: String = ""
     @State private var password: String = ""
-    
     @State private var isPasswordVisible: Bool = false
-    
     @State private var animate: Bool = false
-
     @State private var emailSubmitted: Bool = false
     @State private var passwordSubmitted: Bool = false
-    
-    @State private var isLoading = false        // 網路請求中
-    @State private var errorMessage: String?    // 錯誤訊息
-    
-    @State private var navigateHome = false               // 觸發跳轉
-    @State private var homeUserName = ""                  // 傳給 HomeView 的使用者名稱
-    @State private var homeDevices: [DeviceStatus] = []   // 傳給 HomeView 的裝置清單
-    @State private var showSignInAlert = false         // 顯示登入結果
-    @State private var signInMessage = ""              // Alert 內容
-    @State private var proceedHomeAfterAlert = false   // 點確定後是否跳轉
+    @State private var isLoading = false                    // 網路請求中
+    @State private var errorMessage: String?                // 錯誤訊息
+    @State private var navigateHome = false                 // 觸發跳轉
+    @State private var homeUserName = ""                    // 傳給 HomeView 的使用者名稱
+    @State private var homeDevices: [DeviceStatus] = []     // 傳給 HomeView 的裝置清單
+    @State private var showSignInAlert = false              // 顯示登入結果
+    @State private var signInMessage = ""                   // Alert 內容
+    @State private var proceedHomeAfterAlert = false        // 點確定後是否跳轉
 
-    var isEmailValid: Bool {
-        let emailRegEx = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
-        return NSPredicate(format: "SELF MATCHES %@", emailRegEx).evaluate(with: email)
-    }
-    var isPasswordValid: Bool {
-        let passwordRegEx = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d!@#$%^&*()_+=-]{8,}$"
-        return NSPredicate(format: "SELF MATCHES %@", passwordRegEx).evaluate(with: password)
-    }
-    var isFormValid: Bool {
-        isEmailValid && isPasswordValid
+    // 用來追蹤哪個欄位正在聚焦
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case email, password
     }
 
     var body: some View {
@@ -86,6 +76,7 @@ struct SignInView: View {
                         TextField("Email", text: $email)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
+                            .focused($focusedField, equals: .email)
                     }
                     .offset(x: animate ? 0 : -200)
                     .opacity(animate ? 1 : 0)
@@ -98,7 +89,7 @@ struct SignInView: View {
                     .onSubmit { emailSubmitted = true }
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke((emailSubmitted && !isEmailValid) ? Color.red : Color.clear, lineWidth: 2)
+                            .stroke((emailSubmitted && email.isEmpty) ? Color.red : Color.clear, lineWidth: 2)
                     )
                     .padding(.horizontal)
 
@@ -109,8 +100,10 @@ struct SignInView: View {
                             .foregroundColor(.gray)
                         if isPasswordVisible {
                             TextField("Password", text: $password)
+                                .focused($focusedField, equals: .password)
                         } else {
                             SecureField("Password", text: $password)
+                                .focused($focusedField, equals: .password)
                         }
                         Button(action: {
                             isPasswordVisible.toggle()
@@ -130,7 +123,7 @@ struct SignInView: View {
                     .onSubmit { passwordSubmitted = true }
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke((passwordSubmitted && !isPasswordValid) ? Color.red : Color.clear, lineWidth: 2)
+                            .stroke((passwordSubmitted && password.isEmpty) ? Color.red : Color.clear, lineWidth: 2)
                     )
                     .padding(.horizontal)
 
@@ -146,7 +139,7 @@ struct SignInView: View {
                     }
                     .background(
                         LinearGradient(
-                            gradient: Gradient(colors: email.isEmpty || password.isEmpty || !isFormValid
+                            gradient: Gradient(colors: email.isEmpty || password.isEmpty
                                                ? [Color.gray.opacity(0.6), Color.gray.opacity(0.3)]
                                                : [Color(red: 65/255, green: 160/255, blue: 255/255),
                                                   Color(red: 120/255, green: 190/255, blue: 255/255)]),
@@ -159,7 +152,7 @@ struct SignInView: View {
                     .opacity(animate ? 1 : 0)
                     .animation(.easeOut(duration: 0.5).delay(0.4), value: animate)
                     .padding(.horizontal)
-                    .disabled(email.isEmpty || password.isEmpty || !isFormValid)
+                    .disabled(email.isEmpty || password.isEmpty)
                     .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
 
                     // 6. Sign Up 按鈕 (NavigationLink)
@@ -178,13 +171,8 @@ struct SignInView: View {
                     .cornerRadius(10)
                     .padding(.top, -10)          // 讓「註冊」貼近「登入」
                 }
-                .onAppear(){
+                .onAppear() {
                     animate = true
-                }
-                .onAppear(){
-                    // 清除資料
-                    email = ""
-                    password = ""
                 }
             }
             // 登入結果 Alert
@@ -194,12 +182,41 @@ struct SignInView: View {
                         navigateHome = true
                     }
                 }
-                    } message: {
+            } message: {
                 Text(signInMessage)
             }
+            
             // 跳轉到 HomeView
             .navigationDestination(isPresented: $navigateHome) {
                 HomeView(userName: homeUserName, devices: homeDevices)
+            }
+            
+            // 當焦點變更後，若不再聚焦在Email或Password就觸發驗證
+            .onChange(of: focusedField) {
+                // 當焦點變更後，若不再聚焦在Email或Password就觸發驗證
+                if focusedField != .email && !email.isEmpty {
+                    emailSubmitted = true
+                }
+                if focusedField != .password && !password.isEmpty {
+                    passwordSubmitted = true
+                }
+            }
+            
+            .onDisappear {
+                // 重置所有狀態
+                email = ""
+                password = ""
+                isPasswordVisible = false
+                emailSubmitted = false
+                passwordSubmitted = false
+                isLoading = false
+                errorMessage = nil
+                navigateHome = false
+                homeUserName = ""
+                homeDevices = []
+                showSignInAlert = false
+                signInMessage = ""
+                proceedHomeAfterAlert = false
             }
         }
     }

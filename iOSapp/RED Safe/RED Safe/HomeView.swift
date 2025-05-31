@@ -86,7 +86,8 @@ struct HomeView: View {
                 }
             }
         }
-        .navigationBarBackButtonHidden(true) // 禁止返回上一頁
+        .navigationBarBackButtonHidden(true)
+        .disablePopGesture()
     }
 }
 
@@ -107,4 +108,29 @@ struct HomeView: View {
             DeviceStatus(serial: "9876-5432-ZYXW", isOnline: false)
         ]
     )
+}
+
+// MARK: - Disable Pop Gesture Helper
+struct DisablePopGestureDetector: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        let vc = UIViewController()
+        DispatchQueue.main.async {
+            vc.navigationController?.interactivePopGestureRecognizer?.isEnabled = false
+        }
+        return vc
+    }
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+}
+
+struct DisablePopGestureModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content.background(DisablePopGestureDetector())
+    }
+}
+
+extension View {
+    /// 禁用互動式 Pop 手勢
+    func disablePopGesture() -> some View {
+        self.modifier(DisablePopGestureModifier())
+    }
 }
