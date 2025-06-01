@@ -12,7 +12,8 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#pragma once
+#ifndef REDSAFE_EDGE_SERVICE_HPP
+#define REDSAFE_EDGE_SERVICE_HPP
 
 #include "../util/response.hpp"
 
@@ -26,3 +27,5 @@ namespace redsafe::apiserver::service::edge
             const std::string& serial_number);
     };
 }
+
+#endif

@@ -12,7 +12,8 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#pragma once
+#ifndef REDSAFE_SQLCONNECTIONMANAGER_HPP
+#define REDSAFE_SQLCONNECTIONMANAGER_HPP
 
 #include <pqxx/pqxx>
 #include <memory>
@@ -121,3 +122,5 @@ namespace redsafe::apiserver::model::sql
         }
     };
 }
+
+#endif

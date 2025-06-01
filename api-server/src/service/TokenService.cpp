@@ -26,26 +26,27 @@ namespace redsafe::apiserver::service::token
     {
     }
 
-    bool CreateAccessToken::start()
+    int CreateAccessToken::start()
     {
         try
         {
+            const std::string AES_user_id = util::AESManager::instance().encrypt(user_id);
             token = jwt::create()
                 .set_issuer("RED-Safe")
-                .set_subject(user_id)
+                .set_subject(AES_user_id)
                 .set_issued_at(std::chrono::system_clock::now())
                 .set_expires_at(
                     std::chrono::system_clock::now() +
                     std::chrono::seconds{600})
-                .sign(jwt::algorithm::hs256{util::loadOrGenerateSecret()});
+                .sign(jwt::algorithm::hs256{util::SecretManager::instance().getSecret()});
         }
         catch (const std::exception& e)
         {
             util::cerr() << e.what() << std::endl;
             util::log(util::LogFile::server, util::Level::ERROR) << e.what();
-            return false;
+            return 1;
         }
-        return true;
+        return 0;
     }
 
     std::string CreateAccessToken::getAccessToken() const
@@ -63,7 +64,7 @@ namespace redsafe::apiserver::service::token
     {
     }
 
-    bool DecodeAccessToken::start()
+    int DecodeAccessToken::start()
     {
         try
         {
@@ -71,33 +72,36 @@ namespace redsafe::apiserver::service::token
             const auto decoded = jwt::decode(tokenValue);
 
             // 先檢查是否含有 exp 欄位並檢查過期時間
-            if (decoded.has_expires_at()) {
-                const auto expTime = decoded.get_expires_at();
-                if (std::chrono::system_clock::now() > expTime) {
+            if (decoded.has_expires_at())
+            {
+                if (const auto expTime = decoded.get_expires_at(); std::chrono::system_clock::now() > expTime)
+                {
                     errorMessage = "Token 已過期";
-                    return false;
+                    return 1;
                 }
             }
 
             // 驗證 HS256 簽章與 issuer
             jwt::verify()
-                .allow_algorithm(jwt::algorithm::hs256{util::loadOrGenerateSecret()})
+                .allow_algorithm(jwt::algorithm::hs256{util::SecretManager::instance().getSecret()})
                 .with_issuer("RED-Safe")
                 .verify(decoded);
 
             // 解析 payload 中的 sub 欄位作為 user_id
-            if (decoded.has_payload_claim("sub")) {
-                payloadUserId = decoded.get_payload_claim("sub").as_string();
-                return true;
+            if (decoded.has_payload_claim("sub"))
+            {
+                payloadUserId = util::AESManager::instance().decrypt(
+                    decoded.get_payload_claim("sub").as_string());
+                return 0;
             }
             errorMessage = "Token 中缺少 sub 欄位";
-            return false;
+            return 2;
         }
         catch (const std::exception& e)
         {
             // Capture any decoding or verification errors
             errorMessage = e.what();
-            return false;
+            return 3;
         }
     }
 
@@ -109,6 +113,40 @@ namespace redsafe::apiserver::service::token
     std::string DecodeAccessToken::getErrorMessage() const
     {
         return errorMessage;
+    }
+
+    CreateRefreshToken::CreateRefreshToken(const std::string_view user_id)
+        : user_id(user_id)
+    {
+    }
+
+    int CreateRefreshToken::start()
+    {
+        try
+        {
+            token = util::generateRandomHex(32);
+        }
+        catch (const std::exception& e)
+        {
+            errorMessage = e.what();
+            return 1;
+        }
+        return 0;
+    }
+
+    std::string CreateRefreshToken::getRefreshToken() const
+    {
+        return token;
+    }
+
+    std::string CreateRefreshToken::getErrorMessage() const
+    {
+        return errorMessage;
+    }
+
+    int CreateRefreshToken::WriteToSQL()
+    {
+        return 1;
     }
 }
 

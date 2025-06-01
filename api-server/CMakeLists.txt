@@ -8,36 +8,36 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 #-------------------- 來源檔 -------------------
 add_executable(RED_Safe_apiserver
-  main.cpp
-  src/core/api-server.cpp
-  src/core/session.cpp
-  src/core/controller.cpp
-  src/service/EdgeService.cpp
-  src/service/IOSAPPService.cpp
-  src/service/UserService.cpp
-  src/model/sql/RegistrarModels.cpp
-  src/model/sql/FinderModels.cpp
-  src/service/TokenService.cpp
+    main.cpp
+    src/core/api-server.cpp
+    src/core/session.cpp
+    src/core/controller.cpp
+    src/service/EdgeService.cpp
+    src/service/IOSAPPService.cpp
+    src/service/UserService.cpp
+    src/model/sql/RegistrarModels.cpp
+    src/model/sql/FinderModels.cpp
+    src/service/TokenService.cpp
 )
 
 if(APPLE)
-  message(STATUS "Building on macOS")
-  target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_MACOS)
+    message(STATUS "Building on macOS")
+    target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_MACOS)
 elseif(WIN32)
-  message(STATUS "Building on Windows")
-  add_compile_definitions(
-    _WIN32_WINNT=0x0601
-    WIN32_LEAN_AND_MEAN
-  )
-  target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_WINDOWS)
-  find_package(libsodium CONFIG REQUIRED)
+    message(STATUS "Building on Windows")
+    add_compile_definitions(
+        _WIN32_WINNT=0x0601
+        WIN32_LEAN_AND_MEAN
+    )
+    target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_WINDOWS)
+    find_package(libsodium CONFIG REQUIRED)
 elseif(UNIX)
-  message(STATUS "Building on Linux/Unix")
-  target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_UNIX)
+    message(STATUS "Building on Linux/Unix")
+    target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_UNIX)
 endif()
 
 if(POLICY CMP0167)
-  cmake_policy(SET CMP0167 OLD)
+    cmake_policy(SET CMP0167 OLD)
 endif()
 
 #-------------------- 依賴 --------------------

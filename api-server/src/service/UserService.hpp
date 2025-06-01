@@ -12,7 +12,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
-#pragma once
+#ifndef REDSAFE_USER_SERVICE_HPP
+#define REDSAFE_USER_SERVICE_HPP
 
 #include "../util/response.hpp"
 
@@ -25,8 +26,6 @@ namespace redsafe::apiserver::service::User
             const std::string& email,
             const std::string& username,
             const std::string& password);
-    private:
-        [[nodiscard]] static std::string PasswordHASH(std::string_view password);
     };
 
     class signin
@@ -35,8 +34,6 @@ namespace redsafe::apiserver::service::User
         [[nodiscard]] static util::Result start(
             const std::string &email,
             const std::string &password);
-    private:
-        static inline bool VerifyPassword(const std::string& pwdhash, std::string_view password);
     };
 
     class Bind
@@ -46,3 +43,5 @@ namespace redsafe::apiserver::service::User
         [[nodiscard]] static util::Result unbind (const std::string &serial_number, const std::string &user_id);
     };
 }
+
+#endif

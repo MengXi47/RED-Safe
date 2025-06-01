@@ -12,7 +12,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#pragma once
+#ifndef REDSAFE_FINDER_MODEL_HPP
+#define REDSAFE_FINDER_MODEL_HPP
 
 #include "SqlConnectionManager.hpp"
 
@@ -58,3 +59,5 @@ namespace redsafe::apiserver::model::sql::fin
         [[nodiscard]] static std::vector<std::string> start(std::string_view user_id);
     };
 }
+
+#endif

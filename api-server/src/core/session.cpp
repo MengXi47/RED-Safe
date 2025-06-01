@@ -62,7 +62,7 @@ namespace redsafe::apiserver
         }
         catch (const std::exception& e)
         {
-            util::cout() << e.what() << '\n';
+            //util::cout() << e.what() << '\n';
             util::cout() << util::current_timestamp()
                 << "nginx disconnection: "
                 << socket_.remote_endpoint().address().to_string() << ':'

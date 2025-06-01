@@ -12,7 +12,8 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#pragma once
+#ifndef REDSAFE_TIMESTAMP_UTIL_HPP
+#define REDSAFE_TIMESTAMP_UTIL_HPP
 
 #include <chrono>
 #include <iomanip>
@@ -49,3 +50,5 @@ namespace redsafe::apiserver::util
         return strTime.str();
     }
 }
+
+#endif

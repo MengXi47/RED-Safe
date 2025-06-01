@@ -12,6 +12,9 @@
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
+#ifndef REDSAFE_EDGE_SERVICE_CPP
+#define REDSAFE_EDGE_SERVICE_CPP
+
 #include <nlohmann/json.hpp>
 
 #include "EdgeService.hpp"
@@ -53,3 +56,5 @@ namespace redsafe::apiserver::service::edge
         };
     }
 }
+
+#endif

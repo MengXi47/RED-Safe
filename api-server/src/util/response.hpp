@@ -12,7 +12,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
-#pragma once
+#ifndef REDSAFE_RESPONSE_UTIL_HPP
+#define REDSAFE_RESPONSE_UTIL_HPP
 
 #include <nlohmann/json.hpp>
 
@@ -61,3 +62,5 @@ namespace redsafe::apiserver::util
         nlohmann::json  body;
     };
 }
+
+#endif

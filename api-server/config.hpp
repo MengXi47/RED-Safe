@@ -33,3 +33,8 @@
 #ifndef SERVER_THREAD_TYPE
 #define SERVER_THREAD_TYPE 1 // 0 -> single_thread,  1 -> std::jthread, 2 -> boost.asio.thread_pool
 #endif
+
+// 金鑰檔案名稱 (執行程式目錄)
+static constexpr auto SECRET_FILE_PATH  = "jwt_secret.txt";
+
+static constexpr auto AES_KEY_FILE_PATH = "AES_KEY.txt";

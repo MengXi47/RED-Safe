@@ -12,7 +12,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#pragma once
+#ifndef REDSAFE_PARAMETER_VALIDATION_HPP
+#define REDSAFE_PARAMETER_VALIDATION_HPP
 
 #include <regex>
 #include <string>
@@ -64,3 +65,5 @@ namespace redsafe::apiserver::model::validator
             std::regex{R"(^[A-Za-z0-9._\-]{1,16}$)"});
     }
 }
+
+#endif

@@ -13,10 +13,6 @@
 *******************************************************************************/
 
 #include <iostream>
-#include <cstring>
-#include <string>
-#include <cerrno>
-#include <limits>
 
 #include "include/api-server.hpp"
 #include "config.hpp"

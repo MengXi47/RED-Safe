@@ -12,7 +12,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
-#pragma once
+#ifndef REDSAFE_LOGGER_UTIL_HPP
+#define REDSAFE_LOGGER_UTIL_HPP
 
 #include <string_view>
 #include <fstream>
@@ -96,3 +97,5 @@ namespace redsafe::apiserver::util
         return LogStream{file, level};
     }
 }
+
+#endif

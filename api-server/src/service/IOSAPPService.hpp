@@ -12,7 +12,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#pragma once
+#ifndef REDSAFE_IOSAPP_SERVICE_HPP
+#define REDSAFE_IOSAPP_SERVICE_HPP
 
 #include "../util/response.hpp"
 
@@ -28,3 +29,5 @@ namespace redsafe::apiserver::service::IOSAPP
             const std::string &device_name);
     };
 }
+
+#endif

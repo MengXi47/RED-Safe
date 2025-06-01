@@ -12,6 +12,9 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
+#ifndef REDSAFE_IOSAPP_SERVICE_CPP
+#define REDSAFE_IOSAPP_SERVICE_CPP
+
 #include <nlohmann/json.hpp>
 
 #include "IOSAPPService.hpp"
@@ -77,3 +80,5 @@ namespace redsafe::apiserver::service::IOSAPP
             };
     }
 }
+
+#endif

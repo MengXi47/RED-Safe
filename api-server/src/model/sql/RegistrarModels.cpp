@@ -12,6 +12,9 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
+#ifndef REDSAFE_REGISTRAR_MODEL_CPP
+#define REDSAFE_REGISTRAR_MODEL_CPP
+
 #include "RegistrarModels.hpp"
 #include "../../util/IOstream.hpp"
 #include "../../util/logger.hpp"
@@ -166,3 +169,5 @@ namespace redsafe::apiserver::model::sql::reg
         }
     }
 }
+
+#endif

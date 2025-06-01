@@ -20,22 +20,38 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 namespace redsafe::apiserver::service::token
 {
+    /**
+     * @brief 創建 Access Token（JWT）
+     */
     class CreateAccessToken
     {
     public:
         /**
-         * \brief 創建 Access_Token 使用 JWT
+         * @brief 創建 Access_Token 使用 JWT
          *
-         *  run start
-         *
-         * \param user_id 使用者 user_id
-         * \return std::string token
+         * @param user_id 使用者 user_id
          */
         explicit CreateAccessToken(std::string_view user_id);
-        // 1 -> 成功, 0 -> 失敗
-        [[nodiscard]] bool start();
+
+        /**
+         * @brief 執行解碼與驗證
+         * @return 0: 驗證通過，並將 AccessToken 存到 token
+         * @return 1: 例外錯誤
+         */
+        [[nodiscard]] int start();
+
+        /**
+         * @brief 取得編碼後的 AccessToken
+         * @return 編碼後的 AccessToken，若未通過驗證則為空字串
+         */
         [[nodiscard]] std::string getAccessToken() const;
+
+        /**
+         * @brief 取得驗證失敗時的錯誤訊息
+         * @return 失敗時的錯誤描述
+         */
         [[nodiscard]] std::string getErrorMessage() const;
+
     private:
         std::string user_id;
         std::string token;
@@ -43,34 +59,35 @@ namespace redsafe::apiserver::service::token
     };
 
     /**
-     * \brief 解碼並驗證 Access Token（JWT）
-     *
-     * 用於解析傳入的 JWT，並驗證簽名與有效期
+     * @brief 解碼並驗證 Access Token（JWT）
      */
     class DecodeAccessToken
     {
     public:
         /**
-         * \brief 建構子，接收要解碼的 JWT 字串
-         * \param tokenStr 要解碼的 Access Token
+         * @brief 建構子，接收要解碼的 JWT 字串
+         * @param tokenStr 要解碼的 Access Token
          */
         explicit DecodeAccessToken(std::string_view tokenStr);
 
         /**
-         * \brief 執行解碼與驗證
-         * \return true 若驗證通過，並將 user_id 存到 payloadUserId；false 表示驗證失敗
+         * @brief 執行解碼與驗證
+         * @return 0: 驗證通過，並將 user_id 存到 payloadUserId
+         * @return 1: 表示驗證失敗 過時
+         * @return 2: Token 中缺少 sub 欄位
+         * @return 3: 例外錯誤
          */
-        [[nodiscard]] bool start();
+        [[nodiscard]] int start();
 
         /**
-         * \brief 取得解碼後的 user_id (sub claim)
-         * \return std::string 解碼後的 user_id，若未通過驗證則為空字串
+         * @brief 取得解碼後的 user_id (sub claim)
+         * @return std::string 解碼後的 user_id，若未通過驗證則為空字串
          */
         [[nodiscard]] std::string getUserId() const;
 
         /**
-         * \brief 取得驗證失敗時的錯誤訊息
-         * \return std::string 解驗證失敗時的錯誤描述
+         * @brief 取得驗證失敗時的錯誤訊息
+         * @return std::string 解驗證失敗時的錯誤描述
          */
         [[nodiscard]] std::string getErrorMessage() const;
 
@@ -80,7 +97,48 @@ namespace redsafe::apiserver::service::token
         std::string errorMessage;
     };
 
+    /**
+     * @brief 創建 Refresh Token（JWT）
+     */
+    class CreateRefreshToken
+    {
+    public:
+        /**
+         * @brief 創建 Refresh_Token 使用 JWT
+         *
+         * @param user_id 使用者 user_id
+         */
+        explicit CreateRefreshToken(std::string_view user_id);
 
+        /**
+         * @brief 執行解碼與驗證
+         * @return 0: 創建成功，並將 RefreshToken 存到 token
+         * @return 1: RandomHex 錯誤
+         */
+        [[nodiscard]] int start();
+
+        /**
+        * @brief 取得編碼後的 RefreshToken
+        * @return 編碼後的 RefreshToken
+        */
+        [[nodiscard]] std::string getRefreshToken() const;
+
+        /**
+         * @brief 如果 `start()` 遇到例外，這裡會有錯誤訊息
+         * @return 失敗時的錯誤描述；產生成功則為空字串
+         */
+        [[nodiscard]] std::string getErrorMessage() const;
+    private:
+        /**
+         * @brief 將 Refresh 寫入資料庫
+         * @return 0:
+         * @return 1:
+         */
+        int WriteToSQL();
+        std::string user_id;
+        std::string token;
+        std::string errorMessage;
+    };
 }
 
 #endif
