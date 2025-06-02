@@ -17,12 +17,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 對所有 fade-element 元素啟用監聽
   fadeEls.forEach(el => observer.observe(el));
-
-  // 直接用程式碼改三張流程區塊的圖片大小
-  const flowImages = document.querySelectorAll('#flow .flow-item img');
-  if(flowImages.length >= 3){
-    flowImages[0].style.width = '200px';  // 第一張圖片大小
-    flowImages[1].style.width = '200px';  // 第二張圖片大小
-    flowImages[2].style.width = '200px';  // 第三張圖片大小
-  }
 });

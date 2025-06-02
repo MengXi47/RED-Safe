@@ -22,7 +22,7 @@ const ERROR_MESSAGES = {
 };
 
 function getErrorMessage(code) {
-  return ERROR_MESSAGES[code] || `未知錯誤（代碼：${code}）`;
+  return ERROR_MESSAGES[code] || `Unknown error (code: ${code})`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -30,13 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const goTopBtn = document.getElementById('goTopBtn');
   if (goTopBtn) {
     goTopBtn.addEventListener('click', () => {
-      // 判斷是否在首頁
-      const path = window.location.pathname.replace(/\/+$/, ''); // 移除結尾斜線
+      const path = window.location.pathname.replace(/\/+$/, '');
       if (path === '' || path === '/index.html') {
-        // 在首頁，滾動到頂端
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        // 不在首頁，跳轉首頁
         window.location.href = '/';
       }
     });
@@ -47,11 +44,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const signModal = document.getElementById('signModal');
   const closeModal = document.getElementById('closeModal');
   if (signBtn && signModal && closeModal) {
-    signBtn.onclick = () => signModal.style.display = 'block';
+    signBtn.onclick = () => signModal.style.display = 'flex';
     closeModal.onclick = () => signModal.style.display = 'none';
     window.onclick = (e) => {
       if (e.target === signModal) signModal.style.display = 'none';
     };
+
   }
 
   // --- 登入/註冊 tab 切換 ---
@@ -77,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loginForm.onsubmit = async (e) => {
       e.preventDefault();
       if (signControl === 0) {
-        alert('目前為測試模式，僅測試不發送API');
+        alert('Test mode: submit prevented, API not sent.');
         return;
       }
       const email = loginForm.querySelector('input[type="text"], input[type="email"]').value;
@@ -91,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (!response.ok) {
-          alert('HTTP 錯誤：' + response.status);
+          alert('HTTP error: ' + response.status);
           return;
         }
 
@@ -99,16 +97,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof body.error_code !== "undefined") {
           if (body.error_code === 0) {
-            alert('登入成功！\n用戶名稱：' + body.user_name + '\nEmail：' + body.email);
+            alert('Login successful!\nUser name: ' + body.user_name + '\nEmail: ' + body.email);
             signModal.style.display = 'none';
           } else {
             alert(getErrorMessage(body.error_code));
           }
         } else {
-          alert('伺服器回傳格式異常');
+          alert('Server response format error');
         }
       } catch (err) {
-        alert('登入失敗，請檢查網路或稍後再試');
+        alert('Login failed, please check your network or try again later.');
       }
     };
 
@@ -116,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
     registerForm.onsubmit = async (e) => {
       e.preventDefault();
       if (signControl === 0) {
-        alert('目前為測試模式，僅測試不發送API');
+        alert('Test mode: submit prevented, API not sent.');
         return;
       }
       const inputs = registerForm.querySelectorAll('input');
@@ -125,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const password = inputs[2].value;
       const confirm = inputs[3].value;
       if (password !== confirm) {
-        alert('兩次密碼輸入不一致');
+        alert('The two passwords do not match.');
         return;
       }
       try {
@@ -136,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (!response.ok) {
-          alert('HTTP 錯誤：' + response.status);
+          alert('HTTP error: ' + response.status);
           return;
         }
 
@@ -144,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof body.error_code !== "undefined") {
           if (body.error_code === 0) {
-            alert('註冊成功，請登入');
+            alert('Registration successful, please login.');
             loginTab.classList.add('active');
             signupTab.classList.remove('active');
             loginForm.classList.add('active');
@@ -153,10 +151,10 @@ document.addEventListener('DOMContentLoaded', () => {
             alert(getErrorMessage(body.error_code));
           }
         } else {
-          alert('伺服器回傳格式異常');
+          alert('Server response format error');
         }
       } catch (err) {
-        alert('註冊失敗，請檢查網路或稍後再試');
+        alert('Registration failed, please check your network or try again later.');
       }
     };
   }
