@@ -24,6 +24,7 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 
 #include "../../config.hpp"
 
@@ -448,6 +449,11 @@ namespace redsafe::apiserver::util
         return {hexBuf.data()};
     }
 
+    /**
+     * @brief  將明文雜湊
+     * @param  str  明文
+     * @return Argon2id 雜湊字串
+     */
     [[nodiscard]] inline std::string HASH(std::string_view str)
     {
         if (sodium_init() < 0)
@@ -478,6 +484,21 @@ namespace redsafe::apiserver::util
                    str.data(),
                    str.size()
                ) == 0;
+    }
+
+    /**
+     * @brief 以 SHA‑256 產生固定十六進位雜湊；同字串每次結果都一致
+     *
+     * @param input 任意明文字串
+     * @return std::string 64 個大寫 hex 字元
+     */
+    [[nodiscard]] inline std::string SHA256_HEX(const std::string_view input)
+    {
+        unsigned char digest[SHA256_DIGEST_LENGTH];
+        SHA256(reinterpret_cast<const unsigned char*>(input.data()),
+               input.size(),
+               digest);
+        return toHex(digest, SHA256_DIGEST_LENGTH);
     }
 }
 

@@ -16,13 +16,11 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #define REDSAFE_USER_SERVICE_CPP
 
 #include <nlohmann/json.hpp>
-#include <sodium.h>
-#include <vector>
 
 #include "UserService.hpp"
 #include "TokenService.hpp"
-#include "../model/sql/FinderModels.hpp"
-#include "../model/sql/RegistrarModels.hpp"
+#include "../model/sql/read.hpp"
+#include "../model/sql/write.hpp"
 #include "../model/validator/ParameterValidation.hpp"
 #include "../util/IOstream.hpp"
 #include "../util/logger.hpp"
@@ -30,8 +28,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 namespace redsafe::apiserver::service::User
 {
     util::Result signin::start(
-        const std::string& email,
-        const std::string& password)
+        const std::string &email,
+        const std::string &password)
     {
         using namespace model::validator;
         using namespace model::sql::fin;
@@ -109,6 +107,11 @@ namespace redsafe::apiserver::service::User
             }
         };
     }
+
+    // util::Result signin::start(const std::string &refreshtoken)
+    // {
+    //     /// TODO: 使用 Refresh Token 登入邏輯
+    // }
 
     util::Result signup::start(
             const std::string& email,

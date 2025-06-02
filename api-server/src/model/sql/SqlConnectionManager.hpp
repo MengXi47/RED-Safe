@@ -113,6 +113,30 @@ namespace redsafe::apiserver::model::sql
                     "FROM edge_users "
                     "WHERE user_id = $1"
                 );
+                conn.prepare(
+                    "reg_refretoken",
+                    "INSERT INTO auth "
+                    "(refresh_token_hash, user_id, expires_at) "
+                    "VALUES ($1, $2, NOW() + INTERVAL '30 days')"
+                );
+                conn.prepare(
+                    "chk_refretoken",
+                    "WITH upd AS ( "
+                    "    UPDATE auth "
+                    "    SET    expires_at = NOW() + INTERVAL '30 days' "
+                    "    WHERE  refresh_token_hash = $1 "
+                    "      AND  revoked = FALSE "
+                    "      AND  expires_at > NOW() "
+                    "    RETURNING user_id "
+                    "), rev AS ( "
+                    "    UPDATE auth "
+                    "    SET    revoked = TRUE "
+                    "    WHERE  refresh_token_hash = $1 "
+                    "      AND  revoked = FALSE "
+                    "      AND  expires_at <= NOW() "
+                    ") "
+                    "SELECT user_id FROM upd"
+                );
             }
             catch (const pqxx::sql_error &e)
             {

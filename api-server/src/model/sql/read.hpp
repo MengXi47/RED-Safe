@@ -58,6 +58,23 @@ namespace redsafe::apiserver::model::sql::fin
         // 成功回傳Edge 序號 ALL 否則空字串
         [[nodiscard]] static std::vector<std::string> start(std::string_view user_id);
     };
+
+    // 檢查並刷新 Refresh Token（若仍有效則續期 +30 天，回傳 user_id）
+    class RefreshTokenRefresher : public ConnectionManager
+    {
+    public:
+        /**
+         * @brief 驗證 refresh_token_hash 是否有效
+         *        若有效：更新 expires_at = NOW() + INTERVAL '30 days' 並回傳 user_id
+         *        若過期：自動 revoked = TRUE，回傳空字串
+         *
+         * @param refresh_token_hash Token 雜湊
+         * @return std::string 有效則為 user_id，否則為空字串
+         */
+        [[nodiscard]] static std::string start(std::string_view refresh_token_hash);
+    };
+
+
 }
 
 #endif

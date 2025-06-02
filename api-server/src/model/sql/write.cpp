@@ -15,7 +15,7 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #ifndef REDSAFE_REGISTRAR_MODEL_CPP
 #define REDSAFE_REGISTRAR_MODEL_CPP
 
-#include "RegistrarModels.hpp"
+#include "write.hpp"
 #include "../../util/IOstream.hpp"
 #include "../../util/logger.hpp"
 
@@ -166,6 +166,32 @@ namespace redsafe::apiserver::model::sql::reg
                     << "EdgeIOSBindingRegistrar::unbind failed: "
                     << e.what();
             return 1;
+        }
+    }
+
+    int RefreshTokenRegistrar::start(std::string_view refresh_token_hash, std::string_view user_id)
+    {
+        try
+        {
+            pqxx::work tx{connection()};
+            const auto r = tx.exec(
+                pqxx::prepped("reg_refretoken"),
+                pqxx::params{refresh_token_hash, user_id}
+            );
+            if (r.affected_rows() == 0)
+                return 1;                       // 已存在或未插入
+            tx.commit();
+            return 0;                           // 成功
+        }
+        catch (const std::exception& e)
+        {
+            util::cerr()
+                << "RefreshTokenRegistrar::start failed: "
+                << e.what() << '\n';
+            util::log(util::LogFile::server, util::Level::ERROR)
+                << "RefreshTokenRegistrar::start failed: "
+                << e.what();
+            return 2;                           // SQL 錯誤
         }
     }
 }

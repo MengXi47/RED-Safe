@@ -16,6 +16,7 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #define REDSAFE_TOKEN_SERVICE_CPP
 
 #include "TokenService.hpp"
+#include "../model/sql/write.hpp"
 #include "../util/IOstream.hpp"
 #include "../util/logger.hpp"
 
@@ -125,6 +126,9 @@ namespace redsafe::apiserver::service::token
         try
         {
             token = util::generateRandomHex(32);
+            if (model::sql::reg::RefreshTokenRegistrar::start(
+            util::SHA256_HEX(token), user_id) != 0)
+                throw std::runtime_error("Failed to reg refresh token in sql");
         }
         catch (const std::exception& e)
         {

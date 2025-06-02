@@ -113,7 +113,7 @@ namespace redsafe::apiserver::service::token
         /**
          * @brief 執行解碼與驗證
          * @return 0: 創建成功，並將 RefreshToken 存到 token
-         * @return 1: RandomHex 錯誤
+         * @return 1: 錯誤
          */
         [[nodiscard]] int start();
 

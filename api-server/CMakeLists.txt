@@ -15,8 +15,8 @@ add_executable(RED_Safe_apiserver
     src/service/EdgeService.cpp
     src/service/IOSAPPService.cpp
     src/service/UserService.cpp
-    src/model/sql/RegistrarModels.cpp
-    src/model/sql/FinderModels.cpp
+        src/model/sql/write.cpp
+        src/model/sql/read.cpp
     src/service/TokenService.cpp
 )
 

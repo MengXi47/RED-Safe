@@ -15,7 +15,7 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #ifndef REDSAFE_FINDER_MODEL_CPP
 #define REDSAFE_FINDER_MODEL_CPP
 
-#include "FinderModels.hpp"
+#include "read.hpp"
 #include "../../util/IOstream.hpp"
 #include "../../util/logger.hpp"
 
@@ -134,7 +134,7 @@ namespace redsafe::apiserver::model::sql::fin
             edges.reserve(r.size());
             for (auto row : r)
                 edges.emplace_back(row[0].as<std::string>());
-            return edges;                       // 空表也正常回 []
+            return edges;
         }
         catch (const std::exception& e)
         {
@@ -144,7 +144,32 @@ namespace redsafe::apiserver::model::sql::fin
             util::log(util::LogFile::server, util::Level::ERROR)
                     << "UserEdgeListFinder::FetchEdges failed: "
                     << e.what();
-            return edges;                       // 空表也正常回 []
+            return edges;
+        }
+    }
+
+    std::string RefreshTokenRefresher::start(std::string_view refresh_token_hash)
+    {
+        try
+        {
+            pqxx::work tx{connection()};
+            const pqxx::result r = tx.exec(
+                pqxx::prepped("chk_refretoken"),
+                pqxx::params{refresh_token_hash}
+            );
+            if (r.empty())
+                return std::string{};
+            return r[0][0].as<std::string>();
+        }
+        catch (const std::exception& e)
+        {
+            util::cerr()
+                    << "RefreshTokenRefresher::start failed: "
+                    << e.what() << '\n';
+            util::log(util::LogFile::server, util::Level::ERROR)
+                    << "RefreshTokenRefresher::start failed: "
+                    << e.what();
+            return std::string{};
         }
     }
 }

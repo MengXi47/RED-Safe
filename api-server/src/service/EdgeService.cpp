@@ -18,7 +18,7 @@
 #include <nlohmann/json.hpp>
 
 #include "EdgeService.hpp"
-#include "../model/sql/RegistrarModels.hpp"
+#include "../model/sql/write.hpp"
 #include "../model/validator/ParameterValidation.hpp"
 
 namespace redsafe::apiserver::service::edge

@@ -65,6 +65,17 @@ namespace redsafe::apiserver::model::sql::reg
         // 0:成功 1:SQL錯誤
         [[nodiscard]] static int unbind (std::string_view edge_serial_number, std::string_view user_id);
     };
+
+    // Refresh Token 註冊
+    class RefreshTokenRegistrar : public ConnectionManager
+    {
+    public:
+        // 0:成功 1:refresh_token_hash 已存在 2:SQL錯誤
+        [[nodiscard]] static int start(
+            std::string_view refresh_token_hash,
+            std::string_view user_id
+        );
+    };
 }
 
 #endif
