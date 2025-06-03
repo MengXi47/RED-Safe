@@ -62,6 +62,7 @@ namespace redsafe::apiserver::util
         status_code     sc;
         error_code      ec;
         nlohmann::json  body;
+        std::string     token{};
     };
 }
 

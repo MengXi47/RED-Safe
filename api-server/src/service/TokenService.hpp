@@ -17,7 +17,7 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 #include "../util/crypto.hpp"
 #include "../util/response.hpp"
-#include "../../lib/jwt-cpp/jwt.h"
+#include "../lib/jwt-cpp/jwt.h"
 
 namespace redsafe::apiserver::service::token
 {

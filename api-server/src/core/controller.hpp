@@ -32,7 +32,24 @@ namespace redsafe::apiserver
         response handle_request();
 
     private:
-        static response make_response(int status_code, const json &j);
+    	/**
+		 * @brief 建立 JSON 回應，並可選擇加入 Set‑Cookie
+		 *
+		 * @param status_code HTTP 狀態碼
+		 * @param j           要回傳的 JSON 物件
+		 * @return response   Boost.Beast HTTP 回應
+		 */
+    	static response make_response(int status_code, const json& j);
+
+        /**
+		 * @brief 建立 JSON 回應，並可選擇加入 Set‑Cookie
+		 *
+		 * @param status_code HTTP 狀態碼
+		 * @param j           要回傳的 JSON 物件
+		 * @param cookie      若非空字串，將寫入 "Set-Cookie" 標頭
+		 * @return response   Boost.Beast HTTP 回應
+		 */
+        static response make_response(int status_code, const json& j, std::string_view cookie);
 
         http::request<http::string_body> req_;
     };

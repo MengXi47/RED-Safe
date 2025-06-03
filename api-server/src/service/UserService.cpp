@@ -102,9 +102,9 @@ namespace redsafe::apiserver::service::User
             util::error_code::Success,
             json{
                 {"user_name", user_name},
-                {"access_token", AT.getAccessToken()},
-                {"refresh_token", RT.getRefreshToken()}
-            }
+                {"access_token", AT.getAccessToken()}
+            },
+            RT.getRefreshToken()
         };
     }
 
