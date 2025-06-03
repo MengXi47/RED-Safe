@@ -158,7 +158,11 @@ namespace redsafe::apiserver::model::sql::fin
                 pqxx::params{refresh_token_hash}
             );
             if (r.empty())
+            {
+                tx.commit();
                 return std::string{};
+            }
+            tx.commit();
             return r[0][0].as<std::string>();
         }
         catch (const std::exception& e)

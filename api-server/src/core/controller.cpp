@@ -19,6 +19,7 @@
 #include "../service/EdgeService.hpp"
 #include "../service/IOSAPPService.hpp"
 #include "../service/UserService.hpp"
+#include "../service/TokenService.hpp"
 #include "../util/logger.hpp"
 #include "../util/response.hpp"
 
@@ -33,9 +34,9 @@ namespace redsafe::apiserver
     {
         static const std::unordered_map<
             std::string,
-            std::function<util::Result(const json&)>> handlers =
+            std::function<util::Result(const json&, const std::string&)>> handlers =
         {
-            {"/edge/signup", [this](const json& body)
+            {"/edge/signup", [this](const json& body, const std::string&)
             {
                 if (!body.contains("serial_number") || !body.contains("version"))
                     return util::Result{
@@ -50,7 +51,7 @@ namespace redsafe::apiserver
                 );
             }},
 
-            {"/user/signup", [this](const json& body)
+            {"/user/signup", [this](const json& body, const std::string&)
             {
                 if (!body.contains("email")     ||
                     !body.contains("user_name") ||
@@ -67,7 +68,7 @@ namespace redsafe::apiserver
                     body.value("password", std::string{}));
             }},
 
-            {"/user/signin", [this](const json& body)
+            {"/user/signin", [this](const json& body, const std::string&)
             {
                 if (!body.contains("email") || !body.contains("password"))
                     return util::Result{
@@ -81,7 +82,7 @@ namespace redsafe::apiserver
                     body.value("password", std::string{}));
             }},
 
-            {"/ios/signup", [this](const json& body)
+            {"/ios/signup", [this](const json& body, const std::string&)
             {
                 if (!body.contains("user_id") || !body.contains("apns_token"))
                     return util::Result{
@@ -98,7 +99,7 @@ namespace redsafe::apiserver
                 );
             }},
 
-            {"/ios/bind", [this](const json& body)
+            {"/ios/bind", [this](const json& body, const std::string&)
             {
                 if (!body.contains("user_id") || !body.contains("serial_number"))
                     return util::Result{
@@ -107,13 +108,13 @@ namespace redsafe::apiserver
                         json{}
                     };
 
-                return service::User::Bind::bind(
+                return service::User::Binding::bind(
                     body.value("serial_number", std::string{}),
                     body.value("user_id", std::string{})
                 );
             }},
 
-            {"/ios/unbind", [this](const json& body)
+            {"/ios/unbind", [this](const json& body, const std::string&)
             {
                 if (!body.contains("user_id") || !body.contains("serial_number"))
                     return util::Result{
@@ -122,10 +123,22 @@ namespace redsafe::apiserver
                         json{}
                     };
 
-                return service::User::Bind::unbind(
+                return service::User::Binding::unbind(
                     body.value("serial_number", std::string{}),
                     body.value("user_id", std::string{})
                 );
+            }},
+
+            {"/auth/refresh", [this](const json&, const std::string& refreshtoken)
+            {
+                if (refreshtoken.empty())
+                    return util::Result{
+                        util::status_code::BadRequest,
+                        util::error_code::Missing_refresh_token,
+                        json{}
+                    };
+
+                return service::token::CheckAndRefreshRefreshToken::run(refreshtoken);
             }}
         };
 
@@ -141,14 +154,38 @@ namespace redsafe::apiserver
             }
             catch ([[maybe_unused]] nlohmann::json::parse_error& e)
             {
-                return make_response(400, {{"status", "error"}, {"message", "Invalid JSON"}});
+                return make_response(
+                    static_cast<int>(util::status_code::BadRequest),
+                    json{{"error_code", static_cast<int>(util::error_code::Invalid_JSON)}});
             }
-            ResponseBody = it->second(req_body);
+
+            /// 從 Authorization 標頭取 token（若有）
+            std::string authToken;
+            if (req_.base().count("Authorization"))
+            {
+                const auto authHeader = std::string(req_.base().at("Authorization"));
+                if (constexpr std::string_view prefix = "Bearer ";
+                    authHeader.size() > prefix.size() &&
+                    authHeader.substr(0, prefix.size())
+                    == prefix)
+                {
+                    authToken = authHeader.substr(prefix.size());
+                    // trim whitespace (可選)
+                    const auto l = authToken.find_first_not_of(" \t");
+                    const auto r = authToken.find_last_not_of(" \t");
+                    if (l != std::string::npos)
+                        authToken = authToken.substr(l, r - l + 1);
+                    else
+                        authToken.clear();
+                }
+            }
+            ResponseBody = it->second(req_body, authToken);
         }
         else
-            return make_response(404, {{"status", "error"}, {"message", "Unknown endpoint"}});
+            return make_response(
+                static_cast<int>(util::status_code::NotFound),
+                json{{"error_code", static_cast<int>(util::error_code::Unknown_endpoint)}});
 
-        // ReSharper disable once CppRedundantCastExpression
         ResponseBody.body["error_code"] = static_cast<int>(ResponseBody.ec);
         return make_response(static_cast<int>(ResponseBody.sc), ResponseBody.body);
     }

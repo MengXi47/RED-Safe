@@ -15,14 +15,18 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #ifndef REDSAFE_TOKEN_SERVICE_CPP
 #define REDSAFE_TOKEN_SERVICE_CPP
 
+#include <nlohmann/json.hpp>
+
 #include "TokenService.hpp"
 #include "../model/sql/write.hpp"
+#include "../model/sql/read.hpp"
 #include "../util/IOstream.hpp"
+#include "../util/response.hpp"
 #include "../util/logger.hpp"
 
 namespace redsafe::apiserver::service::token
 {
-    CreateAccessToken::CreateAccessToken(std::string_view user_id)
+    CreateAccessToken::CreateAccessToken(const std::string_view user_id)
         : user_id(user_id)
     {
     }
@@ -31,15 +35,15 @@ namespace redsafe::apiserver::service::token
     {
         try
         {
-            const std::string AES_user_id = util::AESManager::instance().encrypt(user_id);
             token = jwt::create()
                 .set_issuer("RED-Safe")
-                .set_subject(AES_user_id)
+                .set_subject(util::AESManager::instance().encrypt(user_id))
                 .set_issued_at(std::chrono::system_clock::now())
                 .set_expires_at(
                     std::chrono::system_clock::now() +
                     std::chrono::seconds{600})
-                .sign(jwt::algorithm::hs256{util::SecretManager::instance().getSecret()});
+                .sign(jwt::algorithm::hs256{
+                    util::SecretManager::instance().getSecret()});
         }
         catch (const std::exception& e)
         {
@@ -75,7 +79,8 @@ namespace redsafe::apiserver::service::token
             // 先檢查是否含有 exp 欄位並檢查過期時間
             if (decoded.has_expires_at())
             {
-                if (const auto expTime = decoded.get_expires_at(); std::chrono::system_clock::now() > expTime)
+                if (const auto expTime = decoded.get_expires_at();
+                    std::chrono::system_clock::now() > expTime)
                 {
                     errorMessage = "Token 已過期";
                     return 1;
@@ -84,7 +89,8 @@ namespace redsafe::apiserver::service::token
 
             // 驗證 HS256 簽章與 issuer
             jwt::verify()
-                .allow_algorithm(jwt::algorithm::hs256{util::SecretManager::instance().getSecret()})
+                .allow_algorithm(jwt::algorithm::hs256{
+                    util::SecretManager::instance().getSecret()})
                 .with_issuer("RED-Safe")
                 .verify(decoded);
 
@@ -126,9 +132,7 @@ namespace redsafe::apiserver::service::token
         try
         {
             token = util::generateRandomHex(32);
-            if (model::sql::reg::RefreshTokenRegistrar::start(
-            util::SHA256_HEX(token), user_id) != 0)
-                throw std::runtime_error("Failed to reg refresh token in sql");
+            WriteToSQL();
         }
         catch (const std::exception& e)
         {
@@ -148,9 +152,49 @@ namespace redsafe::apiserver::service::token
         return errorMessage;
     }
 
-    int CreateRefreshToken::WriteToSQL()
+    void CreateRefreshToken::WriteToSQL() const
     {
-        return 1;
+        if (model::sql::reg::RefreshTokenRegistrar::start(
+            util::SHA256_HEX(token), user_id) != 0)
+            throw std::runtime_error("Failed to reg refresh token in sql");
+    }
+
+    util::Result CheckAndRefreshRefreshToken::run(const std::string& refreshtoken)
+    {
+        using json = nlohmann::json;
+
+        const std::string user_id =
+            model::sql::fin::RefreshTokenRefresher::start(
+                util::SHA256_HEX(refreshtoken));
+
+        if (user_id.empty())
+        {
+            return util::Result{
+                util::status_code::Unauthorized,
+                util::error_code::RefreshToken_Expired,
+                json{}
+            };
+        }
+
+        // 3. 產生新的 Access Token
+        CreateAccessToken at(user_id);
+        if (at.start() != 0)
+        {
+            util::cerr() << at.getErrorMessage();
+            util::log(util::LogFile::server, util::Level::ERROR)
+                << at.getErrorMessage();
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+        }
+
+        return util::Result{
+            util::status_code::Success,
+            util::error_code::Success,
+            json{{"access_token", at.getAccessToken()}}
+        };
     }
 }
 

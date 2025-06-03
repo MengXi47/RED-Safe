@@ -108,11 +108,6 @@ namespace redsafe::apiserver::service::User
         };
     }
 
-    // util::Result signin::start(const std::string &refreshtoken)
-    // {
-    //     /// TODO: 使用 Refresh Token 登入邏輯
-    // }
-
     util::Result signup::start(
             const std::string& email,
             const std::string& user_name,
@@ -183,7 +178,7 @@ namespace redsafe::apiserver::service::User
         };
     }
 
-    util::Result Bind::bind(const std::string &serial_number, const std::string &user_id)
+    util::Result Binding::bind(const std::string &serial_number, const std::string &user_id)
     {
         using namespace model::validator;
         using namespace model::sql::reg;
@@ -219,7 +214,7 @@ namespace redsafe::apiserver::service::User
         };
     }
 
-    util::Result Bind::unbind(const std::string &serial_number, const std::string &user_id)
+    util::Result Binding::unbind(const std::string &serial_number, const std::string &user_id)
     {
         using namespace model::validator;
         using namespace model::sql::reg;

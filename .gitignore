@@ -9,6 +9,7 @@ build/
 
 #
 cmake-build-debug/
+cmake-build-release/
 
 #
 .idea/
@@ -18,6 +19,8 @@ test/
 venv/
 
 data/
+
+.clang-format
 
 pytorch/*/model/
 

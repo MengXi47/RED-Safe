@@ -16,6 +16,7 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #define REDSAFE_TOKEN_SERVICE_HPP
 
 #include "../util/crypto.hpp"
+#include "../util/response.hpp"
 #include "../../lib/jwt-cpp/jwt.h"
 
 namespace redsafe::apiserver::service::token
@@ -131,13 +132,30 @@ namespace redsafe::apiserver::service::token
     private:
         /**
          * @brief 將 Refresh 寫入資料庫
-         * @return 0:
-         * @return 1:
          */
-        int WriteToSQL();
+        void WriteToSQL() const;
         std::string user_id;
         std::string token;
         std::string errorMessage;
+    };
+
+    /**
+     * @brief check Refresh Token 是否過期或被註銷
+     */
+    class CheckAndRefreshRefreshToken
+    {
+    public:
+        /**
+         * @brief 執行解碼與驗證
+         * @return util::Result
+         */
+        [[nodiscard]] static util::Result run(const std::string& refreshtoken);
+
+        /// 禁止拷貝和移動
+        CheckAndRefreshRefreshToken(const CheckAndRefreshRefreshToken&)             = delete;
+        CheckAndRefreshRefreshToken(CheckAndRefreshRefreshToken&&)                  = delete;
+        CheckAndRefreshRefreshToken& operator=(const CheckAndRefreshRefreshToken&)  = delete;
+        CheckAndRefreshRefreshToken& operator=(CheckAndRefreshRefreshToken&&)       = delete;
     };
 }
 

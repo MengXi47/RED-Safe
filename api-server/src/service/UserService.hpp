@@ -31,11 +31,6 @@ namespace redsafe::apiserver::service::User
     class signin
     {
     public:
-        // template<typename T>
-        // signin(T&& email, T&& password)
-        //     : email(std::forward<T>(email))
-        //     , password(std::forward<T>(password)) {}
-
         /**
          * @brief 使用 emal 和 password 登入
          * @param email
@@ -44,15 +39,9 @@ namespace redsafe::apiserver::service::User
         [[nodiscard]] static util::Result start(
             const std::string &email,
             const std::string &password);
-
-        /**
-         * @brief 使用 RefreshToken 登入
-         * @param refreshtoken
-         */
-        [[nodiscard]] static util::Result start(const std::string &refreshtoken);
     };
 
-    class Bind
+    class Binding
     {
     public:
         [[nodiscard]] static util::Result bind   (const std::string &serial_number, const std::string &user_id);
