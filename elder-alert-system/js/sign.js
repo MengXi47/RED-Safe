@@ -1,4 +1,4 @@
-let signControl = 1; // 0=只阻止表單送出, 1=發送API
+let signControl = 0; // 0=只阻止表單送出, 1=發送API
 
 const ERROR_MESSAGES = {
   0:   "Success",
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const password = loginForm.querySelector('input[type="password"]').value;
 
       try {
-        const response = await fetch('https://127.0.0.1/user/signin', {
+        const response = await fetch('https://api.redsafe-tw.com/user/signin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, password })
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
           alert('Server response format error');
         }
       } catch (err) {
-        alert(err);
+        alert('Login failed, please check your network or try again later.');
       }
     };
 
@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       try {
-        const response = await fetch('https://127.0.0.1/user/signup', {
+        const response = await fetch('https://api.redsafe-tw.com/user/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, user_name, password })
