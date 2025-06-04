@@ -1,7 +1,3 @@
-# train_incremental.py
-"""
-增量學習（養AI）訓練腳本：每次有新資料時，載入舊模型，混合新舊資料訓練，防止遺忘
-"""
 import torch
 from torch.utils.data import DataLoader, TensorDataset, random_split
 import numpy as np
@@ -10,83 +6,148 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 import os
-import random
+import gc
+import sys
 
 from models import FallLSTM
 import config
 
+def validate_config():
+    assert os.path.exists(config.OLD_DATA_DIR), "舊資料路徑不存在"
+    assert os.path.exists(config.NEW_DATA_DIR), "新資料路徑不存在"
+    assert config.BATCH_SIZE > 0, "批次大小需為正整數"
+    assert config.EPOCHS > 0, "訓練週期需為正整數"
 
-def load_data_for_incremental(old_data_path, new_data_path, replay_ratio=0.5):
-    """
-    載入舊資料與新資料，並根據 replay_ratio 混合
-    """
+def balance_data(X, y):
+    """資料平衡：混合過採樣與欠採樣"""
+    from collections import Counter
+    from sklearn.utils import resample
+
+    class_counts = Counter(y)
+    max_count = max(class_counts.values())
+    X_balanced, y_balanced = [], []
+    for cls in class_counts:
+        idxs = np.where(y == cls)[0]
+        X_cls = X[idxs]
+        y_cls = y[idxs]
+        X_res, y_res = resample(X_cls, y_cls, replace=True, n_samples=max_count, random_state=42)
+        X_balanced.append(X_res)
+        y_balanced.append(y_res)
+    return np.concatenate(X_balanced), np.concatenate(y_balanced)
+
+def load_data_for_incremental(old_data_path, new_data_path, replay_ratio=0.5, balance=True):
+    """載入並混合新舊資料"""
     X_old = np.load(os.path.join(old_data_path, "X.npy"), allow_pickle=True)
     y_old = np.load(os.path.join(old_data_path, "y.npy"), allow_pickle=True)
-    X_new = np.load(os.path.join(new_data_path, "X_new.npy"), allow_pickle=True)
-    y_new = np.load(os.path.join(new_data_path, "y_new.npy"), allow_pickle=True)
+    X_new = np.load(os.path.join(new_data_path, "X.npy"), allow_pickle=True)
+    y_new = np.load(os.path.join(new_data_path, "y.npy"), allow_pickle=True)
 
-    # 經驗回放：隨機抽取部分舊資料
     n_replay = int(len(X_new) * replay_ratio)
     idxs = np.random.choice(len(X_old), min(n_replay, len(X_old)), replace=False)
-    X_replay = X_old[idxs]
-    y_replay = y_old[idxs]
+    X_replay, y_replay = X_old[idxs], y_old[idxs]
 
-    # 合併新舊資料
-    X_total = np.concatenate([X_new, X_replay], axis=0)
-    y_total = np.concatenate([y_new, y_replay], axis=0)
-    return X_total, y_total
+    X_total = np.concatenate([X_new, X_replay])
+    y_total = np.concatenate([y_new, y_replay])
 
+    return balance_data(X_total, y_total) if balance else (X_total, y_total)
+
+def evaluate(model, dataloader, criterion, device):
+    """驗證集評估"""
+    model.eval()
+    val_loss, correct, total = 0, 0, 0
+    with torch.no_grad():
+        for inputs, labels in dataloader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            val_loss += loss.item() * inputs.size(0)
+            _, predicted = torch.max(outputs, 1)
+            correct += (predicted == labels).sum().item()
+            total += labels.size(0)
+            del inputs, labels, outputs, loss, predicted
+    val_loss /= total
+    return val_loss, correct / total
 
 def main():
+    validate_config()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"🚀 使用裝置: {device}")
 
-    # 1. 載入舊模型
-    model = FallLSTM(input_size=config.INPUT_SIZE).to(device)
+    # 模型初始化與安全載入
+    model = FallLSTM(config.INPUT_SIZE).to(device)
     if os.path.exists(config.MODEL_PATH):
-        model.load_state_dict(torch.load(config.MODEL_PATH, map_location=device))
-        print("🔄 載入已存在的模型，進行增量學習")
+        print("🔄 載入既有模型進行增量學習")
+        try:
+            model.load_state_dict(torch.load(config.MODEL_PATH, map_location=device))
+        except Exception as e:
+            print(f"⚠️ 模型載入失敗: {e}\n將以新模型訓練")
     else:
-        print("⚠️ 未找到舊模型，將從頭開始訓練")
+        print("⚠️ 建立新模型")
 
-    # 2. 載入新資料與 replay 舊資料
-    # 新資料請先經過資料前處理，存成 X_new.npy, y_new.npy
-    X, y = load_data_for_incremental(config.DATA_DIR, config.DATA_DIR, replay_ratio=0.5)
-    X_tensor = torch.tensor(X, dtype=torch.float32)
-    y_tensor = torch.tensor(y, dtype=torch.long)
-    dataset = TensorDataset(X_tensor, y_tensor)
-    train_loader = DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True)
+    # 資料準備（修正路徑）
+    try:
+        X, y = load_data_for_incremental(config.OLD_DATA_DIR, config.NEW_DATA_DIR)
+    except FileNotFoundError as e:
+        print(f"❌ 資料載入失敗: {e}")
+        sys.exit(1)
 
-    # 3. 訓練參數
+    dataset = TensorDataset(torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long))
+
+    # 資料切分
+    train_size = int(0.8 * len(dataset))
+    val_size = len(dataset) - train_size
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+
+    train_loader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=config.BATCH_SIZE)
+
+    # 訓練設定
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)  # 學習率較低，避免新資料洗掉舊知識
+    optimizer = optim.Adam(model.parameters(), lr=0.0001, weight_decay=1e-4)
     writer = SummaryWriter(log_dir=config.LOG_DIR)
 
-    # 4. 增量訓練
-    EPOCHS = 20  # 增量訓練可設較少 epoch
-    for epoch in range(EPOCHS):
-        print(f"\n⏳ 增量訓練第 {epoch + 1}/{EPOCHS} 次...")
+    # 訓練循環
+    for epoch in range(config.EPOCHS):
+        print(f"\n⏳ Epoch {epoch + 1}/{config.EPOCHS}")
         model.train()
-        train_loss = 0
-        train_loop = tqdm(train_loader, desc=f"增量訓練 Epoch {epoch + 1}", leave=False)
-        for inputs, labels in train_loop:
+        train_loss, train_correct, total = 0, 0, 0
+
+        for inputs, labels in tqdm(train_loader, desc="Training"):
             inputs, labels = inputs.to(device), labels.to(device)
+
             optimizer.zero_grad()
             outputs = model(inputs)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            train_loss += loss.item()
-            train_loop.set_postfix(loss=loss.item())
-        train_loss /= len(train_loader)
-        writer.add_scalar("Loss/Incremental_Train", train_loss, epoch + 1)
-        print(f"📊 增量訓練 Epoch {epoch + 1} | Train Loss: {train_loss:.4f}")
 
-    # 5. 儲存新模型
+            train_loss += loss.item() * inputs.size(0)
+            _, predicted = torch.max(outputs, 1)
+            train_correct += (predicted == labels).sum().item()
+            total += labels.size(0)
+
+            del inputs, labels, outputs, loss, predicted
+
+        torch.cuda.empty_cache()
+        gc.collect()
+
+        train_loss /= total
+        train_acc = train_correct / total
+
+        val_loss, val_acc = evaluate(model, val_loader, criterion, device)
+
+        writer.add_scalars('Loss', {'train': train_loss, 'val': val_loss}, epoch)
+        writer.add_scalars('Accuracy', {'train': train_acc, 'val': val_acc}, epoch)
+
+        print(f"📊 Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
+        print(f"🎯 Train Acc: {train_acc:.4f} | Val Acc: {val_acc:.4f}")
+
     torch.save(model.state_dict(), config.MODEL_PATH)
-    print("✅ 增量學習完成，模型已更新。")
-    writer.close()
+    print(f"✅ 模型已儲存至 {config.MODEL_PATH}")
 
+    writer.close()
+    del model, dataset, train_loader, val_loader
+    torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     main()

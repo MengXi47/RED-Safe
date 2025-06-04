@@ -28,7 +28,7 @@ def main():
 
     # 載入資料
     print("📂 載入資料中...")
-    X, y = load_dataset(config.DATA_DIR)
+    X, y = load_dataset(config.OLD_DATA_DIR)
     X_tensor = torch.tensor(X, dtype=torch.float32)
     y_tensor = torch.tensor(y, dtype=torch.long)
 

@@ -4,11 +4,11 @@ import mediapipe as mp
 import multiprocessing as mp_pool
 from tqdm import tqdm
 import numpy as np
-import math
+import gc
 
 SEQ_LEN = 30  # 每段序列長度
+MAX_RETRIES = 3  # 影片讀取重試次數
 
-# 角度特徵設定（6組重要關節）
 ANGLE_PAIRS = [
     ("LEFT_HIP", "LEFT_KNEE", "LEFT_ANKLE"),
     ("RIGHT_HIP", "RIGHT_KNEE", "RIGHT_ANKLE"),
@@ -18,17 +18,14 @@ ANGLE_PAIRS = [
     ("RIGHT_SHOULDER", "LEFT_SHOULDER", "LEFT_HIP"),
 ]
 
-# 資料夾設定
 BASE_DIR = r"D:\fall_detection\data\raw"
-FALL_DIR = os.path.join(BASE_DIR, "fall")
-NORMAL_DIR = os.path.join(BASE_DIR, "normal")
 PROCESSED_DIR = r"D:\fall_detection\data\processed"
-os.makedirs(FALL_DIR, exist_ok=True)
-os.makedirs(NORMAL_DIR, exist_ok=True)
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
+# 全域 pose 物件，每個進程只會初始化一次
+pose = None
+
 def calculate_angle(a, b, c):
-    """計算三點夾角（b為頂點）"""
     a = np.array([a.x, a.y, a.z])
     b = np.array([b.x, b.y, b.z])
     c = np.array([c.x, c.y, c.z])
@@ -38,69 +35,75 @@ def calculate_angle(a, b, c):
     angle = np.arccos(np.clip(cosine_angle, -1.0, 1.0))
     return np.degrees(angle)
 
+def init_worker():
+    global pose
+    mp_pose = mp.solutions.pose
+    pose = mp_pose.Pose(
+        static_image_mode=False,
+        model_complexity=1,
+        smooth_landmarks=True,
+        enable_segmentation=False,
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5
+    )
+
 def process_video(video_path_label):
-    """
-    處理單一影片：萃取每段SEQ_LEN幀的關鍵點＋角度特徵序列
-    """
-    try:
-        import mediapipe as mp
-        mp_pose = mp.solutions.pose
-        pose = mp_pose.Pose(
-            static_image_mode=False,
-            model_complexity=2,
-            smooth_landmarks=True,
-            enable_segmentation=False,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.7
-        )
-        video_path, label = video_path_label
+    global pose
+    video_path, label = video_path_label
+    sequence_data = []
+    for attempt in range(MAX_RETRIES):
         cap = cv2.VideoCapture(video_path)
-        sequence_data = []
+        if not cap.isOpened():
+            cap.release()
+            continue
         sequence = []
+        frame_count = 0
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
+            frame_count += 1
+            if frame_count % 2 != 0:
+                continue
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             result = pose.process(rgb)
             if result.pose_landmarks:
-                keypoints = []
-                for lm in result.pose_landmarks.landmark:
-                    keypoints.extend([lm.x, lm.y, lm.z, lm.visibility])
-                # 加入6個關節角度特徵
-                angle_feats = []
+                keypoints = np.zeros(33*4 + 6, dtype=np.float32)
+                for i, lm in enumerate(result.pose_landmarks.landmark):
+                    keypoints[i*4] = lm.x
+                    keypoints[i*4+1] = lm.y
+                    keypoints[i*4+2] = lm.z
+                    keypoints[i*4+3] = lm.visibility
                 landmarks = result.pose_landmarks.landmark
-                for a, b, c in ANGLE_PAIRS:
-                    idx_a = getattr(mp_pose.PoseLandmark, a).value
-                    idx_b = getattr(mp_pose.PoseLandmark, b).value
-                    idx_c = getattr(mp_pose.PoseLandmark, c).value
+                for idx, (a, b, c) in enumerate(ANGLE_PAIRS):
+                    idx_a = getattr(mp.solutions.pose.PoseLandmark, a).value
+                    idx_b = getattr(mp.solutions.pose.PoseLandmark, b).value
+                    idx_c = getattr(mp.solutions.pose.PoseLandmark, c).value
                     angle = calculate_angle(landmarks[idx_a], landmarks[idx_b], landmarks[idx_c])
-                    angle_feats.append(angle)
-                keypoints.extend(angle_feats)
+                    keypoints[33*4 + idx] = angle
                 sequence.append(keypoints)
-            if len(sequence) == SEQ_LEN:
-                sequence_data.append((sequence, label))
-                sequence = []
+                if len(sequence) == SEQ_LEN:
+                    sequence_data.append((np.array(sequence, dtype=np.float32), label))
+                    sequence = []
+            # 主動釋放 frame 記憶體
+            del frame, rgb, result
         cap.release()
-        pose.close()
-        return sequence_data
-    except Exception as e:
-        print(f"❌ 影片處理失敗：{video_path_label[0]}，錯誤：{e}")
-        return []
+        del cap
+        gc.collect()  # 強制垃圾回收
+        if len(sequence_data) > 0:
+            break
+    return sequence_data
 
 def collect_videos():
-    """
-    收集所有fall/normal影片路徑與標籤
-    """
     video_label_pairs = []
+    extensions = ('.mp4', '.avi', '.mov', '.mkv', '.flv')
     for label_name in ['fall', 'normal']:
         folder = os.path.join(BASE_DIR, label_name)
         label = 1 if label_name == 'fall' else 0
         if not os.path.exists(folder):
-            print(f"⚠️ 資料夾不存在：{folder}")
             continue
         for file in os.listdir(folder):
-            if file.lower().endswith(('.mp4', '.avi', '.mov', '.mkv')):
+            if file.lower().endswith(extensions):
                 video_path = os.path.join(folder, file)
                 video_label_pairs.append((video_path, label))
     return video_label_pairs
@@ -113,17 +116,24 @@ if __name__ == "__main__":
     X, y = [], []
 
     print("🧠 開始多核處理影片並提取關鍵點＋角度序列...")
-    with mp_pool.Pool(processes=os.cpu_count()) as pool:
-        for result in tqdm(pool.imap_unordered(process_video, video_list), total=len(video_list), desc="🚀 處理進度"):
-            for sequence, label in result:
-                X.append(sequence)
-                y.append(label)
+    with mp_pool.Pool(
+        processes=os.cpu_count(),
+        initializer=init_worker,
+        maxtasksperchild=10  # 每個子進程處理10支影片後自動重啟，防止記憶體累積[3]
+    ) as pool:
+        chunksize = max(1, len(video_list) // (os.cpu_count() * 4))
+        results = pool.imap_unordered(process_video, video_list, chunksize=chunksize)
+        with tqdm(total=len(video_list), desc="🚀 處理進度", unit="video") as pbar:
+            for result in results:
+                for sequence, label in result:
+                    X.append(sequence)
+                    y.append(label)
+                pbar.update(1)
 
     print(f"\n✅ 完成！總共處理 {len(X)} 筆序列，標籤數：{len(y)}")
 
-    X = np.array(X)
-    y = np.array(y)
+    X = np.stack(X, axis=0).astype(np.float32)
+    y = np.array(y, dtype=np.int32)
     np.save(os.path.join(PROCESSED_DIR, "X_new.npy"), X)
     np.save(os.path.join(PROCESSED_DIR, "y_new.npy"), y)
-
     print(f"💾 成功儲存 X.npy {X.shape}，y.npy {y.shape} 至：{PROCESSED_DIR}")

@@ -4,3 +4,5 @@ opencv-python>=4.5
 numpy>=1.19
 tqdm>=4.60
 tensorboard>=2.8
+
+yt-dlp~=2025.5.22

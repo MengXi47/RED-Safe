@@ -20,9 +20,11 @@ def main():
         print(f"\n==== 第 {i+1} 輪流程開始 ====")
         run_script(BATH_EXTRACT_PATH)
         for j in range(train_times):
+            print(f"\n==== 第 {j+1} 訓練腳本 ====")
             run_script(INCREMENTAL_PATH)
-        print(f"----- 完成第 {i+1} 輪流程，等待 1 分鐘進入下一輪 -----")
-        time.sleep(60)
+            time.sleep(5)
+        print(f"----- 完成第 {i+1} 輪流程，等待 10 秒進入下一輪 -----")
+        time.sleep(10)
     print("=== 全部流程執行完畢 ===")
 
 if __name__ == "__main__":
