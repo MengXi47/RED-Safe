@@ -37,7 +37,7 @@ def download_videos(url_list, save_dir, prefix="video"):
 
 if __name__ == "__main__":
     # 你的API金鑰
-    API_KEY = "AIzaSyB59nhS4uyEPcMNzD17eiGVON2S2iTbXSw"  # ←請填入你自己的API Key
+    API_KEY = ""  # ←請填入你自己的API Key
 
     # 關鍵字自動搜尋
     fall_urls = search_youtube_videos(API_KEY, "跌倒影片", max_results=20)
