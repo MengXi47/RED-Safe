@@ -9,7 +9,7 @@
 本專案名為 **RED-Safe API Server**，主要功能包括：
 1. **使用者註冊/登入**：
     - [`/user/signup`](user.md#使用者註冊)： 使用者註冊
-    - [`/user/signin`](user.md#使用者登入)：
+    - [`/user/signin`](user.md#使用者登入)： 使用者登入
 2. **邊緣裝置管理**：
     - [`/edge/signup`](edge.md#邊緣裝置註冊)：邊緣裝置註冊
 3. **iOS 裝置綁定**：
