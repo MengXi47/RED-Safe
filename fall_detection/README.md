@@ -25,6 +25,7 @@ fall_detection/
 │   ├── raw/               # 原始影片資料夾
 │   └── processed/         # 特徵資料（X.npy, y.npy）
 └── README.md
+
 安裝需求
 Python 3.8+
 
