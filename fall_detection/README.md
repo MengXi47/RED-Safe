@@ -28,7 +28,8 @@ numpy
 安裝指令：
 
 ```bash
-pip install requirements.txt
+pip install -r requirements.txt
+
 ```
 
 # 使用說明
