@@ -1,4 +1,4 @@
-let signControl = 0; // 0=只阻止表單送出, 1=發送API
+let signControl = 1; // 0=只阻止表單送出, 1=發送API
 
 const ERROR_MESSAGES = {
   0:   "Success",
@@ -89,6 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (!response.ok) {
+          alert('Server response body:', body);
           alert('HTTP error: ' + response.status);
           return;
         }
@@ -97,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof body.error_code !== "undefined") {
           if (body.error_code === 0) {
-            alert('Login successful!\nUser name: ' + body.user_name + '\nEmail: ' + body.email);
+            alert('Login successful!\nUser name: ' + body.user_name + '\nEmail: ' + body.email + '\n' + body);
             signModal.style.display = 'none';
           } else {
             alert(getErrorMessage(body.error_code));
@@ -142,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof body.error_code !== "undefined") {
           if (body.error_code === 0) {
-            alert('Registration successful, please login.');
+            alert('Registration successful, please login.' + '\n' + body);
             loginTab.classList.add('active');
             signupTab.classList.remove('active');
             loginForm.classList.add('active');
