@@ -2,7 +2,7 @@
 本專案是一套基於 Python、MediaPipe 與 PyTorch 開發的跌倒偵測人工智慧系統。
 系統能即時從攝影機畫面擷取人體骨架特徵，並利用自訓練的 AI 模型（LSTM）判斷是否發生跌倒事件。
 
-#本專案設計重點：
+# 本專案設計重點：
 
 主流程簡潔：main.py 僅負責用訓練好的 AI 模型進行跌倒判斷，不做其他複雜流程。
 
@@ -33,28 +33,35 @@ pip install requirements.txt
 
 # 使用說明
 1. 資料準備與特徵擷取
-將跌倒與正常影片放入 data/raw/fall、data/raw/normal
-執行特徵擷取：
+
+   將跌倒與正常影片放入 data/raw/fall、data/raw/normal
+   執行特徵擷取：
 ```bash
 python batch_extract.py
 ```
-3. 模型訓練
+2. 模型訓練
+
+   訓練完成後會在 model/ 產生 best_model.pth。
+   同時可以將原先放在 data/raw/fall、data/raw/normal 中的影片刪除。
 ```bash
 python train.py
 ```
-訓練完成後會在 model/ 產生 best_model.pth。
-4. 日常訓練
-將影片放入 data/raw/fall、data/raw/normal
-執行自動腳本
+
+3. 日常訓練
+   
+   將影片放入 data/raw/fall、data/raw/normal
+   執行自動腳本
 ```bash
 python auto_run.py
 ```
-5. 即時推論（跌倒偵測）
+4. 即時推論（跌倒偵測）
+
+   系統會自動啟動攝影機，擷取骨架與角度特徵，集滿一段序列即送入 AI 模型判斷。
+   螢幕上會即時顯示「Detecting...」或「Danger!」等狀態。
 ```bash
 python main.py
 ```
-系統會自動啟動攝影機，擷取骨架與角度特徵，集滿一段序列即送入 AI 模型判斷。
-螢幕上會即時顯示「Detecting...」或「Danger!」等狀態。
+   
 # 參數調整
 可於 config.py 設定模型路徑、輸入維度、序列長度等參數。
 ANGLE_PAIRS 可自訂用於角度特徵的關節組合。
