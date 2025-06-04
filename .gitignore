@@ -1,9 +1,6 @@
 # macOS 隱藏檔
 .DS_Store
 
-# 忽略 VS Code 設定資料夾
-.vscode/
-
 # 忽略所有 build 目錄
 build/
 
@@ -21,11 +18,6 @@ venv/
 data/
 
 .clang-format
-
-pytorch/*/model/
-
-# DerivedData
-DerivedData/
 
 # Xcode user data
 *.xcuserstate
