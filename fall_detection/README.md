@@ -12,19 +12,7 @@
 
 目錄結構
 
-fall_detection/
-├── main.py                # 即時推論主程式（僅用AI模型判斷跌倒）
-├── train.py               # 模型訓練腳本
-├── batch_extract.py       # 影片特徵擷取腳本
-├── models.py              # LSTM模型架構
-├── config.py              # 參數設定（如模型路徑、輸入維度等）
-├── utils/                 # 資料處理與輔助工具
-├── model/
-│   └── best_model.pth     # 訓練完成的AI模型權重
-├── data/
-│   ├── raw/               # 原始影片資料夾
-│   └── processed/         # 特徵資料（X.npy, y.npy）
-└── README.md
+![fall_detection](fall_detection/ReadMe_converted.jpg)
 
 安裝需求
 Python 3.8+
