@@ -145,6 +145,13 @@ namespace redsafe::apiserver::model::sql
                     ") "
                     "SELECT user_id FROM upd"
                 );
+                conn.prepare(
+                    "revoke_refretoken",
+                    "UPDATE auth "
+                    "SET revoked = TRUE "
+                    "WHERE refresh_token_hash = $1"
+                );
+
             }
             catch (const pqxx::sql_error &e)
             {

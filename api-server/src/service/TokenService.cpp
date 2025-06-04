@@ -16,6 +16,7 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #define REDSAFE_TOKEN_SERVICE_CPP
 
 #include <nlohmann/json.hpp>
+#include <utility>
 
 #include "TokenService.hpp"
 #include "../model/sql/write.hpp"
@@ -26,6 +27,8 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 namespace redsafe::apiserver::service::token
 {
+    using json = nlohmann::json;
+
     CreateAccessToken::CreateAccessToken(const std::string_view user_id)
         : user_id(user_id)
     {
@@ -64,8 +67,8 @@ namespace redsafe::apiserver::service::token
         return errorMessage;
     }
 
-    DecodeAccessToken::DecodeAccessToken(std::string_view tokenStr)
-        : tokenValue(tokenStr)
+    DecodeAccessToken::DecodeAccessToken(std::string tokenStr)
+        : tokenValue(std::move(tokenStr))
     {
     }
 
@@ -74,7 +77,7 @@ namespace redsafe::apiserver::service::token
         try
         {
             // Decode the JWT token string (without immediate verification)
-            const auto decoded = jwt::decode(tokenValue.data(), tokenValue.size());
+            const auto decoded = jwt::decode(tokenValue);
 
             // 先檢查是否含有 exp 欄位並檢查過期時間
             if (decoded.has_expires_at())
@@ -108,7 +111,12 @@ namespace redsafe::apiserver::service::token
         {
             // Capture any decoding or verification errors
             errorMessage = e.what();
-            return 3;
+            std::cerr << e.what() << std::endl;
+            if (errorMessage == "invalid signature")
+                return 3;
+            if (errorMessage == "invalid token supplied")
+                return 4;
+            return 5;
         }
     }
 
@@ -161,8 +169,6 @@ namespace redsafe::apiserver::service::token
 
     util::Result CheckAndRefreshRefreshToken::run(const std::string& refreshtoken)
     {
-        using json = nlohmann::json;
-
         const std::string user_id =
             model::sql::fin::RefreshTokenRefresher::start(
                 util::SHA256_HEX(refreshtoken));
@@ -194,6 +200,24 @@ namespace redsafe::apiserver::service::token
             util::status_code::Success,
             util::error_code::Success,
             json{{"access_token", at.getAccessToken()}}
+        };
+    }
+
+    util::Result RevokeRefreshToken::run(const std::string &refreshtoken)
+    {
+
+        if (model::sql::reg::RefreshTokenRevoke::start(
+            util::SHA256_HEX(refreshtoken)) == 1)
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+
+        return util::Result{
+            util::status_code::Success,
+            util::error_code::Success,
+            json{}
         };
     }
 }

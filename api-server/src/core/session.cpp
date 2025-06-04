@@ -65,7 +65,7 @@ namespace redsafe::apiserver
         catch (const std::exception& e)
         {
 #ifndef NDEBUG
-            util::cout() << e.what() << '\n';
+            // util::cout() << e.what() << '\n';
 #endif
             util::cout() << util::current_timestamp()
                 << "nginx disconnection: "

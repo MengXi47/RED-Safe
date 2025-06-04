@@ -194,6 +194,30 @@ namespace redsafe::apiserver::model::sql::reg
             return 2;                           // SQL 錯誤
         }
     }
+
+    int RefreshTokenRevoke::start(std::string_view refresh_token_hash)
+    {
+        try
+        {
+            pqxx::work tx{connection()};
+            const auto r = tx.exec(
+                pqxx::prepped("revoke_refretoken"),
+                pqxx::params{refresh_token_hash}
+            );
+            tx.commit();
+            return 0;
+        }
+        catch (const std::exception& e)
+        {
+            util::cerr()
+                << "RefreshTokenRevoke::start failed: "
+                << e.what() << '\n';
+            util::log(util::LogFile::server, util::Level::ERROR)
+                << "RefreshTokenRevoke::start failed: "
+                << e.what();
+            return 1;                           // SQL 錯誤
+        }
+    }
 }
 
 #endif

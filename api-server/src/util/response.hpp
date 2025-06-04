@@ -51,7 +51,7 @@ namespace redsafe::apiserver::util
         Missing_email_or_user_name_or_password  = 402,
         Missing_email_or_password               = 403,
         Missing_user_id_or_apns_token           = 404,
-        Missing_user_id_or_serial_number        = 405,
+        Missing_serial_number                   = 405,
         Missing_refresh_token                   = 406,
         Missing_access_token                    = 407,
         Internal_server_error                   = 500,
@@ -59,6 +59,8 @@ namespace redsafe::apiserver::util
         Refresh_Token_invalid                   = 502,
         Access_Token_expired                    = 503,
         Access_Token_invalid                    = 504,
+        JWT_invalid_signature                   = 505,
+        JWT_invalid_token_supplied              = 506
     };
 
     struct Result

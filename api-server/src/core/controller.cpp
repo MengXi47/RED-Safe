@@ -21,7 +21,7 @@
 #include "../service/UserService.hpp"
 #include "../service/TokenService.hpp"
 #include "../util/logger.hpp"
-#include "../util/IOstream.hpp"
+// #include "../util/IOstream.hpp"
 #include "../util/response.hpp"
 
 namespace redsafe::apiserver
@@ -154,17 +154,24 @@ namespace redsafe::apiserver
                 try
                 {
                     const json body = json::parse(req.body());
-                    if (!body.contains("user_id") || !body.contains("serial_number"))
+                    if (!body.contains("serial_number"))
                         return util::Result{
                             util::status_code::BadRequest,
-                            util::error_code::Missing_user_id_or_serial_number,
+                            util::error_code::Missing_serial_number,
                             json{}
+                        };
+
+                    const auto access_token = get_access_token(req);
+
+                    if (access_token.empty())
+                        return util::Result{
+                            util::status_code::BadRequest,
+                            util::error_code::Access_Token_invalid,
                         };
 
                     return service::User::Binding::bind(
                         body.value("serial_number", std::string{}),
-                        body.value("user_id", std::string{})
-                    );
+                        access_token);
                 }
                 catch ([[maybe_unused]] nlohmann::json::parse_error& e)
                 {
@@ -181,17 +188,24 @@ namespace redsafe::apiserver
                 try
                 {
                     const json body = json::parse(req.body());
-                    if (!body.contains("user_id") || !body.contains("serial_number"))
+                    if (!body.contains("serial_number"))
                         return util::Result{
                             util::status_code::BadRequest,
-                            util::error_code::Missing_user_id_or_serial_number,
+                            util::error_code::Missing_serial_number,
                             json{}
+                        };
+
+                    const auto access_token = get_access_token(req);
+
+                    if (access_token.empty())
+                        return util::Result{
+                            util::status_code::BadRequest,
+                            util::error_code::Access_Token_invalid,
                         };
 
                     return service::User::Binding::unbind(
                         body.value("serial_number", std::string{}),
-                        body.value("user_id", std::string{})
-                    );
+                        access_token);
                 }
                 catch ([[maybe_unused]] nlohmann::json::parse_error& e)
                 {
@@ -215,7 +229,21 @@ namespace redsafe::apiserver
                     };
 
                 return service::token::CheckAndRefreshRefreshToken::run(refresh_token);
-            }}
+            }},
+
+            {"/auth/out", [](const http::request<http::string_body>& req)
+            {
+                const auto refresh_token = get_refresh_token(req);
+
+                if (refresh_token.empty())
+                    return util::Result{
+                        util::status_code::BadRequest,
+                        util::error_code::Missing_refresh_token,
+                        json{}
+                    };
+
+                return service::token::RevokeRefreshToken::run(refresh_token);
+            }},
         };
 
         static const std::unordered_map<

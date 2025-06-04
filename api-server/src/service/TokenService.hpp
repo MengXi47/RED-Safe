@@ -69,14 +69,15 @@ namespace redsafe::apiserver::service::token
          * @brief 建構子，接收要解碼的 JWT 字串
          * @param tokenStr 要解碼的 Access Token
          */
-        explicit DecodeAccessToken(std::string_view tokenStr);
+        explicit DecodeAccessToken(std::string tokenStr);
 
         /**
          * @brief 執行解碼與驗證
          * @return 0: 驗證通過，並將 user_id 存到 payloadUserId
          * @return 1: 表示驗證失敗 過時
          * @return 2: Token 中缺少 sub 欄位
-         * @return 3: 例外錯誤
+         * @return 3: invalid signature 簽名錯誤
+         * @return 4: 例外錯誤
          */
         [[nodiscard]] int start();
 
@@ -93,19 +94,19 @@ namespace redsafe::apiserver::service::token
         [[nodiscard]] std::string getErrorMessage() const;
 
     private:
-        std::string_view tokenValue;
+        std::string tokenValue;
         std::string payloadUserId;
         std::string errorMessage;
     };
 
     /**
-     * @brief 創建 Refresh Token（JWT）
+     * @brief 創建 Refresh Token
      */
     class CreateRefreshToken
     {
     public:
         /**
-         * @brief 創建 Refresh_Token 使用 JWT
+         * @brief 創建 Refresh_Token
          *
          * @param user_id 使用者 user_id
          */
@@ -156,6 +157,25 @@ namespace redsafe::apiserver::service::token
         CheckAndRefreshRefreshToken(CheckAndRefreshRefreshToken&&)                  = delete;
         CheckAndRefreshRefreshToken& operator=(const CheckAndRefreshRefreshToken&)  = delete;
         CheckAndRefreshRefreshToken& operator=(CheckAndRefreshRefreshToken&&)       = delete;
+    };
+
+    /**
+     * @brief Refresh Token 註銷
+     */
+    class RevokeRefreshToken
+    {
+    public:
+        /**
+         * @brief 執行註銷
+         * @return util::Result
+         */
+        [[nodiscard]] static util::Result run(const std::string& refreshtoken);
+
+        /// 禁止拷貝和移動
+        RevokeRefreshToken(const RevokeRefreshToken&)             = delete;
+        RevokeRefreshToken(RevokeRefreshToken&&)                  = delete;
+        RevokeRefreshToken& operator=(const RevokeRefreshToken&)  = delete;
+        RevokeRefreshToken& operator=(RevokeRefreshToken&&)       = delete;
     };
 }
 

@@ -174,8 +174,44 @@ namespace redsafe::apiserver::service::User
         };
     }
 
-    util::Result Binding::bind(const std::string &serial_number, const std::string &user_id)
+    util::Result Binding::bind(const std::string &serial_number, const std::string &access_token)
     {
+        token::DecodeAccessToken decode(access_token);
+        {
+            const auto code = decode.start();
+
+            if (code == 1)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::Access_Token_expired,
+                    json{}
+                };
+            if (code == 2)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::Access_Token_invalid,
+                    json{}
+                };
+            if (code == 3)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::JWT_invalid_signature,
+                    json{}
+                };
+            if (code == 4)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::JWT_invalid_token_supplied,
+                    json{}
+                };
+            if (code == 5)
+                return util::Result{
+                    util::status_code::InternalServerError,
+                    util::error_code::Internal_server_error,
+                    json{}
+                };
+        }
+
         if (!is_vaild_serial_number(serial_number))
             return util::Result{
                 util::status_code::BadRequest,
@@ -183,7 +219,7 @@ namespace redsafe::apiserver::service::User
                 json{}
             };
 
-        if (const auto a = EdgeIOSBindingRegistrar::bind(serial_number, user_id); a == 1)
+        if (const auto a = EdgeIOSBindingRegistrar::bind(serial_number, decode.getUserId()); a == 1)
             return util::Result{
                 util::status_code::Conflict,
                 util::error_code::Binding_already_exists,
@@ -200,14 +236,49 @@ namespace redsafe::apiserver::service::User
             util::status_code::Success,
             util::error_code::Success,
             json{
-                {"serial_number", serial_number},
-                {"user_id", user_id}
+                {"serial_number", serial_number}
             }
         };
     }
 
-    util::Result Binding::unbind(const std::string &serial_number, const std::string &user_id)
+    util::Result Binding::unbind(const std::string &serial_number, const std::string &access_token)
     {
+        token::DecodeAccessToken decode(access_token);
+        {
+            const auto code = decode.start();
+
+            if (code == 1)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::Access_Token_expired,
+                    json{}
+                };
+            if (code == 2)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::Access_Token_invalid,
+                    json{}
+                };
+            if (code == 3)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::JWT_invalid_signature,
+                    json{}
+                };
+            if (code == 4)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::JWT_invalid_token_supplied,
+                    json{}
+                };
+            if (code == 5)
+                return util::Result{
+                    util::status_code::InternalServerError,
+                    util::error_code::Internal_server_error,
+                    json{}
+                };
+        }
+
         if (!is_vaild_serial_number(serial_number))
             return util::Result{
                 util::status_code::BadRequest,
@@ -215,7 +286,8 @@ namespace redsafe::apiserver::service::User
                 json{}
             };
 
-        if (const auto a = EdgeIOSBindingRegistrar::unbind(serial_number, user_id); a == 1)
+        if (const auto a = EdgeIOSBindingRegistrar::unbind(
+            serial_number, decode.getUserId()); a == 1)
             return util::Result{
                 util::status_code::InternalServerError,
                 util::error_code::Internal_server_error,
@@ -226,8 +298,7 @@ namespace redsafe::apiserver::service::User
             util::status_code::Success,
             util::error_code::Success,
             json{
-                    {"serial_number", serial_number},
-                    {"user_id", user_id}
+                    {"serial_number", serial_number}
             }
         };
     }
@@ -251,6 +322,18 @@ namespace redsafe::apiserver::service::User
                     json{}
                 };
             if (code == 3)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::JWT_invalid_signature,
+                    json{}
+                };
+            if (code == 4)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::JWT_invalid_token_supplied,
+                    json{}
+                };
+            if (code == 5)
                 return util::Result{
                     util::status_code::InternalServerError,
                     util::error_code::Internal_server_error,

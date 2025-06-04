@@ -76,6 +76,14 @@ namespace redsafe::apiserver::model::sql::reg
             std::string_view user_id
         );
     };
+
+    // Refresh Token 註銷
+    class RefreshTokenRevoke : public ConnectionManager
+    {
+    public:
+        // 0:成功 1:SQL錯誤
+        [[nodiscard]] static int start(std::string_view refresh_token_hash);
+    };
 }
 
 #endif

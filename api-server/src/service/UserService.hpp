@@ -24,7 +24,7 @@ namespace redsafe::apiserver::service::User
     public:
         [[nodiscard]] static util::Result run(
             const std::string& email,
-            const std::string& username,
+            const std::string& user_name,
             const std::string& password);
     };
 
@@ -44,8 +44,8 @@ namespace redsafe::apiserver::service::User
     class Binding
     {
     public:
-        [[nodiscard]] static util::Result bind   (const std::string &serial_number, const std::string &user_id);
-        [[nodiscard]] static util::Result unbind (const std::string &serial_number, const std::string &user_id);
+        [[nodiscard]] static util::Result bind   (const std::string &serial_number, const std::string &access_token);
+        [[nodiscard]] static util::Result unbind (const std::string &serial_number, const std::string &access_token);
     };
 
     /**
