@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof body.error_code !== "undefined") {
           if (body.error_code === 0) {
-            alert('Login successful!\nUser name: ' + body.user_name + '\nEmail: ' + body.email + '\n' + body);
+            alert('Login successful!\nUser name: ' + body.user_name + '\nEmail: ' + body.email + '\n' + JSON.stringify(body, null, 2));
             signModal.style.display = 'none';
           } else {
             alert(getErrorMessage(body.error_code));
