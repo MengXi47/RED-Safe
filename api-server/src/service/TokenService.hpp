@@ -93,7 +93,7 @@ namespace redsafe::apiserver::service::token
         [[nodiscard]] std::string getErrorMessage() const;
 
     private:
-        std::string tokenValue;
+        std::string_view tokenValue;
         std::string payloadUserId;
         std::string errorMessage;
     };

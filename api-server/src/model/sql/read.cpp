@@ -45,14 +45,64 @@ namespace redsafe::apiserver::model::sql::fin
         }
     }
 
-    std::string UserNameFinder::start(std::string_view email)
+    std::string UserNameFinder::start_by_email(std::string_view email)
     {
         try
         {
             pqxx::work tx{connection()};
             const pqxx::result r = tx.exec(
-                pqxx::prepped("find_user_name"),
+                pqxx::prepped("find_user_name_email"),
                 pqxx::params{email}
+            );
+            if (r.empty())
+                return std::string{};
+            return r[0][0].as<std::string>();
+        }
+        catch (const std::exception& e)
+        {
+            util::cerr()
+                    << "UserNameFinder::start_by_email failed: "
+                    << e.what() << '\n';
+            util::log(util::LogFile::server, util::Level::ERROR)
+                    << "UserNameFinder::start_by_email failed: "
+                    << e.what();
+            return std::string{};
+        }
+    }
+
+    std::string UserNameFinder::start_by_user_id(std::string_view user_id)
+    {
+        try
+        {
+            pqxx::work tx{connection()};
+            const pqxx::result r = tx.exec(
+                pqxx::prepped("find_user_name_userid"),
+                pqxx::params{user_id}
+            );
+            if (r.empty())
+                return std::string{};
+            return r[0][0].as<std::string>();
+        }
+        catch (const std::exception& e)
+        {
+            util::cerr()
+                    << "UserNameFinder::start_by_user_id failed: "
+                    << e.what() << '\n';
+            util::log(util::LogFile::server, util::Level::ERROR)
+                    << "UserNameFinder::start_by_user_id failed: "
+                    << e.what();
+            return std::string{};
+        }
+    }
+
+    std::string UserEmailFinder::start(std::string_view user_id)
+    {
+        try
+        {
+            pqxx::work tx{connection()};
+            const pqxx::result r = tx.exec(
+                pqxx::prepped("find_email"),
+                pqxx::params{user_id}
             );
             if (r.empty())
                 return std::string{};

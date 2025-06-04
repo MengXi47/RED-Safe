@@ -22,7 +22,7 @@ namespace redsafe::apiserver::service::User
     class signup
     {
     public:
-        [[nodiscard]] static util::Result start(
+        [[nodiscard]] static util::Result run(
             const std::string& email,
             const std::string& username,
             const std::string& password);
@@ -36,7 +36,7 @@ namespace redsafe::apiserver::service::User
          * @param email
          * @param password
          */
-        [[nodiscard]] static util::Result start(
+        [[nodiscard]] static util::Result run(
             const std::string &email,
             const std::string &password);
     };
@@ -46,6 +46,25 @@ namespace redsafe::apiserver::service::User
     public:
         [[nodiscard]] static util::Result bind   (const std::string &serial_number, const std::string &user_id);
         [[nodiscard]] static util::Result unbind (const std::string &serial_number, const std::string &user_id);
+    };
+
+    /**
+     * @brief 獲取使用者資訊
+     */
+    class GetUserInformation
+    {
+    public:
+        /**
+         * @param access_token
+         * @return util::Result
+         */
+        [[nodiscard]] static util::Result run(const std::string &access_token);
+
+        /// 禁止拷貝和移動
+        GetUserInformation(const GetUserInformation&)               = delete;
+        GetUserInformation(GetUserInformation&&)                    = delete;
+        GetUserInformation& operator=(const GetUserInformation&)    = delete;
+        GetUserInformation& operator=(GetUserInformation&&)         = delete;
     };
 }
 

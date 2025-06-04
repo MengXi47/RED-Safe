@@ -23,7 +23,7 @@ namespace redsafe::apiserver::model::sql::fin
     class UserIDFinder : public ConnectionManager
     {
     public:
-        // 成功回傳User ID 否則空字串
+        // 成功回傳 User ID 否則空字串
         [[nodiscard]] static std::string start(std::string_view email);
     };
 
@@ -31,8 +31,19 @@ namespace redsafe::apiserver::model::sql::fin
     class UserNameFinder : public ConnectionManager
     {
     public:
-        // 成功回傳User Name 否則空字串
-        [[nodiscard]] static std::string start(std::string_view email);
+        // 成功回傳 User Name 否則空字串
+        [[nodiscard]] static std::string start_by_email(std::string_view email);
+
+        // 成功回傳 User Name 否則空字串
+        [[nodiscard]] static std::string start_by_user_id(std::string_view user_id);
+    };
+
+    // 取得 Email
+    class UserEmailFinder : public ConnectionManager
+    {
+    public:
+        // 成功回傳 Email 否則空字串
+        [[nodiscard]] static std::string start(std::string_view user_id);
     };
 
     // 取得 iOS device ID

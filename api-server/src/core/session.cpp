@@ -50,19 +50,23 @@ namespace redsafe::apiserver
                 buffer_.consume(buffer_.size());
                 co_await http::async_read(socket_, buffer_, req_, boost::asio::use_awaitable);
                 auto raw_req = req_;
+#ifndef NDEBUG
                 util::cout() << util::current_timestamp()
-                    << raw_req.base()["X-Real-IP"] << " " << raw_req.method() << " "
-                    << raw_req.target() << " " << raw_req.body() << '\n';
+                    << req_.base()["X-Real-IP"] << " " << req_.method() << " "
+                    << req_.target() << " " << req_.body() << '\n';
                 util::log(util::LogFile::access, util::Level::INFO)
-                    << raw_req.base()["X-Real-IP"] << " " << raw_req.method() << " "
-                    << raw_req.target() << " " << raw_req.body();
+                    << req_.base()["X-Real-IP"] << " " << req_.method() << " "
+                    << req_.target() << " " << req_.body();
+#endif
                 auto response = std::make_shared<Controller>(req_)->handle_request();
                 co_await http::async_write(socket_, response, boost::asio::use_awaitable);
             }
         }
         catch (const std::exception& e)
         {
-            //util::cout() << e.what() << '\n';
+#ifndef NDEBUG
+            util::cout() << e.what() << '\n';
+#endif
             util::cout() << util::current_timestamp()
                 << "nginx disconnection: "
                 << socket_.remote_endpoint().address().to_string() << ':'

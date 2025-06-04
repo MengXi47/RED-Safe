@@ -70,8 +70,16 @@ namespace redsafe::apiserver::model::sql
                     "SELECT user_id FROM users WHERE email = $1"
                 );
                 conn.prepare(
-                    "find_user_name",
+                    "find_user_name_email",
                     "SELECT user_name FROM users WHERE email = $1"
+                );
+                conn.prepare(
+                    "find_user_name_userid",
+                    "SELECT user_name FROM users WHERE user_id = $1"
+                );
+                conn.prepare(
+                    "find_email",
+                    "SELECT email FROM users WHERE user_id = $1"
                 );
                 conn.prepare(
                     "register_ios_device",

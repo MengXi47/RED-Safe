@@ -74,7 +74,7 @@ namespace redsafe::apiserver::service::token
         try
         {
             // Decode the JWT token string (without immediate verification)
-            const auto decoded = jwt::decode(tokenValue);
+            const auto decoded = jwt::decode(tokenValue.data(), tokenValue.size());
 
             // 先檢查是否含有 exp 欄位並檢查過期時間
             if (decoded.has_expires_at())
@@ -171,7 +171,7 @@ namespace redsafe::apiserver::service::token
         {
             return util::Result{
                 util::status_code::Unauthorized,
-                util::error_code::RefreshToken_Expired,
+                util::error_code::Refresh_Token_Expired,
                 json{}
             };
         }

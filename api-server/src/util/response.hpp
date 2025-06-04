@@ -53,8 +53,12 @@ namespace redsafe::apiserver::util
         Missing_user_id_or_apns_token           = 404,
         Missing_user_id_or_serial_number        = 405,
         Missing_refresh_token                   = 406,
+        Missing_access_token                    = 407,
         Internal_server_error                   = 500,
-        RefreshToken_Expired                    = 501
+        Refresh_Token_Expired                   = 501,
+        Refresh_Token_invalid                   = 502,
+        Access_Token_expired                    = 503,
+        Access_Token_invalid                    = 504,
     };
 
     struct Result

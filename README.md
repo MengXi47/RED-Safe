@@ -1,7 +1,7 @@
 # RED-Safe
 
 
-![RED‑Safe Architecture](docs/RED_Safe_01.jpeg)
+![RED‑Safe Architecture](docs/image/RED_Safe_01.jpeg)
 
 🔗 **[前往 RedSafe 官方網站](https://www.redsafe-tw.com/)**
 
@@ -42,7 +42,7 @@
 
 ## 系統架構
 
-![RED‑Safe Architecture](docs/redsafe‑architecture_v1.png)
+![RED‑Safe Architecture](docs/image/redsafe‑architecture_v1.png)
 
 ---
 

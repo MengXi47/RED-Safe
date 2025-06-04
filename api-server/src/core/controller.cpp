@@ -31,13 +31,13 @@ namespace redsafe::apiserver
     {
     }
 
-    response Controller::handle_request()
+    response Controller::handle_request() const
     {
         static const std::unordered_map<
             std::string,
-            std::function<util::Result(const http::request<http::string_body>&)>> handlers =
+            std::function<util::Result(const http::request<http::string_body>&)>> POST_map =
         {
-            {"/edge/signup", [this](const http::request<http::string_body>& req)
+            {"/edge/signup", [](const http::request<http::string_body>& req)
             {
                 try
                 {
@@ -62,11 +62,9 @@ namespace redsafe::apiserver
                         json{}
                     };
                 }
-
-
             }},
 
-            {"/user/signup", [this](const http::request<http::string_body>& req)
+            {"/user/signup", [](const http::request<http::string_body>& req)
             {
                 try
                 {
@@ -80,7 +78,7 @@ namespace redsafe::apiserver
                             json{}
                         };
 
-                    return service::User::signup::start(
+                    return service::User::signup::run(
                         body.value("email", std::string{}),
                         body.value("user_name", std::string{}),
                         body.value("password", std::string{}));
@@ -95,7 +93,7 @@ namespace redsafe::apiserver
                 }
             }},
 
-            {"/user/signin", [this](const http::request<http::string_body>& req)
+            {"/user/signin", [](const http::request<http::string_body>& req)
             {
                 try
                 {
@@ -108,7 +106,7 @@ namespace redsafe::apiserver
                             json{}
                         };
 
-                    return service::User::signin::start(
+                    return service::User::signin::run(
                         body.value("email", std::string{}),
                         body.value("password", std::string{}));
                 }
@@ -122,7 +120,7 @@ namespace redsafe::apiserver
                 }
             }},
 
-            {"/ios/signup", [this](const http::request<http::string_body>& req)
+            {"/ios/signup", [](const http::request<http::string_body>& req)
             {
                 try
                 {
@@ -151,7 +149,7 @@ namespace redsafe::apiserver
                 }
             }},
 
-            {"/ios/bind", [this](const http::request<http::string_body>& req)
+            {"/ios/bind", [](const http::request<http::string_body>& req)
             {
                 try
                 {
@@ -178,7 +176,7 @@ namespace redsafe::apiserver
                 }
             }},
 
-            {"/ios/unbind", [this](const http::request<http::string_body>& req)
+            {"/ios/unbind", [](const http::request<http::string_body>& req)
             {
                 try
                 {
@@ -205,88 +203,65 @@ namespace redsafe::apiserver
                 }
             }},
 
-            {"/auth/refresh", [this](const http::request<http::string_body>& req)
+            {"/auth/refresh", [](const http::request<http::string_body>& req)
             {
-                std::string refreshtoken;
-                if (req.base().count("Authorization"))
-                {
-                    const auto authHeader = std::string(req.base().at("Authorization"));
-                    if (constexpr std::string_view prefix = "Bearer ";
-                        authHeader.size() > prefix.size() &&
-                        authHeader.substr(0, prefix.size())
-                        == prefix)
-                    {
-                        refreshtoken = authHeader.substr(prefix.size());
-                        const auto l = refreshtoken.find_first_not_of(" \t\r\n");
-                        const auto r = refreshtoken.find_last_not_of(" \t\r\n");
-                        if (l != std::string::npos)
-                            refreshtoken = refreshtoken.substr(l, r - l + 1);
-                        else
-                            refreshtoken.clear();
-                    }
-                    /// 嚴格認證 Refresh Token 64byteHEX
-                    if (refreshtoken.size() != 64 ||
-                        refreshtoken.find_first_not_of("0123456789abcdef")
-                        != std::string::npos)
-                        refreshtoken.clear();
-                }
+                const auto refresh_token = get_refresh_token(req);
 
-                if (refreshtoken.empty())
+                if (refresh_token.empty())
                     return util::Result{
                         util::status_code::BadRequest,
                         util::error_code::Missing_refresh_token,
                         json{}
                     };
 
-                return service::token::CheckAndRefreshRefreshToken::run(refreshtoken);
-                // std::string refreshtoken;
-                // if (req.base().count("Cookie"))
-                // {
-                //     static const auto cookieHeader = std::string(req.base().at("Cookie"));
-                //     static const std::string key = "refresh_token=";
-                //     if (auto pos = cookieHeader.find(key); pos != std::string::npos)
-                //     {
-                //         pos += key.size();
-                //         const auto end = cookieHeader.find(';', pos);
-                //         if (end == std::string::npos)
-                //             refreshtoken = cookieHeader.substr(pos);
-                //         else
-                //             refreshtoken = cookieHeader.substr(pos, end - pos);
-                //         static constexpr char ws[] = " \t\r\n";
-                //         const auto l = refreshtoken.find_first_not_of(ws);
-                //         const auto r = refreshtoken.find_last_not_of(ws);
-                //         if (l != std::string::npos)
-                //             refreshtoken = refreshtoken.substr(l, r - l + 1);
-                //         else
-                //             refreshtoken.clear();
-                //     }
-                // }
-                // // 嚴格認證 Refresh Token 格式：64 字元的小寫十六進位
-                // if (refreshtoken.size() != 64 ||
-                //     refreshtoken.find_first_not_of("0123456789abcdef")
-                //     != std::string::npos)
-                //     refreshtoken.clear();
-                //
-                // if (refreshtoken.empty())
-                //     return util::Result{
-                //         util::status_code::BadRequest,
-                //         util::error_code::Missing_refresh_token,
-                //         json{}
-                //     };
-                //
-                // return service::token::CheckAndRefreshRefreshToken::run(refreshtoken);
+                return service::token::CheckAndRefreshRefreshToken::run(refresh_token);
             }}
+        };
+
+        static const std::unordered_map<
+            std::string,
+            std::function<util::Result(const http::request<http::string_body>&)>> GET_map =
+        {
+            {"/user/all", [this](const http::request<http::string_body>& req)
+            {
+                const auto access_token = get_access_token(req);
+
+                if (access_token.empty())
+                    return util::Result{
+                        util::status_code::BadRequest,
+                        util::error_code::Access_Token_invalid,
+                    };
+
+                return service::User::GetUserInformation::run(access_token);
+            }},
         };
 
         util::Result ResponseBody;
 
-        if (const auto it = handlers.find(req_.target()); it != handlers.end())
-            ResponseBody = it->second(req_);
+        if (req_.method() == http::verb::get)
+        {
+            if (const auto it = GET_map.find(req_.target()); it != GET_map.end())
+                ResponseBody = it->second(req_);
+            else
+                return make_response(
+                    static_cast<int>(util::status_code::NotFound),
+                    json{{"error_code", static_cast<int>(util::error_code::Unknown_endpoint)}});
+        }
+        else if (req_.method() == http::verb::post)
+        {
+            if (const auto it = POST_map.find(req_.target()); it != POST_map.end())
+                ResponseBody = it->second(req_);
+            else
+                return make_response(
+                    static_cast<int>(util::status_code::NotFound),
+                    json{{"error_code", static_cast<int>(util::error_code::Unknown_endpoint)}});
+        }
         else
             return make_response(
                 static_cast<int>(util::status_code::NotFound),
                 json{{"error_code", static_cast<int>(util::error_code::Unknown_endpoint)}});
 
+        /// 組合 response
         ResponseBody.body["error_code"] = static_cast<int>(ResponseBody.ec);
         if (ResponseBody.token.empty())
             return make_response(static_cast<int>(ResponseBody.sc), ResponseBody.body);
@@ -322,5 +297,60 @@ namespace redsafe::apiserver
         res.body() = j.dump();
         res.prepare_payload();
         return res;
+    }
+
+    std::string Controller::get_access_token(const http::request<http::string_body> &req)
+    {
+        std::string accesstoken;
+        if (req.base().count("Authorization"))
+        {
+            const auto authHeader = std::string(req.base().at("Authorization"));
+            if (constexpr std::string_view prefix = "Bearer ";
+                authHeader.size() > prefix.size() &&
+                authHeader.substr(0, prefix.size())
+                == prefix)
+            {
+                accesstoken = authHeader.substr(prefix.size());
+                const auto l = accesstoken.find_first_not_of(" \t\r\n");
+                const auto r = accesstoken.find_last_not_of(" \t\r\n");
+                if (l != std::string::npos)
+                    accesstoken = accesstoken.substr(l, r - l + 1);
+                else
+                    accesstoken.clear();
+            }
+        }
+        return accesstoken;
+    }
+
+    std::string Controller::get_refresh_token(const http::request<http::string_body> &req)
+    {
+        std::string refreshtoken;
+        if (req.base().count("Cookie"))
+        {
+            static const auto cookieHeader = std::string(req.base().at("Cookie"));
+            static const std::string key = "refresh_token=";
+            if (auto pos = cookieHeader.find(key); pos != std::string::npos)
+            {
+                pos += key.size();
+                if (const auto end = cookieHeader.find(';', pos); end == std::string::npos)
+                    refreshtoken = cookieHeader.substr(pos);
+                else
+                    refreshtoken = cookieHeader.substr(pos, end - pos);
+                static constexpr char ws[] = " \t\r\n";
+                const auto l = refreshtoken.find_first_not_of(ws);
+                const auto r = refreshtoken.find_last_not_of(ws);
+                if (l != std::string::npos)
+                    refreshtoken = refreshtoken.substr(l, r - l + 1);
+                else
+                    refreshtoken.clear();
+            }
+        }
+        // 嚴格認證 Refresh Token 格式：64 字元的小寫十六進位
+        if (refreshtoken.size() != 64 ||
+            refreshtoken.find_first_not_of("0123456789abcdef")
+            != std::string::npos)
+            refreshtoken.clear();
+
+        return refreshtoken;
     }
 }

@@ -27,14 +27,15 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 namespace redsafe::apiserver::service::User
 {
-    util::Result signin::start(
+    using namespace model::validator;
+    using namespace model::sql::reg;
+    using namespace model::sql::fin;
+    using json = nlohmann::json;
+
+    util::Result signin::run(
         const std::string &email,
         const std::string &password)
     {
-        using namespace model::validator;
-        using namespace model::sql::fin;
-        using json = nlohmann::json;
-
         if (!is_vaild_email(email))
             return util::Result{
                 util::status_code::BadRequest,
@@ -57,7 +58,7 @@ namespace redsafe::apiserver::service::User
                 json{}
             };
 
-        const auto user_name = UserNameFinder::start(email);
+        const auto user_name = UserNameFinder::start_by_email(email);
         if (user_name.empty())
             return util::Result{
                 util::status_code::InternalServerError,
@@ -108,17 +109,12 @@ namespace redsafe::apiserver::service::User
         };
     }
 
-    util::Result signup::start(
+    util::Result signup::run(
             const std::string& email,
             const std::string& user_name,
             const std::string& password)
     {
-        using namespace model::validator;
-        using namespace model::sql::reg;
-        using namespace model::sql::fin;
-        using json = nlohmann::json;
-
-        if (!is_vaild_email(email))
+       if (!is_vaild_email(email))
             return util::Result{
                 util::status_code::BadRequest,
                 util::error_code::Invalid_email_format,
@@ -180,31 +176,27 @@ namespace redsafe::apiserver::service::User
 
     util::Result Binding::bind(const std::string &serial_number, const std::string &user_id)
     {
-        using namespace model::validator;
-        using namespace model::sql::reg;
-        using json = nlohmann::json;
-
         if (!is_vaild_serial_number(serial_number))
-            return {
+            return util::Result{
                 util::status_code::BadRequest,
                 util::error_code::Invalid_serialnumber_format,
                 json{}
             };
 
         if (const auto a = EdgeIOSBindingRegistrar::bind(serial_number, user_id); a == 1)
-            return {
+            return util::Result{
                 util::status_code::Conflict,
                 util::error_code::Binding_already_exists,
                 json{}
             };
         else if (a == 2)
-            return {
+            return util::Result{
                 util::status_code::InternalServerError,
                 util::error_code::Internal_server_error,
                 json{}
             };
 
-        return {
+        return util::Result{
             util::status_code::Success,
             util::error_code::Success,
             json{
@@ -216,19 +208,15 @@ namespace redsafe::apiserver::service::User
 
     util::Result Binding::unbind(const std::string &serial_number, const std::string &user_id)
     {
-        using namespace model::validator;
-        using namespace model::sql::reg;
-        using json = nlohmann::json;
-
         if (!is_vaild_serial_number(serial_number))
-            return {
+            return util::Result{
                 util::status_code::BadRequest,
                 util::error_code::Invalid_serialnumber_format,
                 json{}
             };
 
         if (const auto a = EdgeIOSBindingRegistrar::unbind(serial_number, user_id); a == 1)
-            return {
+            return util::Result{
                 util::status_code::InternalServerError,
                 util::error_code::Internal_server_error,
                 json{}
@@ -240,6 +228,64 @@ namespace redsafe::apiserver::service::User
             json{
                     {"serial_number", serial_number},
                     {"user_id", user_id}
+            }
+        };
+    }
+
+    util::Result GetUserInformation::run(const std::string &access_token)
+    {
+        token::DecodeAccessToken decode(access_token);
+        {
+            const auto code = decode.start();
+
+            if (code == 1)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::Access_Token_expired,
+                    json{}
+                };
+            if (code == 2)
+                return util::Result{
+                    util::status_code::BadRequest,
+                    util::error_code::Access_Token_invalid,
+                    json{}
+                };
+            if (code == 3)
+                return util::Result{
+                    util::status_code::InternalServerError,
+                    util::error_code::Internal_server_error,
+                    json{}
+                };
+        }
+
+        const auto user_id = decode.getUserId();
+
+        const auto serial_number = UserEdgeListFinder::start(user_id);
+
+        const auto email = UserEmailFinder::start(user_id);
+        if (email.empty())
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+
+        const auto user_name = UserNameFinder::start_by_email(email);
+        if (user_name.empty())
+            return util::Result{
+                util::status_code::InternalServerError,
+                util::error_code::Internal_server_error,
+                json{}
+            };
+
+
+        return util::Result{
+            util::status_code::Success,
+            util::error_code::Success,
+            json{
+                {"user_name", user_name},
+                {"email", email},
+                {"serial_number", serial_number}
             }
         };
     }
