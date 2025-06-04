@@ -12,7 +12,7 @@
 
 目錄結構
 
-![fall_detection](fall_detection/ReadMe_converted.jpeg)
+![fall_detection](ReadMe_converted.jpeg)
 
 安裝需求
 Python 3.8+
