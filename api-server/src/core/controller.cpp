@@ -355,7 +355,7 @@ namespace redsafe::apiserver
         std::string refreshtoken;
         if (req.base().count("Cookie"))
         {
-            static const auto cookieHeader = std::string(req.base().at("Cookie"));
+            const auto cookieHeader = std::string(req.base().at("Cookie"));
             static const std::string key = "refresh_token=";
             if (auto pos = cookieHeader.find(key); pos != std::string::npos)
             {
