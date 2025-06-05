@@ -12,7 +12,8 @@
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
-#include <unordered_map>
+#include <folly/container/F14Map.h>
+#include <folly/String.h>
 #include <functional>
 
 #include "controller.hpp"
@@ -33,8 +34,8 @@ namespace redsafe::apiserver
 
     response Controller::handle_request() const
     {
-        static const std::unordered_map<
-            std::string,
+        static const folly::F14FastMap<
+            folly::StringPiece,
             std::function<util::Result(const http::request<http::string_body>&)>> POST_map =
         {
             {"/edge/signup", [](const http::request<http::string_body>& req)
@@ -246,8 +247,8 @@ namespace redsafe::apiserver
             }},
         };
 
-        static const std::unordered_map<
-            std::string,
+        static const folly::F14FastMap<
+            folly::StringPiece,
             std::function<util::Result(const http::request<http::string_body>&)>> GET_map =
         {
             {"/user/all", [this](const http::request<http::string_body>& req)
@@ -268,7 +269,7 @@ namespace redsafe::apiserver
 
         if (req_.method() == http::verb::get)
         {
-            if (const auto it = GET_map.find(req_.target()); it != GET_map.end())
+            if (const auto it = GET_map.find(folly::StringPiece{req_.target()}); it != GET_map.end())
                 ResponseBody = it->second(req_);
             else
                 return make_response(
@@ -277,7 +278,7 @@ namespace redsafe::apiserver
         }
         else if (req_.method() == http::verb::post)
         {
-            if (const auto it = POST_map.find(req_.target()); it != POST_map.end())
+            if (const auto it = POST_map.find(folly::StringPiece{req_.target()}); it != POST_map.end())
                 ResponseBody = it->second(req_);
             else
                 return make_response(
