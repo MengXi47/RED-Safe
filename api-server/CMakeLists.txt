@@ -15,8 +15,8 @@ add_executable(RED_Safe_apiserver
     src/service/EdgeService.cpp
     src/service/IOSAPPService.cpp
     src/service/UserService.cpp
-        src/model/sql/write.cpp
-        src/model/sql/read.cpp
+    src/model/sql/write.cpp
+    src/model/sql/read.cpp
     src/service/TokenService.cpp
 )
 
@@ -46,7 +46,9 @@ find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(libpqxx CONFIG QUIET)
 find_package(libsodium CONFIG QUIET)
-find_package(folly CONFIG QUIET)
+
+find_package(folly CONFIG REQUIRED)
+find_package(gflags CONFIG REQUIRED)
 
 if (TARGET libpqxx::pqxx)                       # 成功找到
     set(PQXX_TARGET libpqxx::pqxx)
@@ -65,34 +67,17 @@ else ()                                         # 回退到 pkg-config
     find_package(PkgConfig REQUIRED)    
     pkg_check_modules(sodium_PKG QUIET libsodium)
     add_library(sodium_PKG INTERFACE)
-  target_include_directories(sodium_PKG INTERFACE ${sodium_PKG_INCLUDE_DIRS})
-  target_link_libraries(sodium_PKG INTERFACE ${sodium_PKG_LINK_LIBRARIES})
-  set(sodium_PKG_TARGET sodium_PKG)
+    target_include_directories(sodium_PKG INTERFACE ${sodium_PKG_INCLUDE_DIRS})
+    target_link_libraries(sodium_PKG INTERFACE ${sodium_PKG_LINK_LIBRARIES})
+    set(sodium_PKG_TARGET sodium_PKG)
 endif()
 
-if (TARGET folly::folly)
-    set(FOLLY_TARGET folly::folly)
-else()
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(FOLLY QUIET folly)
-    add_library(folly_pkg INTERFACE)
-    target_include_directories(folly_pkg INTERFACE ${FOLLY_INCLUDE_DIRS})
-  target_link_libraries(folly_pkg INTERFACE ${FOLLY_LINK_LIBRARIES})
-  set(FOLLY_TARGET folly_pkg)
-endif()
-
-target_include_directories(RED_Safe_apiserver
-    PRIVATE
-  ${Boost_INCLUDE_DIRS}
-  ${nlohmann_json_INCLUDE_DIRS}
-  $<TARGET_PROPERTY:${FOLLY_TARGET},INTERFACE_INCLUDE_DIRECTORIES>
-)
 target_link_libraries(RED_Safe_apiserver
     PRIVATE
         OpenSSL::Crypto
-      ${Boost_LIBRARIES}
-      ${nlohmann_json_LIBS}
-      ${PQXX_TARGET}
-      ${sodium_PKG_TARGET}
-      ${FOLLY_TARGET}
+        ${Boost_LIBRARIES}
+        ${nlohmann_json_LIBS}
+        ${PQXX_TARGET}
+        ${sodium_PKG_TARGET}
+        Folly::folly
 )
