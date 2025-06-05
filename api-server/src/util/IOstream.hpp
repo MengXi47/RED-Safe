@@ -59,7 +59,7 @@ namespace redsafe::apiserver::util
         {
         }
 
-        explicit cerr(const cout&) = delete;
+        explicit cerr(const cerr&) = delete;
         ~cerr() = default;
 
         template<typename T>
