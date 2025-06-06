@@ -17,17 +17,13 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 #include "../util/response.hpp"
 
-namespace redsafe::apiserver::service::IOSAPP
-{
-    class IOSAPPService
-    {
-    public:
-        [[nodiscard]] static util::Result start(
-            const std::string &ios_device_id,
-            const std::string &user_id,
-            const std::string &apns_token,
-            const std::string &device_name);
-    };
-}
+namespace redsafe::apiserver::service::IOSAPP {
+class IOSAPPService {
+ public:
+  [[nodiscard]] static util::Result start(const std::string &ios_device_id,
+                                          const std::string &user_id, const std::string &apns_token,
+                                          const std::string &device_name);
+};
+}  // namespace redsafe::apiserver::service::IOSAPP
 
 #endif

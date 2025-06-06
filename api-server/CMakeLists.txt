@@ -41,14 +41,13 @@ if(POLICY CMP0167)
 endif()
 
 #-------------------- 依賴 --------------------
-find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(OpenSSL REQUIRED)
-find_package(nlohmann_json REQUIRED)
 find_package(libpqxx CONFIG QUIET)
 find_package(libsodium CONFIG QUIET)
 
 find_package(folly CONFIG REQUIRED)
 find_package(gflags CONFIG REQUIRED)
+find_package(proxygen CONFIG REQUIRED)
 
 if (TARGET libpqxx::pqxx)                       # 成功找到
     set(PQXX_TARGET libpqxx::pqxx)
@@ -75,9 +74,8 @@ endif()
 target_link_libraries(RED_Safe_apiserver
     PRIVATE
         OpenSSL::Crypto
-        ${Boost_LIBRARIES}
-        ${nlohmann_json_LIBS}
         ${PQXX_TARGET}
         ${sodium_PKG_TARGET}
         Folly::folly
+        Proxygen::proxygen
 )

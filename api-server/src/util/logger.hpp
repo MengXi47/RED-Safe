@@ -15,87 +15,76 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 #ifndef REDSAFE_LOGGER_UTIL_HPP
 #define REDSAFE_LOGGER_UTIL_HPP
 
-#include <string_view>
-#include <fstream>
-#include <sstream>
-#include <mutex>
 #include <array>
+#include <fstream>
+#include <mutex>
+#include <sstream>
 #include <string>
+#include <string_view>
 
 #include "timestamp.hpp"
 
-namespace redsafe::apiserver::util
-{
-    enum class Level    { INFO, WARNING, ERROR };
-    enum class LogFile  { server, access };
+namespace redsafe::apiserver::util {
+enum class Level { INFO, WARNING, ERROR };
+enum class LogFile { server, access };
 
-    constexpr std::string_view to_string(const Level lv) noexcept
-    {
-        switch (lv)
-        {
-            case Level::INFO:    return "INFO";
-            case Level::WARNING: return "WARNING";
-            case Level::ERROR:   return "ERROR";
-        }
-        return "UNKNOWN";
-    }
-
-    constexpr std::string_view to_string(const LogFile lg) noexcept
-    {
-        switch (lg)
-        {
-            case LogFile::server: return "server.log";
-            case LogFile::access: return "access.log";
-        }
-        return "UNKNOWN";
-    }
-
-    class LoggerManager
-    {
-    public:
-        static inline std::array<std::ofstream, 2> streams;
-        static inline std::mutex log_mutex;
-
-        static void init(LogFile file, const std::string &path)
-        {
-            std::lock_guard lock(log_mutex);
-            streams[static_cast<size_t>(file)].open(path, std::ios::app);
-        }
-    };
-
-    struct LogStream
-    {
-        Level lv;
-        LogFile file;
-        std::ostringstream oss;
-
-        LogStream(const LogFile file, const Level level) : lv(level), file(file)
-        {
-        }
-
-        template<typename T>
-        LogStream &operator<<(const T &value)
-        {
-            oss << value;
-            return *this;
-        }
-
-        ~LogStream()
-        {
-            std::lock_guard lock(LoggerManager::log_mutex);
-            auto &ofs = LoggerManager::streams[static_cast<size_t>(file)];
-            if (!ofs.is_open())
-                ofs.open(std::string(to_string(file)), std::ios::app);
-            ofs << current_timestamp()
-                << "[" << to_string(lv) << "] "
-                << oss.str() << std::endl;
-        }
-    };
-
-    inline LogStream log(const LogFile file, const Level level)
-    {
-        return LogStream{file, level};
-    }
+constexpr std::string_view to_string(const Level lv) noexcept {
+  switch (lv) {
+    case Level::INFO:
+      return "INFO";
+    case Level::WARNING:
+      return "WARNING";
+    case Level::ERROR:
+      return "ERROR";
+  }
+  return "UNKNOWN";
 }
+
+constexpr std::string_view to_string(const LogFile lg) noexcept {
+  switch (lg) {
+    case LogFile::server:
+      return "server.log";
+    case LogFile::access:
+      return "access.log";
+  }
+  return "UNKNOWN";
+}
+
+class LoggerManager {
+ public:
+  static inline std::array<std::ofstream, 2> streams;
+  static inline std::mutex log_mutex;
+
+  static void init(LogFile file, const std::string &path) {
+    std::lock_guard lock(log_mutex);
+    streams[static_cast<size_t>(file)].open(path, std::ios::app);
+  }
+};
+
+struct LogStream {
+  Level lv;
+  LogFile file;
+  std::ostringstream oss;
+
+  LogStream(const LogFile file, const Level level) : lv(level), file(file) {}
+
+  template <typename T>
+  LogStream &operator<<(const T &value) {
+    oss << value;
+    return *this;
+  }
+
+  ~LogStream() {
+    std::lock_guard lock(LoggerManager::log_mutex);
+    auto &ofs = LoggerManager::streams[static_cast<size_t>(file)];
+    if (!ofs.is_open()) ofs.open(std::string(to_string(file)), std::ios::app);
+    ofs << current_timestamp() << "[" << to_string(lv) << "] " << oss.str() << std::endl;
+  }
+};
+
+inline LogStream log(const LogFile file, const Level level) {
+  return LogStream{file, level};
+}
+}  // namespace redsafe::apiserver::util
 
 #endif

@@ -1,77 +1,72 @@
 /******************************************************************************
-   Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved.
-  
+Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved.
+
    This file and its contents are proprietary and confidential.
    Unauthorized reproduction, distribution, or modification is strictly prohibited.
-  
+
    Without the prior written permission of CHEN,BO-EN , you may not:
      1. Modify, adapt, or create derivative works of this source code;
      2. Reverse engineer, decompile, or otherwise attempt to derive the source code;
      3. Distribute, display, or otherwise use this source code or its derivatives in any form.
-  
+
    For licensing inquiries or to obtain a formal license, please contact:
-******************************************************************************/
+*******************************************************************************/
 
 #pragma once
 
-#include <boost/beast/http.hpp>
-#include <nlohmann/json.hpp>
+#include <folly/experimental/coro/Task.h>
 
-namespace redsafe::apiserver
-{
-    namespace beast = boost::beast;
-    namespace http = beast::http;
-    using json = nlohmann::json;
-    using response = http::response<http::string_body>;
+#include "../util/folly_json.hpp"
+#include "../util/http_types.hpp"
 
-    class Controller
-    {
-    public:
-        explicit Controller(http::request<http::string_body> req);
+namespace redsafe::apiserver {
+/**
+ * @brief 依據請求內容呼叫對應服務的控制器
+ */
+class Controller {
+ public:
+  /**
+   * @brief 以請求資料建構控制器
+   * @param req HTTP 請求資料
+   */
+  explicit Controller(HTTPRequest req);
 
-        [[nodiscard]] response handle_request() const;
+  /**
+   * @brief 處理請求並產生回應
+   * @return 非同步回應任務
+   */
+  [[nodiscard]] folly::coro::Task<HTTPResponse> handle_request() const;
 
-    private:
-    	/**
-		 * @brief 建立 http::request<http::string_body> 回應
-		 *
-		 * @param status_code HTTP 狀態碼
-		 * @param j           要回傳的 JSON 物件
-		 * @return response   Boost.Beast HTTP 回應
-		 */
-    	static response make_response(int status_code, const json& j);
+ private:
+  /**
+   * @brief 組合回應物件
+   * @param status_code HTTP 狀態碼
+   * @param j 回應 JSON
+   */
+  static HTTPResponse make_response(int status_code, const json& j);
 
-        /**
-		 * @brief 建立 http::request<http::string_body> 回應
-		 *
-		 * @param status_code HTTP 狀態碼
-		 * @param j           要回傳的 JSON 物件
-		 * @param cookie      若非空字串，將寫入 "Set-Cookie" 標頭
-		 * @return response   Boost.Beast HTTP 回應
-		 */
-        static response make_response(int status_code, const json& j, std::string_view cookie);
+  /**
+   * @brief 組合回應並夾帶 Cookie
+   * @param status_code HTTP 狀態碼
+   * @param j 回應 JSON
+   * @param cookie Set-Cookie 字串
+   */
+  static HTTPResponse make_response(int status_code, const json& j, std::string_view cookie);
 
-		/**
-		* @brief 從 HTTP 請求的 Authorization 標頭中提取並驗證 Access Token
-		*
-		* 採用 "Bearer <token>" 格式
-		*
-		* @param req HTTP 請求物件
-		* @return 有效的 access token，或空字串
-		*/
-    	[[nodiscard]] static std::string get_access_token(const http::request<http::string_body>& req);
+  /**
+   * @brief 從標頭取得 Access Token
+   * @param req HTTP 請求
+   * @return token 字串
+   */
+  [[nodiscard]] static std::string get_access_token(const HTTPRequest& req);
 
-    	/**
-		 * @brief 從 HTTP 請求的 Cookie 標頭中提取並驗證 Refresh Token
-		 *
-		 * 採用從 Cookie 字串中搜尋 "refresh_token="，回傳符合 64 字元小寫十六進位格式的 token，
-		 * 若格式不符或無法解析，回傳空字串。
-		 *
-		 * @param req HTTP 請求物件 (包含可能的 Cookie 標頭)
-		 * @return 有效的 refresh token，或空字串
-		 */
-    	[[nodiscard]] static std::string get_refresh_token(const http::request<http::string_body>& req);
+  /**
+   * @brief 從 Cookie 取得 Refresh Token
+   * @param req HTTP 請求
+   * @return token 字串
+   */
+  [[nodiscard]] static std::string get_refresh_token(const HTTPRequest& req);
 
-        http::request<http::string_body> req_;
-    };
-}
+  HTTPRequest req_;
+};
+}  // namespace redsafe::apiserver
