@@ -26,6 +26,7 @@ derivatives in any form.
 #include <sodium.h>
 
 #include <cstdio>
+#include <cstring>
 #include <fstream>
 #include <stdexcept>
 #include <string>
