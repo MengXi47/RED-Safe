@@ -32,7 +32,7 @@ int main(const int argc, char* argv[]) {
       if (input == "exit") {
         return 0;
       }
-      if (input == "clear") [[maybe_unused]] {
+      if (input == "clear") {
         auto e = system("clear");
       }
     }

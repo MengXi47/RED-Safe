@@ -24,6 +24,7 @@ derivatives in any form.
 #include <utility>
 #include <nlohmann/json.hpp>
 
+#include "../lib/jwt-cpp/jwt.h"
 #include "../model/sql/read.hpp"
 #include "../model/sql/write.hpp"
 #include "../util/IOstream.hpp"

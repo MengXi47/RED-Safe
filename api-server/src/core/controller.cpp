@@ -20,6 +20,7 @@ derivatives in any form.
 
 #include <functional>
 #include <unordered_map>
+#include <folly/container/F14Map.h>
 
 #include "../service/EdgeService.hpp"
 #include "../service/IOSAPPService.hpp"
@@ -33,7 +34,7 @@ Controller::Controller(http::request<http::string_body> req)
     : req_(std::move(req)) {}
 
 response Controller::handle_request() const {
-  static const std::unordered_map<
+  static const folly::F14FastMap<
       std::string,
       std::function<util::Result(const http::request<http::string_body>&)>>
       POST_map = {
@@ -222,7 +223,7 @@ response Controller::handle_request() const {
            }},
       };
 
-  static const std::unordered_map<
+  static const folly::F14FastMap<
       std::string,
       std::function<util::Result(const http::request<http::string_body>&)>>
       GET_map = {
