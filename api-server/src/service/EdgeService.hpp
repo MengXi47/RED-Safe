@@ -24,9 +24,9 @@ derivatives in any form.
 namespace redsafe::apiserver::service::edge {
 class Register {
  public:
-  [[nodiscard]] static util::Result start(const std::string& version,
-                                          const std::string& serial_number);
+  static util::Result start(
+      const std::string& version, const std::string& serial_number);
 };
-}  // namespace redsafe::apiserver::service::edge
+} // namespace redsafe::apiserver::service::edge
 
 #endif

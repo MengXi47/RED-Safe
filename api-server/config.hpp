@@ -31,14 +31,17 @@ derivatives in any form.
 #endif
 
 #ifndef SQL_CONNECTION_STR
-#define SQL_CONNECTION_STR                                         \
-  "host=127.0.0.1 port=5432 dbname=redsafedb user=redsafedb_user " \
+#define SQL_CONNECTION_STR \
+  "host=127.0.0.1 "        \
+  "port=5432 "             \
+  "dbname=redsafedb"       \
+  "user=redsafedb_user "   \
   "password=redsafedb_1204"
 #endif
 
 #ifndef SERVER_THREAD_TYPE
 #define SERVER_THREAD_TYPE \
-  1  // 0 -> single_thread,  1 -> std::jthread, 2 -> boost.asio.thread_pool
+  1 // 0 -> single_thread,  1 -> std::jthread, 2 -> boost.asio.thread_pool
 #endif
 
 // 金鑰檔案名稱 (執行程式目錄)

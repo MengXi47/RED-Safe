@@ -30,7 +30,9 @@ std::string UserIDFinder::start(std::string_view email) {
     pqxx::work tx{connection()};
     const pqxx::result r =
         tx.exec(pqxx::prepped("find_user_id"), pqxx::params{email});
-    if (r.empty()) return std::string{};
+    if (r.empty()) {
+      return std::string{};
+    }
     return r[0][0].as<std::string>();
   } catch (const std::exception& e) {
     util::cerr() << "UserIDFinder::start failed: " << e.what() << '\n';
@@ -45,7 +47,9 @@ std::string UserNameFinder::start_by_email(std::string_view email) {
     pqxx::work tx{connection()};
     const pqxx::result r =
         tx.exec(pqxx::prepped("find_user_name_email"), pqxx::params{email});
-    if (r.empty()) return std::string{};
+    if (r.empty()) {
+      return std::string{};
+    }
     return r[0][0].as<std::string>();
   } catch (const std::exception& e) {
     util::cerr() << "UserNameFinder::start_by_email failed: " << e.what()
@@ -61,7 +65,9 @@ std::string UserNameFinder::start_by_user_id(std::string_view user_id) {
     pqxx::work tx{connection()};
     const pqxx::result r =
         tx.exec(pqxx::prepped("find_user_name_userid"), pqxx::params{user_id});
-    if (r.empty()) return std::string{};
+    if (r.empty()) {
+      return std::string{};
+    }
     return r[0][0].as<std::string>();
   } catch (const std::exception& e) {
     util::cerr() << "UserNameFinder::start_by_user_id failed: " << e.what()
@@ -77,7 +83,9 @@ std::string UserEmailFinder::start(std::string_view user_id) {
     pqxx::work tx{connection()};
     const pqxx::result r =
         tx.exec(pqxx::prepped("find_email"), pqxx::params{user_id});
-    if (r.empty()) return std::string{};
+    if (r.empty()) {
+      return std::string{};
+    }
     return r[0][0].as<std::string>();
   } catch (const std::exception& e) {
     util::cerr() << "UserNameFinder::start failed: " << e.what() << '\n';
@@ -92,7 +100,9 @@ std::string IOSDeviceIDFinder::start(std::string_view apns_token) {
     pqxx::work tx{connection()};
     const pqxx::result r =
         tx.exec(pqxx::prepped("find_ios_device_id"), pqxx::params{apns_token});
-    if (r.empty()) return std::string{};
+    if (r.empty()) {
+      return std::string{};
+    }
     return r[0][0].as<std::string>();
   } catch (const std::exception& e) {
     util::cerr() << "IOSDeviceFinder::start failed: " << e.what() << '\n';
@@ -107,7 +117,9 @@ std::string UserPasswordHashFinder::start(std::string_view email) {
     pqxx::work tx{connection()};
     const pqxx::result r =
         tx.exec(pqxx::prepped("find_user_pwdhash"), pqxx::params{email});
-    if (r.empty()) return std::string{};
+    if (r.empty()) {
+      return std::string{};
+    }
     return r[0][0].as<std::string>();
   } catch (const std::exception& e) {
     util::cerr() << "UserPasswordHashFinder::start failed: " << e.what()
@@ -124,9 +136,10 @@ std::vector<std::string> UserEdgeListFinder::start(std::string_view user_id) {
     pqxx::work tx{connection()};
     const pqxx::result r =
         tx.exec(pqxx::prepped("find_user_edges"), pqxx::params{user_id});
-
     edges.reserve(r.size());
-    for (auto row : r) edges.emplace_back(row[0].as<std::string>());
+    for (auto row : r) {
+      edges.emplace_back(row[0].as<std::string>());
+    }
     return edges;
   } catch (const std::exception& e) {
     util::cerr() << "UserEdgeListFinder::FetchEdges failed: " << e.what()
@@ -140,8 +153,8 @@ std::vector<std::string> UserEdgeListFinder::start(std::string_view user_id) {
 std::string RefreshTokenRefresher::start(std::string_view refresh_token_hash) {
   try {
     pqxx::work tx{connection()};
-    const pqxx::result r = tx.exec(pqxx::prepped("chk_refretoken"),
-                                   pqxx::params{refresh_token_hash});
+    const pqxx::result r = tx.exec(
+        pqxx::prepped("chk_refretoken"), pqxx::params{refresh_token_hash});
     if (r.empty()) {
       tx.commit();
       return std::string{};
@@ -155,6 +168,6 @@ std::string RefreshTokenRefresher::start(std::string_view refresh_token_hash) {
     return std::string{};
   }
 }
-}  // namespace redsafe::apiserver::model::sql::fin
+} // namespace redsafe::apiserver::model::sql::fin
 
 #endif

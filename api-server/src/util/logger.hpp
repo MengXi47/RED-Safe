@@ -59,7 +59,7 @@ class LoggerManager {
   static inline std::array<std::ofstream, 2> streams;
   static inline std::mutex log_mutex;
 
-  static void init(LogFile file, const std::string &path) {
+  static void init(LogFile file, const std::string& path) {
     std::lock_guard lock(log_mutex);
     streams[static_cast<size_t>(file)].open(path, std::ios::app);
   }
@@ -73,15 +73,16 @@ struct LogStream {
   LogStream(const LogFile file, const Level level) : lv(level), file(file) {}
 
   template <typename T>
-  LogStream &operator<<(const T &value) {
+  LogStream& operator<<(const T& value) {
     oss << value;
     return *this;
   }
 
   ~LogStream() {
     std::lock_guard lock(LoggerManager::log_mutex);
-    auto &ofs = LoggerManager::streams[static_cast<size_t>(file)];
-    if (!ofs.is_open()) ofs.open(std::string(to_string(file)), std::ios::app);
+    auto& ofs = LoggerManager::streams[static_cast<size_t>(file)];
+    if (!ofs.is_open())
+      ofs.open(std::string(to_string(file)), std::ios::app);
     ofs << current_timestamp() << "[" << to_string(lv) << "] " << oss.str()
         << std::endl;
   }
@@ -90,6 +91,6 @@ struct LogStream {
 inline LogStream log(const LogFile file, const Level level) {
   return LogStream{file, level};
 }
-}  // namespace redsafe::apiserver::util
+} // namespace redsafe::apiserver::util
 
 #endif

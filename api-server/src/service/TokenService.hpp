@@ -19,7 +19,6 @@ derivatives in any form.
 #ifndef REDSAFE_TOKEN_SERVICE_HPP
 #define REDSAFE_TOKEN_SERVICE_HPP
 
-#include "../lib/jwt-cpp/jwt.h"
 #include "../util/crypto.hpp"
 #include "../util/response.hpp"
 
@@ -41,7 +40,7 @@ class CreateAccessToken {
    * @return 0: 驗證通過，並將 AccessToken 存到 token
    * @return 1: 例外錯誤
    */
-  [[nodiscard]] int start();
+  int start();
 
   /**
    * @brief 取得編碼後的 AccessToken
@@ -80,7 +79,7 @@ class DecodeAccessToken {
    * @return 3: invalid signature 簽名錯誤
    * @return 4: 例外錯誤
    */
-  [[nodiscard]] int start();
+  int start();
 
   /**
    * @brief 取得解碼後的 user_id (sub claim)
@@ -117,7 +116,7 @@ class CreateRefreshToken {
    * @return 0: 創建成功，並將 RefreshToken 存到 token
    * @return 1: 錯誤
    */
-  [[nodiscard]] int start();
+  int start();
 
   /**
    * @brief 取得編碼後的 RefreshToken
@@ -150,7 +149,7 @@ class CheckAndRefreshRefreshToken {
    * @brief 執行解碼與驗證
    * @return util::Result
    */
-  [[nodiscard]] static util::Result run(const std::string& refreshtoken);
+  static util::Result run(const std::string& refreshtoken);
 
   /// 禁止拷貝和移動
   CheckAndRefreshRefreshToken(const CheckAndRefreshRefreshToken&) = delete;
@@ -170,7 +169,7 @@ class RevokeRefreshToken {
    * @brief 執行註銷
    * @return util::Result
    */
-  [[nodiscard]] static util::Result run(const std::string& refreshtoken);
+  static util::Result run(const std::string& refreshtoken);
 
   /// 禁止拷貝和移動
   RevokeRefreshToken(const RevokeRefreshToken&) = delete;
@@ -178,6 +177,6 @@ class RevokeRefreshToken {
   RevokeRefreshToken& operator=(const RevokeRefreshToken&) = delete;
   RevokeRefreshToken& operator=(RevokeRefreshToken&&) = delete;
 };
-}  // namespace redsafe::apiserver::service::token
+} // namespace redsafe::apiserver::service::token
 
 #endif

@@ -51,8 +51,8 @@ class Controller {
    * @param cookie      若非空字串，將寫入 "Set-Cookie" 標頭
    * @return response   Boost.Beast HTTP 回應
    */
-  static response make_response(int status_code, const json& j,
-                                std::string_view cookie);
+  static response make_response(
+      int status_code, const json& j, std::string_view cookie);
 
   /**
    * @brief 從 HTTP 請求的 Authorization 標頭中提取並驗證 Access Token
@@ -62,7 +62,7 @@ class Controller {
    * @param req HTTP 請求物件
    * @return 有效的 access token，或空字串
    */
-  [[nodiscard]] static std::string get_access_token(
+  static std::string get_access_token(
       const http::request<http::string_body>& req);
 
   /**
@@ -74,9 +74,9 @@ class Controller {
    * @param req HTTP 請求物件 (包含可能的 Cookie 標頭)
    * @return 有效的 refresh token，或空字串
    */
-  [[nodiscard]] static std::string get_refresh_token(
+  static std::string get_refresh_token(
       const http::request<http::string_body>& req);
 
   http::request<http::string_body> req_;
 };
-}  // namespace redsafe::apiserver
+} // namespace redsafe::apiserver

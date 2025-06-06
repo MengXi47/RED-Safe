@@ -70,6 +70,6 @@ struct Result {
   nlohmann::json body;
   std::string token{};
 };
-}  // namespace redsafe::apiserver::util
+} // namespace redsafe::apiserver::util
 
 #endif

@@ -18,10 +18,10 @@ derivatives in any form.
 
 #include "../../include/api-server.hpp"
 
-#include <boost/asio.hpp>
-#include <boost/asio/thread_pool.hpp>
 #include <memory>
 #include <thread>
+#include <boost/asio.hpp>
+#include <boost/asio/thread_pool.hpp>
 
 #include "../../config.hpp"
 #include "../util/IOstream.hpp"
@@ -38,9 +38,7 @@ class Server::Impl {
     acceptor_.listen(1024);
   }
 
-  ~Impl() {
-    stop();
-  }
+  ~Impl() { stop(); }
 
   void start() {
     loggerinit();
@@ -49,14 +47,17 @@ class Server::Impl {
     util::log(util::LogFile::server, util::Level::INFO)
         << "Server listening on port: " << acceptor_.local_endpoint().port()
         << " Threads: " << numThreads;
-    clearandprintlogo(std::to_string(acceptor_.local_endpoint().port()),
-                      std::to_string(numThreads));
+    clearandprintlogo(
+        std::to_string(acceptor_.local_endpoint().port()),
+        std::to_string(numThreads));
   }
 
   void stop() {
     io_.stop();
 #if SERVER_THREAD_TYPE == 2
-    if (pool_) pool_->join();
+    if (pool_) {
+      pool_->join();
+    }
 #endif
   }
 
@@ -92,8 +93,9 @@ class Server::Impl {
     }
 #if SERVER_THREAD_TYPE == 1
     workers.reserve(numThreads);
-    for (unsigned int i = 0; i < numThreads; ++i)
-      workers.emplace_back([this](const std::stop_token &) { io_.run(); });
+    for (unsigned int i = 0; i < numThreads; ++i) {
+      workers.emplace_back([this](const std::stop_token&) { io_.run(); });
+    }
 #elif SERVER_THREAD_TYPE == 2
     pool_ = std::make_unique<thread_pool>(numThreads);
     for (unsigned int i = 0; i < numThreads; ++i)
@@ -102,8 +104,8 @@ class Server::Impl {
 #endif
   }
 
-  static void clearandprintlogo(const std::string &port,
-                                const std::string &threadnumbers) {
+  static void clearandprintlogo(
+      const std::string& port, const std::string& threadnumbers) {
     std::cout
         << " _____   ______  _____            _____          __\n"
         << "|  __ \\ |  ____||  __ \\          / ____|        / _|\n"
@@ -146,4 +148,4 @@ void Server::start() const {
 void Server::stop() const {
   impl_->stop();
 }
-}  // namespace redsafe::apiserver
+} // namespace redsafe::apiserver

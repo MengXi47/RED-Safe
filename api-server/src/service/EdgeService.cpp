@@ -27,27 +27,36 @@ derivatives in any form.
 #include "../model/validator/ParameterValidation.hpp"
 
 namespace redsafe::apiserver::service::edge {
-util::Result Register::start(const std::string& version,
-                             const std::string& serial_number) {
+util::Result Register::start(
+    const std::string& version, const std::string& serial_number) {
   using namespace model::validator;
   using namespace model::sql::reg;
   using json = nlohmann::json;
 
-  if (!is_vaild_serial_number(serial_number))
-    return util::Result{util::status_code::BadRequest,
-                        util::error_code::Invalid_serialnumber_format, json{}};
+  if (!is_vaild_serial_number(serial_number)) {
+    return util::Result{
+      util::status_code::BadRequest,
+      util::error_code::Invalid_serialnumber_format,
+      json{}};
+  }
 
-  if (const auto a = EdgeDeviceRegistrar::start(serial_number, version); a == 1)
-    return util::Result{util::status_code::Conflict,
-                        util::error_code::Edge_device_already_registered,
-                        json{}};
-  else if (a == 2)
-    return util::Result{util::status_code::InternalServerError,
-                        util::error_code::Internal_server_error, json{}};
+  if (const auto a = EdgeDeviceRegistrar::start(serial_number, version); a == 1) {
+    return util::Result{
+      util::status_code::Conflict,
+      util::error_code::Edge_device_already_registered,
+      json{}};
+  } else if (a == 2) {
+    return util::Result{
+      util::status_code::InternalServerError,
+      util::error_code::Internal_server_error,
+      json{}};
+  }
 
-  return util::Result{util::status_code::Success, util::error_code::Success,
-                      json{{"serial_number", serial_number}}};
+  return util::Result{
+      util::status_code::Success,
+      util::error_code::Success,
+      json{{"serial_number", serial_number}}};
 }
-}  // namespace redsafe::apiserver::service::edge
+} // namespace redsafe::apiserver::service::edge
 
 #endif

@@ -24,9 +24,10 @@ derivatives in any form.
 namespace redsafe::apiserver::service::User {
 class signup {
  public:
-  [[nodiscard]] static util::Result run(const std::string &email,
-                                        const std::string &user_name,
-                                        const std::string &password);
+  static util::Result run(
+      const std::string& email,
+      const std::string& user_name,
+      const std::string& password);
 };
 
 class signin {
@@ -36,16 +37,16 @@ class signin {
    * @param email
    * @param password
    */
-  [[nodiscard]] static util::Result run(const std::string &email,
-                                        const std::string &password);
+  static util::Result run(
+      const std::string& email, const std::string& password);
 };
 
 class Binding {
  public:
-  [[nodiscard]] static util::Result bind(const std::string &serial_number,
-                                         const std::string &access_token);
-  [[nodiscard]] static util::Result unbind(const std::string &serial_number,
-                                           const std::string &access_token);
+  static util::Result bind(
+      const std::string& serial_number, const std::string& access_token);
+  static util::Result unbind(
+      const std::string& serial_number, const std::string& access_token);
 };
 
 /**
@@ -57,14 +58,14 @@ class GetUserInformation {
    * @param access_token
    * @return util::Result
    */
-  [[nodiscard]] static util::Result run(const std::string &access_token);
+  static util::Result run(const std::string& access_token);
 
   /// 禁止拷貝和移動
-  GetUserInformation(const GetUserInformation &) = delete;
-  GetUserInformation(GetUserInformation &&) = delete;
-  GetUserInformation &operator=(const GetUserInformation &) = delete;
-  GetUserInformation &operator=(GetUserInformation &&) = delete;
+  GetUserInformation(const GetUserInformation&) = delete;
+  GetUserInformation(GetUserInformation&&) = delete;
+  GetUserInformation& operator=(const GetUserInformation&) = delete;
+  GetUserInformation& operator=(GetUserInformation&&) = delete;
 };
-}  // namespace redsafe::apiserver::service::User
+} // namespace redsafe::apiserver::service::User
 
 #endif

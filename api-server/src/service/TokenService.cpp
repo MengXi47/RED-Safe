@@ -21,8 +21,8 @@ derivatives in any form.
 
 #include "TokenService.hpp"
 
-#include <nlohmann/json.hpp>
 #include <utility>
+#include <nlohmann/json.hpp>
 
 #include "../model/sql/read.hpp"
 #include "../model/sql/write.hpp"
@@ -38,13 +38,15 @@ CreateAccessToken::CreateAccessToken(const std::string_view user_id)
 
 int CreateAccessToken::start() {
   try {
-    token = jwt::create()
-                .set_issuer("RED-Safe")
-                .set_subject(util::AESManager::instance().encrypt(user_id))
-                .set_issued_at(std::chrono::system_clock::now())
-                .set_expires_at(std::chrono::system_clock::now() +
-                                std::chrono::seconds{600})
-                .sign(jwt::algorithm::hs256{
+    token =
+        jwt::create()
+            .set_issuer("RED-Safe")
+            .set_subject(util::AESManager::instance().encrypt(user_id))
+            .set_issued_at(std::chrono::system_clock::now())
+            .set_expires_at(
+                std::chrono::system_clock::now() + std::chrono::seconds{600})
+            .sign(
+                jwt::algorithm::hs256{
                     util::SecretManager::instance().getSecret()});
   } catch (const std::exception& e) {
     util::cerr() << e.what() << std::endl;
@@ -98,8 +100,12 @@ int DecodeAccessToken::start() {
     // Capture any decoding or verification errors
     errorMessage = e.what();
     std::cerr << e.what() << std::endl;
-    if (errorMessage == "invalid signature") return 3;
-    if (errorMessage == "invalid token supplied") return 4;
+    if (errorMessage == "invalid signature") {
+      return 3;
+    }
+    if (errorMessage == "invalid token supplied") {
+      return 4;
+    }
     return 5;
   }
 }
@@ -135,9 +141,10 @@ std::string CreateRefreshToken::getErrorMessage() const {
 }
 
 void CreateRefreshToken::WriteToSQL() const {
-  if (model::sql::reg::RefreshTokenRegistrar::start(util::SHA256_HEX(token),
-                                                    user_id) != 0)
+  if (model::sql::reg::RefreshTokenRegistrar::start(
+          util::SHA256_HEX(token), user_id) != 0) {
     throw std::runtime_error("Failed to reg refresh token in sql");
+  }
 }
 
 util::Result CheckAndRefreshRefreshToken::run(const std::string& refreshtoken) {
@@ -145,8 +152,10 @@ util::Result CheckAndRefreshRefreshToken::run(const std::string& refreshtoken) {
       util::SHA256_HEX(refreshtoken));
 
   if (user_id.empty()) {
-    return util::Result{util::status_code::Unauthorized,
-                        util::error_code::Refresh_Token_Expired, json{}};
+    return util::Result{
+        util::status_code::Unauthorized,
+        util::error_code::Refresh_Token_Expired,
+        json{}};
   }
 
   // 3. 產生新的 Access Token
@@ -155,23 +164,30 @@ util::Result CheckAndRefreshRefreshToken::run(const std::string& refreshtoken) {
     util::cerr() << at.getErrorMessage();
     util::log(util::LogFile::server, util::Level::ERROR)
         << at.getErrorMessage();
-    return util::Result{util::status_code::InternalServerError,
-                        util::error_code::Internal_server_error, json{}};
+    return util::Result{
+        util::status_code::InternalServerError,
+        util::error_code::Internal_server_error,
+        json{}};
   }
 
-  return util::Result{util::status_code::Success, util::error_code::Success,
-                      json{{"access_token", at.getAccessToken()}}};
+  return util::Result{
+      util::status_code::Success,
+      util::error_code::Success,
+      json{{"access_token", at.getAccessToken()}}};
 }
 
 util::Result RevokeRefreshToken::run(const std::string& refreshtoken) {
   if (model::sql::reg::RefreshTokenRevoke::start(
-          util::SHA256_HEX(refreshtoken)) == 1)
-    return util::Result{util::status_code::InternalServerError,
-                        util::error_code::Internal_server_error, json{}};
+          util::SHA256_HEX(refreshtoken)) == 1) {
+    return util::Result{
+        util::status_code::InternalServerError,
+        util::error_code::Internal_server_error,
+        json{}};
+  }
 
-  return util::Result{util::status_code::Success, util::error_code::Success,
-                      json{}};
+  return util::Result{
+      util::status_code::Success, util::error_code::Success, json{}};
 }
-}  // namespace redsafe::apiserver::service::token
+} // namespace redsafe::apiserver::service::token
 
 #endif

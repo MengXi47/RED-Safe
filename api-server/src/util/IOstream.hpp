@@ -32,16 +32,16 @@ struct cout {
 
   cout() : m_Lock(std::unique_lock(m_Mutex)) {}
 
-  explicit cout(const cout &) = delete;
+  explicit cout(const cout&) = delete;
   ~cout() = default;
 
   template <typename T>
-  cout &operator<<(const T &message) {
+  cout& operator<<(const T& message) {
     std::cout << message;
     return *this;
   }
 
-  cout &operator<<(std::ostream &(*fp)(std::ostream &)) {
+  cout& operator<<(std::ostream& (*fp)(std::ostream&)) {
     std::cout << fp;
     return *this;
   }
@@ -54,20 +54,20 @@ struct cerr {
 
   cerr() : m_Lock(std::unique_lock(m_Mutex)) {}
 
-  explicit cerr(const cerr &) = delete;
+  explicit cerr(const cerr&) = delete;
   ~cerr() = default;
 
   template <typename T>
-  cerr &operator<<(const T &message) {
+  cerr& operator<<(const T& message) {
     std::cerr << message;
     return *this;
   }
 
-  cerr &operator<<(std::ostream &(*fp)(std::ostream &)) {
+  cerr& operator<<(std::ostream& (*fp)(std::ostream&)) {
     std::cerr << fp;
     return *this;
   }
 };
-}  // namespace redsafe::apiserver::util
+} // namespace redsafe::apiserver::util
 
 #endif

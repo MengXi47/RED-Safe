@@ -18,11 +18,11 @@ derivatives in any form.
 
 #pragma once
 
+#include <memory>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
-#include <memory>
 
 namespace redsafe::apiserver {
 class Session : public std::enable_shared_from_this<Session> {

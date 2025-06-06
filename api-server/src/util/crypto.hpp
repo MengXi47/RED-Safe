@@ -41,7 +41,7 @@ namespace redsafe::apiserver::util {
  * @return std::string 回傳 Base64 編碼後的字串
  * @throws std::runtime_error 如果編碼失敗
  */
-inline std::string toBase64(const std::string &input) {
+inline std::string toBase64(const std::string& input) {
   // 第一步：確保 libsodium 已初始化
   if (sodium_init() < 0) {
     throw std::runtime_error("libsodium 初始化失敗");
@@ -57,10 +57,12 @@ inline std::string toBase64(const std::string &input) {
   // 配置一個足夠大的緩衝區
   std::vector<char> b64buf(b64_buf_len);
 
-  const char *written =
-      sodium_bin2base64(b64buf.data(), b64_buf_len,
-                        reinterpret_cast<const unsigned char *>(input.data()),
-                        raw_len, sodium_base64_VARIANT_URLSAFE_NO_PADDING);
+  const char* written = sodium_bin2base64(
+      b64buf.data(),
+      b64_buf_len,
+      reinterpret_cast<const unsigned char*>(input.data()),
+      raw_len,
+      sodium_base64_VARIANT_URLSAFE_NO_PADDING);
 
   if (written == nullptr) {
     throw std::runtime_error("Base64 編碼失敗");
@@ -77,9 +79,11 @@ inline std::string toBase64(const std::string &input) {
  * @return std::string 解碼後的原始二進位資料
  * @throws std::runtime_error 如果解碼過程失敗
  */
-inline std::string fromBase64(const std::string &input) {
+inline std::string fromBase64(const std::string& input) {
   // 確保 libsodium 已初始化
-  if (sodium_init() < 0) throw std::runtime_error("libsodium 初始化失敗");
+  if (sodium_init() < 0) {
+    throw std::runtime_error("libsodium 初始化失敗");
+  }
 
   // 估算解碼後最大長度：Base64 長度 * 3/4 + 1
   size_t input_len = input.size();
@@ -90,15 +94,20 @@ inline std::string fromBase64(const std::string &input) {
   size_t raw_len = 0;
 
   // 呼叫 sodium_base642bin 進行解碼
-  if (sodium_base642bin(rawbuf.data(), raw_maxlen, input.c_str(), input_len,
-                        nullptr,  // 不忽略任何字元
-                        &raw_len,
-                        nullptr,  // 不需要錯誤位置
-                        sodium_base64_VARIANT_URLSAFE_NO_PADDING) != 0)
+  if (sodium_base642bin(
+          rawbuf.data(),
+          raw_maxlen,
+          input.c_str(),
+          input_len,
+          nullptr, // 不忽略任何字元
+          &raw_len,
+          nullptr, // 不需要錯誤位置
+          sodium_base64_VARIANT_URLSAFE_NO_PADDING) != 0) {
     throw std::runtime_error("Base64 解碼失敗");
+  }
 
   // 回傳解碼後的 std::string
-  return {reinterpret_cast<char *>(rawbuf.data()), raw_len};
+  return {reinterpret_cast<char*>(rawbuf.data()), raw_len};
 }
 
 /**
@@ -108,7 +117,7 @@ inline std::string fromBase64(const std::string &input) {
  * @param len  原始資料長度（單位：bytes）
  * @return std::string 編碼後的十六進位字串 (長度 = len * 2)
  */
-static std::string toHex(const unsigned char *data, const size_t len) {
+static std::string toHex(const unsigned char* data, const size_t len) {
   static constexpr char hex[] = "0123456789ABCDEF";
   std::string out;
   out.reserve(len * 2);
@@ -127,13 +136,18 @@ static std::string toHex(const unsigned char *data, const size_t len) {
  * hexStr.size() / 2)
  * @throws std::runtime_error 若 hexStr 長度非偶數或包含無效 hex 字元
  */
-static std::vector<unsigned char> fromHex(const std::string &hexStr) {
-  if (hexStr.size() % 2) throw std::runtime_error("Hex 字串長度必須為偶數");
+static std::vector<unsigned char> fromHex(const std::string& hexStr) {
+  if (hexStr.size() % 2) {
+    throw std::runtime_error("Hex 字串長度必須為偶數");
+  }
 
   auto hexVal = [](const char ch) -> int {
-    if ('0' <= ch && ch <= '9') return ch - '0';
-    if ('A' <= ch && ch <= 'F') return ch - 'A' + 10;
-    if ('a' <= ch && ch <= 'f') return ch - 'a' + 10;
+    if ('0' <= ch && ch <= '9')
+      return ch - '0';
+    if ('A' <= ch && ch <= 'F')
+      return ch - 'A' + 10;
+    if ('a' <= ch && ch <= 'f')
+      return ch - 'a' + 10;
     return -1;
   };
 
@@ -141,7 +155,8 @@ static std::vector<unsigned char> fromHex(const std::string &hexStr) {
   for (size_t i = 0; i < out.size(); ++i) {
     const int hi = hexVal(hexStr[2 * i]);
     const int lo = hexVal(hexStr[2 * i + 1]);
-    if (hi < 0 || lo < 0) throw std::runtime_error("Hex 字元無效");
+    if (hi < 0 || lo < 0)
+      throw std::runtime_error("Hex 字元無效");
     out[i] = static_cast<unsigned char>((hi << 4) | lo);
   }
   return out;
@@ -157,7 +172,7 @@ class SecretManager {
    * Thread-Safe
    * @return SecretManager& 單例物件
    */
-  static SecretManager &instance() {
+  static SecretManager& instance() {
     static SecretManager inst;
     return inst;
   }
@@ -166,15 +181,13 @@ class SecretManager {
    * @brief 取得 Base64 編碼後的 JWT 簽章金鑰
    * @return const std::string& 金鑰字串
    */
-  [[nodiscard]] const std::string &getSecret() const {
-    return secret_;
-  }
+  [[nodiscard]] const std::string& getSecret() const { return secret_; }
 
   // 禁止複製與移動
-  SecretManager(const SecretManager &) = delete;
-  SecretManager &operator=(const SecretManager &) = delete;
-  SecretManager(SecretManager &&) = delete;
-  SecretManager &operator=(SecretManager &&) = delete;
+  SecretManager(const SecretManager&) = delete;
+  SecretManager& operator=(const SecretManager&) = delete;
+  SecretManager(SecretManager&&) = delete;
+  SecretManager& operator=(SecretManager&&) = delete;
 
  private:
   std::string secret_;
@@ -182,7 +195,9 @@ class SecretManager {
   // 私有建構式：嘗試載入或生成金鑰
   SecretManager() {
     // 確保 libsodium 已初始化
-    if (sodium_init() < 0) throw std::runtime_error("libsodium 初始化失敗");
+    if (sodium_init() < 0) {
+      throw std::runtime_error("libsodium 初始化失敗");
+    }
 
     // 嘗試從檔案載入已存在的金鑰
     if (std::ifstream infile(SECRET_FILE_PATH, std::ios::binary);
@@ -197,19 +212,20 @@ class SecretManager {
     }
 
     // 檔案不存在或為空，生成新的 32 字節隨機金鑰
-    constexpr size_t KEY_LEN = 32;  // 256 位元
+    constexpr size_t KEY_LEN = 32; // 256 位元
     unsigned char buf[KEY_LEN];
-    randombytes_buf(buf, KEY_LEN);  // 產生 KEY_LEN bytes 隨機
+    randombytes_buf(buf, KEY_LEN); // 產生 KEY_LEN bytes 隨機
 
     // 將隨機位元組轉成 Base64
-    std::string rawKey(reinterpret_cast<char *>(buf), KEY_LEN);
+    std::string rawKey(reinterpret_cast<char*>(buf), KEY_LEN);
     std::string b64 = toBase64(rawKey);
 
     // 將 Base64 字串寫入檔案
     std::ofstream outfile(SECRET_FILE_PATH, std::ios::out | std::ios::trunc);
-    if (!outfile.is_open())
-      throw std::runtime_error("無法寫入金鑰檔案: " +
-                               std::string(SECRET_FILE_PATH));
+    if (!outfile.is_open()) {
+      throw std::runtime_error(
+          "無法寫入金鑰檔案: " + std::string(SECRET_FILE_PATH));
+    }
     outfile << b64;
     outfile.close();
 
@@ -223,7 +239,7 @@ class SecretManager {
 class AESManager {
  public:
   /// 取得 thread-safe 單例
-  static AESManager &instance() {
+  static AESManager& instance() {
     static AESManager inst;
     return inst;
   }
@@ -233,24 +249,30 @@ class AESManager {
    * @param plaintext 明文
    * @return std::string hex-cipher
    */
-  [[nodiscard]] std::string encrypt(const std::string &plaintext) const {
+  [[nodiscard]] std::string encrypt(const std::string& plaintext) const {
     // 1. 產生隨機 IV
     unsigned char iv[AES_IV_LEN];
-    if (RAND_bytes(iv, AES_IV_LEN) != 1)
+    if (RAND_bytes(iv, AES_IV_LEN) != 1) {
       throw std::runtime_error("RAND_bytes 生成 IV 失敗");
+    }
 
     // 2. 取得 thread‑local 的加密 context（只配置一次，之後重複使用）
-    thread_local EVP_CIPHER_CTX *ctx = []() {
-      EVP_CIPHER_CTX *p = EVP_CIPHER_CTX_new();
-      if (!p) throw std::runtime_error("EVP_CIPHER_CTX_new 失敗 (加密)");
+    thread_local EVP_CIPHER_CTX* ctx = []() {
+      EVP_CIPHER_CTX* p = EVP_CIPHER_CTX_new();
+      if (!p) {
+        throw std::runtime_error("EVP_CIPHER_CTX_new 失敗 (加密)");
+      }
       return p;
     }();
     // 清空舊狀態，準備新一輪加密
     EVP_CIPHER_CTX_reset(ctx);
 
-    if (EVP_EncryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr,
-                           reinterpret_cast<const unsigned char *>(key_.data()),
-                           iv) != 1) {
+    if (EVP_EncryptInit_ex(
+            ctx,
+            EVP_aes_256_cbc(),
+            nullptr,
+            reinterpret_cast<const unsigned char*>(key_.data()),
+            iv) != 1) {
       throw std::runtime_error("EVP_EncryptInit_ex 失敗");
     }
 
@@ -263,8 +285,10 @@ class AESManager {
     }
 
     if (EVP_EncryptUpdate(
-            ctx, cipherBuf.data(), &len1,
-            reinterpret_cast<const unsigned char *>(plaintext.data()),
+            ctx,
+            cipherBuf.data(),
+            &len1,
+            reinterpret_cast<const unsigned char*>(plaintext.data()),
             static_cast<int>(pt_size)) != 1 ||
         EVP_EncryptFinal_ex(ctx, cipherBuf.data() + len1, &len2) != 1) {
       throw std::runtime_error("EVP_EncryptUpdate/Final 失敗");
@@ -284,30 +308,36 @@ class AESManager {
    * @param hexCipher IV ‖ Ciphertext（十六進位）
    * @return std::string 明文
    */
-  [[nodiscard]] std::string decrypt(const std::string &hexCipher) const {
+  [[nodiscard]] std::string decrypt(const std::string& hexCipher) const {
     const std::vector<unsigned char> combined = fromHex(hexCipher);
-    if (combined.size() < AES_IV_LEN)
+    if (combined.size() < AES_IV_LEN) {
       throw std::runtime_error("密文長度錯誤：缺少 IV");
+    }
 
     const auto cipher_sz = combined.size() - AES_IV_LEN;
-    if (cipher_sz > static_cast<std::size_t>(INT_MAX))
+    if (cipher_sz > static_cast<std::size_t>(INT_MAX)) {
       throw std::runtime_error("密文過長，超過 OpenSSL int 限制");
+    }
 
     const int cipherLen = static_cast<int>(cipher_sz);
-    const unsigned char *iv = combined.data();
-    const unsigned char *cipher = iv + AES_IV_LEN;
+    const unsigned char* iv = combined.data();
+    const unsigned char* cipher = iv + AES_IV_LEN;
 
     // 取得 thread‑local 的解密 context
-    thread_local EVP_CIPHER_CTX *ctx = []() {
-      EVP_CIPHER_CTX *p = EVP_CIPHER_CTX_new();
-      if (!p) throw std::runtime_error("EVP_CIPHER_CTX_new 失敗 (解密)");
+    thread_local EVP_CIPHER_CTX* ctx = []() {
+      EVP_CIPHER_CTX* p = EVP_CIPHER_CTX_new();
+      if (!p)
+        throw std::runtime_error("EVP_CIPHER_CTX_new 失敗 (解密)");
       return p;
     }();
     EVP_CIPHER_CTX_reset(ctx);
 
-    if (EVP_DecryptInit_ex(ctx, EVP_aes_256_cbc(), nullptr,
-                           reinterpret_cast<const unsigned char *>(key_.data()),
-                           iv) != 1) {
+    if (EVP_DecryptInit_ex(
+            ctx,
+            EVP_aes_256_cbc(),
+            nullptr,
+            reinterpret_cast<const unsigned char*>(key_.data()),
+            iv) != 1) {
       throw std::runtime_error("EVP_DecryptInit_ex 失敗");
     }
 
@@ -320,38 +350,41 @@ class AESManager {
       throw std::runtime_error("EVP_DecryptUpdate/Final 失敗 (金鑰或資料錯誤)");
     }
 
-    return {reinterpret_cast<char *>(plainBuf.data()),
-            static_cast<std::string::size_type>(len1 + len2)};
+    return {
+        reinterpret_cast<char*>(plainBuf.data()),
+        static_cast<std::string::size_type>(len1 + len2)};
   }
 
   // 禁止拷貝/移動
-  AESManager(const AESManager &) = delete;
-  AESManager &operator=(const AESManager &) = delete;
-  AESManager(AESManager &&) = delete;
-  AESManager &operator=(AESManager &&) = delete;
+  AESManager(const AESManager&) = delete;
+  AESManager& operator=(const AESManager&) = delete;
+  AESManager(AESManager&&) = delete;
+  AESManager& operator=(AESManager&&) = delete;
 
  private:
-  static constexpr size_t AES_KEY_LEN = 32;  // 256 bits
-  static constexpr size_t AES_IV_LEN = 16;   // 128-bit IV
+  static constexpr size_t AES_KEY_LEN = 32; // 256 bits
+  static constexpr size_t AES_IV_LEN = 16; // 128-bit IV
 
-  std::string key_;  // raw 32 bytes
+  std::string key_; // raw 32 bytes
 
   // 產生隨機 32‑byte 金鑰並寫入檔案（hex），然後存入 key_
   void generateAndSaveKey() {
     unsigned char buf[AES_KEY_LEN];
-    if (RAND_bytes(buf, AES_KEY_LEN) != 1)
+    if (RAND_bytes(buf, AES_KEY_LEN) != 1) {
       throw std::runtime_error("RAND_bytes 生成 AES key 失敗");
+    }
 
-    key_.assign(reinterpret_cast<char *>(buf), AES_KEY_LEN);
+    key_.assign(reinterpret_cast<char*>(buf), AES_KEY_LEN);
 
     // 將金鑰轉為 hex 字串
     const std::string hexKey =
-        toHex(reinterpret_cast<unsigned char *>(buf), AES_KEY_LEN);
+        toHex(reinterpret_cast<unsigned char*>(buf), AES_KEY_LEN);
 
     // 把 hex 字串寫到 AES_KEY.txt (文字模式)
     std::ofstream out(AES_KEY_FILE_PATH, std::ios::out | std::ios::trunc);
-    if (!out.is_open())
+    if (!out.is_open()) {
       throw std::runtime_error("無法建立 AES_KEY.txt 以寫入金鑰");
+    }
     out << hexKey;
     out.close();
   }
@@ -366,19 +399,20 @@ class AESManager {
       return;
     }
 
-    std::string buf((std::istreambuf_iterator<char>(in)),
-                    std::istreambuf_iterator<char>());
+    std::string buf(
+        (std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     in.close();
 
     // 移除空白與換行
-    std::erase_if(
-        buf, [](const char c) { return c == '\n' || c == '\r' || c == ' '; });
+    std::erase_if(buf, [](const char c) {
+      return c == '\n' || c == '\r' || c == ' ';
+    });
 
     // 僅接受 64 個 hex 字元
     if (buf.size() == AES_KEY_LEN * 2) {
       std::vector<unsigned char> raw = fromHex(buf);
       if (raw.size() == AES_KEY_LEN) {
-        key_.assign(reinterpret_cast<char *>(raw.data()), AES_KEY_LEN);
+        key_.assign(reinterpret_cast<char*>(raw.data()), AES_KEY_LEN);
         return;
       }
     }
@@ -397,7 +431,8 @@ class AESManager {
  * @throws std::runtime_error 如果 libsodium 初始化失敗
  */
 [[nodiscard]] inline std::string generateRandomHex(const std::size_t byteLen) {
-  if (sodium_init() < 0) throw std::runtime_error("libsodium 初始化失敗");
+  if (sodium_init() < 0)
+    throw std::runtime_error("libsodium 初始化失敗");
 
   std::vector<unsigned char> buf(byteLen);
   randombytes_buf(buf.data(), byteLen);
@@ -415,13 +450,18 @@ class AESManager {
  * @return Argon2id 雜湊字串
  */
 [[nodiscard]] inline std::string HASH(std::string_view str) {
-  if (sodium_init() < 0)
+  if (sodium_init() < 0) {
     throw std::runtime_error("Failed to initialize password hashing library");
+  }
   std::vector<char> hashBuf(crypto_pwhash_STRBYTES);
-  if (crypto_pwhash_str(hashBuf.data(), str.data(), str.size(),
-                        crypto_pwhash_OPSLIMIT_INTERACTIVE,
-                        crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0)
+  if (crypto_pwhash_str(
+          hashBuf.data(),
+          str.data(),
+          str.size(),
+          crypto_pwhash_OPSLIMIT_INTERACTIVE,
+          crypto_pwhash_MEMLIMIT_INTERACTIVE) != 0) {
     throw std::runtime_error("Password hashing failed");
+  }
   return {hashBuf.data()};
 }
 
@@ -431,10 +471,11 @@ class AESManager {
  * @param  str  明文
  * @return true = 正確；false = 不符
  */
-[[nodiscard]] inline bool VerifyHASH(const std::string &hash,
-                                     const std::string_view str) {
-  if (sodium_init() < 0)
+[[nodiscard]] inline bool VerifyHASH(
+    const std::string& hash, const std::string_view str) {
+  if (sodium_init() < 0) {
     throw std::runtime_error("Failed to initialize sodium");
+  }
   return crypto_pwhash_str_verify(hash.c_str(), str.data(), str.size()) == 0;
 }
 
@@ -446,10 +487,12 @@ class AESManager {
  */
 [[nodiscard]] inline std::string SHA256_HEX(const std::string_view input) {
   unsigned char digest[SHA256_DIGEST_LENGTH];
-  SHA256(reinterpret_cast<const unsigned char *>(input.data()), input.size(),
-         digest);
+  SHA256(
+      reinterpret_cast<const unsigned char*>(input.data()),
+      input.size(),
+      digest);
   return toHex(digest, SHA256_DIGEST_LENGTH);
 }
-}  // namespace redsafe::apiserver::util
+} // namespace redsafe::apiserver::util
 
 #endif

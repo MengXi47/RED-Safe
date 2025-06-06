@@ -29,9 +29,12 @@ int main(const int argc, char* argv[]) {
       std::string input;
       // std::cout << "RED-Safe~/$ ";
       std::getline(std::cin, input);
-      if (input == "exit") return 0;
-      if (input == "clear") [[maybe_unused]]
+      if (input == "exit") {
+        return 0;
+      }
+      if (input == "clear") [[maybe_unused]] {
         auto e = system("clear");
+      }
     }
   } catch (const std::exception& e) {
     std::cerr << "Server error: " << e.what() << "\n";

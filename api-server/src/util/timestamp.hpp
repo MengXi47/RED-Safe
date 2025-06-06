@@ -47,6 +47,6 @@ inline std::string current_timestamp(bool iso = false) {
   strTime << std::put_time(&buf, "%Y-%m-%dT%H:%M:%S") << "+08:00";
   return strTime.str();
 }
-}  // namespace redsafe::apiserver::util
+} // namespace redsafe::apiserver::util
 
 #endif

@@ -26,55 +26,56 @@ namespace redsafe::apiserver::model::sql::reg {
 class EdgeDeviceRegistrar : public ConnectionManager {
  public:
   // 0:成功 1:serial_number註冊過 2:SQL錯誤
-  [[nodiscard]] static int start(std::string_view serial_number,
-                                 std::string_view version);
+  static int start(std::string_view serial_number, std::string_view version);
 };
 
 // 使用者註冊
 class UserRegistrar : public ConnectionManager {
  public:
   // 0:成功 1:email被註冊過 2:SQL錯誤
-  [[nodiscard]] static int start(std::string_view email,
-                                 std::string_view user_name,
-                                 std::string_view password_hash);
+  static int start(
+      std::string_view email,
+      std::string_view user_name,
+      std::string_view password_hash);
 };
 
 // IOS裝置註冊
 class IOSDeviceRegistrar : public ConnectionManager {
  public:
   // 0:成功 1:SQL錯誤
-  [[nodiscard]] static int start(std::string_view ios_device_id,
-                                 std::string_view user_id,
-                                 std::string_view apns_token,
-                                 std::string_view device_name);
+  static int start(
+      std::string_view ios_device_id,
+      std::string_view user_id,
+      std::string_view apns_token,
+      std::string_view device_name);
 };
 
 // Edge ↔ iOS 裝置綁定
 class EdgeIOSBindingRegistrar : public ConnectionManager {
  public:
   // 0:成功 1:已經綁定 2:SQL錯誤
-  [[nodiscard]] static int bind(std::string_view edge_serial_number,
-                                std::string_view user_id);
+  static int bind(
+      std::string_view edge_serial_number, std::string_view user_id);
 
   // 0:成功 1:SQL錯誤
-  [[nodiscard]] static int unbind(std::string_view edge_serial_number,
-                                  std::string_view user_id);
+  static int unbind(
+      std::string_view edge_serial_number, std::string_view user_id);
 };
 
 // Refresh Token 註冊
 class RefreshTokenRegistrar : public ConnectionManager {
  public:
   // 0:成功 1:refresh_token_hash 已存在 2:SQL錯誤
-  [[nodiscard]] static int start(std::string_view refresh_token_hash,
-                                 std::string_view user_id);
+  static int start(
+      std::string_view refresh_token_hash, std::string_view user_id);
 };
 
 // Refresh Token 註銷
 class RefreshTokenRevoke : public ConnectionManager {
  public:
   // 0:成功 1:SQL錯誤
-  [[nodiscard]] static int start(std::string_view refresh_token_hash);
+  static int start(std::string_view refresh_token_hash);
 };
-}  // namespace redsafe::apiserver::model::sql::reg
+} // namespace redsafe::apiserver::model::sql::reg
 
 #endif

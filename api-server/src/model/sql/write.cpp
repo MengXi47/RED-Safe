@@ -25,13 +25,15 @@ derivatives in any form.
 #include "../../util/logger.hpp"
 
 namespace redsafe::apiserver::model::sql::reg {
-int EdgeDeviceRegistrar::start(std::string_view serial_number,
-                               std::string_view version) {
+int EdgeDeviceRegistrar::start(
+    std::string_view serial_number, std::string_view version) {
   try {
     pqxx::work tx{connection()};
-    const auto r = tx.exec(pqxx::prepped("register_edge"),
-                           pqxx::params{serial_number, version});
-    if (r.affected_rows() == 0) return 1;
+    const auto r = tx.exec(
+        pqxx::prepped("register_edge"), pqxx::params{serial_number, version});
+    if (r.affected_rows() == 0) {
+      return 1;
+    }
     tx.commit();
     return 0;
   } catch (const std::exception& e) {
@@ -42,13 +44,18 @@ int EdgeDeviceRegistrar::start(std::string_view serial_number,
   }
 }
 
-int UserRegistrar::start(std::string_view email, std::string_view user_name,
-                         std::string_view password_hash) {
+int UserRegistrar::start(
+    std::string_view email,
+    std::string_view user_name,
+    std::string_view password_hash) {
   try {
     pqxx::work tx{connection()};
-    const auto r = tx.exec(pqxx::prepped("register_user"),
-                           pqxx::params{email, user_name, password_hash});
-    if (r.affected_rows() == 0) return 1;
+    const auto r = tx.exec(
+        pqxx::prepped("register_user"),
+        pqxx::params{email, user_name, password_hash});
+    if (r.affected_rows() == 0) {
+      return 1;
+    }
     tx.commit();
     return 0;
   } catch (const std::exception& e) {
@@ -59,17 +66,19 @@ int UserRegistrar::start(std::string_view email, std::string_view user_name,
   }
 }
 
-int IOSDeviceRegistrar::start(std::string_view ios_device_id,
-                              std::string_view user_id,
-                              std::string_view apns_token,
-                              std::string_view device_name) {
+int IOSDeviceRegistrar::start(
+    std::string_view ios_device_id,
+    std::string_view user_id,
+    std::string_view apns_token,
+    std::string_view device_name) {
   try {
     pqxx::work tx{connection()};
     pqxx::params p;
-    if (ios_device_id.empty())
+    if (ios_device_id.empty()) {
       p.append("");
-    else
+    } else {
       p.append(ios_device_id);
+    }
     p.append(user_id);
     p.append(apns_token);
     p.append(device_name);
@@ -84,13 +93,16 @@ int IOSDeviceRegistrar::start(std::string_view ios_device_id,
   }
 }
 
-int EdgeIOSBindingRegistrar::bind(std::string_view edge_serial_number,
-                                  std::string_view user_id) {
+int EdgeIOSBindingRegistrar::bind(
+    std::string_view edge_serial_number, std::string_view user_id) {
   try {
     pqxx::work tx{connection()};
-    const auto r = tx.exec(pqxx::prepped("bind_edge_user"),
-                           pqxx::params{edge_serial_number, user_id});
-    if (r.affected_rows() == 0) return 1;
+    const auto r = tx.exec(
+        pqxx::prepped("bind_edge_user"),
+        pqxx::params{edge_serial_number, user_id});
+    if (r.affected_rows() == 0) {
+      return 1;
+    }
     tx.commit();
     return 0;
   } catch (const std::exception& e) {
@@ -102,12 +114,13 @@ int EdgeIOSBindingRegistrar::bind(std::string_view edge_serial_number,
   }
 }
 
-int EdgeIOSBindingRegistrar::unbind(std::string_view edge_serial_number,
-                                    std::string_view user_id) {
+int EdgeIOSBindingRegistrar::unbind(
+    std::string_view edge_serial_number, std::string_view user_id) {
   try {
     pqxx::work tx{connection()};
-    tx.exec(pqxx::prepped("unbind_edge_user"),
-            pqxx::params{edge_serial_number, user_id});
+    tx.exec(
+        pqxx::prepped("unbind_edge_user"),
+        pqxx::params{edge_serial_number, user_id});
     tx.commit();
     return 0;
   } catch (const std::exception& e) {
@@ -119,37 +132,40 @@ int EdgeIOSBindingRegistrar::unbind(std::string_view edge_serial_number,
   }
 }
 
-int RefreshTokenRegistrar::start(std::string_view refresh_token_hash,
-                                 std::string_view user_id) {
+int RefreshTokenRegistrar::start(
+    std::string_view refresh_token_hash, std::string_view user_id) {
   try {
     pqxx::work tx{connection()};
-    const auto r = tx.exec(pqxx::prepped("reg_refretoken"),
-                           pqxx::params{refresh_token_hash, user_id});
-    if (r.affected_rows() == 0) return 1;  // 已存在或未插入
+    const auto r = tx.exec(
+        pqxx::prepped("reg_refretoken"),
+        pqxx::params{refresh_token_hash, user_id});
+    if (r.affected_rows() == 0) {
+      return 1; // 已存在或未插入
+    }
     tx.commit();
-    return 0;  // 成功
+    return 0; // 成功
   } catch (const std::exception& e) {
     util::cerr() << "RefreshTokenRegistrar::start failed: " << e.what() << '\n';
     util::log(util::LogFile::server, util::Level::ERROR)
         << "RefreshTokenRegistrar::start failed: " << e.what();
-    return 2;  // SQL 錯誤
+    return 2; // SQL 錯誤
   }
 }
 
 int RefreshTokenRevoke::start(std::string_view refresh_token_hash) {
   try {
     pqxx::work tx{connection()};
-    const auto r = tx.exec(pqxx::prepped("revoke_refretoken"),
-                           pqxx::params{refresh_token_hash});
+    const auto r = tx.exec(
+        pqxx::prepped("revoke_refretoken"), pqxx::params{refresh_token_hash});
     tx.commit();
     return 0;
   } catch (const std::exception& e) {
     util::cerr() << "RefreshTokenRevoke::start failed: " << e.what() << '\n';
     util::log(util::LogFile::server, util::Level::ERROR)
         << "RefreshTokenRevoke::start failed: " << e.what();
-    return 1;  // SQL 錯誤
+    return 1; // SQL 錯誤
   }
 }
-}  // namespace redsafe::apiserver::model::sql::reg
+} // namespace redsafe::apiserver::model::sql::reg
 
 #endif

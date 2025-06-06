@@ -46,8 +46,8 @@ boost::asio::awaitable<void> Session::run() {
     for (;;) {
       req_ = {};
       buffer_.consume(buffer_.size());
-      co_await http::async_read(socket_, buffer_, req_,
-                                boost::asio::use_awaitable);
+      co_await http::async_read(
+          socket_, buffer_, req_, boost::asio::use_awaitable);
       auto raw_req = req_;
 #ifndef NDEBUG
       util::cout() << util::current_timestamp() << req_.base()["X-Real-IP"]
@@ -62,7 +62,7 @@ boost::asio::awaitable<void> Session::run() {
     }
   } catch (const std::exception& e) {
 #ifndef NDEBUG
-    // util::cout() << e.what() << '\n';
+    util::cout() << e.what() << '\n';
 #endif
     util::cout() << util::current_timestamp() << "nginx disconnection: "
                  << socket_.remote_endpoint().address().to_string() << ':'
@@ -70,4 +70,4 @@ boost::asio::awaitable<void> Session::run() {
     socket_.close();
   }
 }
-}  // namespace redsafe::apiserver
+} // namespace redsafe::apiserver

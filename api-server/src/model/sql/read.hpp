@@ -26,45 +26,45 @@ namespace redsafe::apiserver::model::sql::fin {
 class UserIDFinder : public ConnectionManager {
  public:
   // 成功回傳 User ID 否則空字串
-  [[nodiscard]] static std::string start(std::string_view email);
+  static std::string start(std::string_view email);
 };
 
 // 取得 User Name
 class UserNameFinder : public ConnectionManager {
  public:
   // 成功回傳 User Name 否則空字串
-  [[nodiscard]] static std::string start_by_email(std::string_view email);
+  static std::string start_by_email(std::string_view email);
 
   // 成功回傳 User Name 否則空字串
-  [[nodiscard]] static std::string start_by_user_id(std::string_view user_id);
+  static std::string start_by_user_id(std::string_view user_id);
 };
 
 // 取得 Email
 class UserEmailFinder : public ConnectionManager {
  public:
   // 成功回傳 Email 否則空字串
-  [[nodiscard]] static std::string start(std::string_view user_id);
+  static std::string start(std::string_view user_id);
 };
 
 // 取得 iOS device ID
 class IOSDeviceIDFinder : public ConnectionManager {
  public:
   // 成功回傳iOS device ID 否則空字串
-  [[nodiscard]] static std::string start(std::string_view apns_token);
+  static std::string start(std::string_view apns_token);
 };
 
 // 依 email 取得密碼雜湊
 class UserPasswordHashFinder : public ConnectionManager {
  public:
   // 成功回傳password hash 否則空字串
-  [[nodiscard]] static std::string start(std::string_view email);
+  static std::string start(std::string_view email);
 };
 
 // 依 user_id 取回該帳號所有 Edge 序號
 class UserEdgeListFinder : public ConnectionManager {
  public:
   // 成功回傳Edge 序號 ALL 否則空字串
-  [[nodiscard]] static std::vector<std::string> start(std::string_view user_id);
+  static std::vector<std::string> start(std::string_view user_id);
 };
 
 // 檢查並刷新 Refresh Token（若仍有效則續期 +30 天，回傳 user_id）
@@ -78,9 +78,8 @@ class RefreshTokenRefresher : public ConnectionManager {
    * @param refresh_token_hash Token 雜湊
    * @return std::string 有效則為 user_id，否則為空字串
    */
-  [[nodiscard]] static std::string start(std::string_view refresh_token_hash);
+  static std::string start(std::string_view refresh_token_hash);
 };
-
-}  // namespace redsafe::apiserver::model::sql::fin
+} // namespace redsafe::apiserver::model::sql::fin
 
 #endif
