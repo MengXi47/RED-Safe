@@ -17,55 +17,48 @@ Copyright (C) 2025 by CHEN,BO-EN <chenboen931204@gmail.com>. All Rights Reserved
 
 #include "../util/response.hpp"
 
-namespace redsafe::apiserver::service::User
-{
-    class signup
-    {
-    public:
-        [[nodiscard]] static util::Result run(
-            const std::string& email,
-            const std::string& user_name,
-            const std::string& password);
-    };
+namespace redsafe::apiserver::service::User {
+class signup {
+ public:
+  [[nodiscard]] static util::Result run(const std::string &email, const std::string &user_name,
+                                        const std::string &password);
+};
 
-    class signin
-    {
-    public:
-        /**
-         * @brief 使用 emal 和 password 登入
-         * @param email
-         * @param password
-         */
-        [[nodiscard]] static util::Result run(
-            const std::string &email,
-            const std::string &password);
-    };
+class signin {
+ public:
+  /**
+   * @brief 使用 emal 和 password 登入
+   * @param email
+   * @param password
+   */
+  [[nodiscard]] static util::Result run(const std::string &email, const std::string &password);
+};
 
-    class Binding
-    {
-    public:
-        [[nodiscard]] static util::Result bind   (const std::string &serial_number, const std::string &access_token);
-        [[nodiscard]] static util::Result unbind (const std::string &serial_number, const std::string &access_token);
-    };
+class Binding {
+ public:
+  [[nodiscard]] static util::Result bind(const std::string &serial_number,
+                                         const std::string &access_token);
+  [[nodiscard]] static util::Result unbind(const std::string &serial_number,
+                                           const std::string &access_token);
+};
 
-    /**
-     * @brief 獲取使用者資訊
-     */
-    class GetUserInformation
-    {
-    public:
-        /**
-         * @param access_token
-         * @return util::Result
-         */
-        [[nodiscard]] static util::Result run(const std::string &access_token);
+/**
+ * @brief 獲取使用者資訊
+ */
+class GetUserInformation {
+ public:
+  /**
+   * @param access_token
+   * @return util::Result
+   */
+  [[nodiscard]] static util::Result run(const std::string &access_token);
 
-        /// 禁止拷貝和移動
-        GetUserInformation(const GetUserInformation&)               = delete;
-        GetUserInformation(GetUserInformation&&)                    = delete;
-        GetUserInformation& operator=(const GetUserInformation&)    = delete;
-        GetUserInformation& operator=(GetUserInformation&&)         = delete;
-    };
-}
+  /// 禁止拷貝和移動
+  GetUserInformation(const GetUserInformation &) = delete;
+  GetUserInformation(GetUserInformation &&) = delete;
+  GetUserInformation &operator=(const GetUserInformation &) = delete;
+  GetUserInformation &operator=(GetUserInformation &&) = delete;
+};
+}  // namespace redsafe::apiserver::service::User
 
 #endif
