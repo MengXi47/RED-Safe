@@ -34,7 +34,7 @@ derivatives in any form.
 #define SQL_CONNECTION_STR \
   "host=127.0.0.1 "        \
   "port=5432 "             \
-  "dbname=redsafedb"       \
+  "dbname=redsafedb "      \
   "user=redsafedb_user "   \
   "password=redsafedb_1204"
 #endif
