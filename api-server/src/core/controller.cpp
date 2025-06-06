@@ -26,7 +26,6 @@ derivatives in any form.
 #include "../service/TokenService.hpp"
 #include "../service/UserService.hpp"
 #include "../util/logger.hpp"
-// #include "../util/IOstream.hpp"
 #include "../util/response.hpp"
 
 namespace redsafe::apiserver {

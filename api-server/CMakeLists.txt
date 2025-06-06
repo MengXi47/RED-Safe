@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.16)
 
 project(RED_Safe_server LANGUAGES CXX)
 
@@ -15,9 +15,10 @@ add_executable(RED_Safe_apiserver
     src/service/EdgeService.cpp
     src/service/IOSAPPService.cpp
     src/service/UserService.cpp
-        src/model/sql/write.cpp
-        src/model/sql/read.cpp
     src/service/TokenService.cpp
+    src/model/sql/write.cpp
+    src/model/sql/read.cpp
+
 )
 
 if(APPLE)
@@ -41,11 +42,14 @@ if(POLICY CMP0167)
 endif()
 
 #-------------------- 依賴 --------------------
-find_package(Boost REQUIRED COMPONENTS system thread)
+find_package(Boost REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(libpqxx CONFIG QUIET)
 find_package(libsodium CONFIG QUIET)
+
+find_package(folly CONFIG REQUIRED)
+find_package(gflags REQUIRED)
 
 if (TARGET libpqxx::pqxx)                       # 成功找到
     set(PQXX_TARGET libpqxx::pqxx)
@@ -61,7 +65,7 @@ endif()
 if (TARGET libsodium::libsodium)                       # 成功找到
     set(sodium_PKG_TARGET libsodium::libsodium)
 else ()                                         # 回退到 pkg-config
-    find_package(PkgConfig REQUIRED)    
+    find_package(PkgConfig REQUIRED)
     pkg_check_modules(sodium_PKG QUIET libsodium)
     add_library(sodium_PKG INTERFACE)
     target_include_directories(sodium_PKG INTERFACE ${sodium_PKG_INCLUDE_DIRS})
@@ -71,14 +75,18 @@ endif()
 
 target_include_directories(RED_Safe_apiserver
     PRIVATE
-      ${Boost_INCLUDE_DIRS}
-      ${nlohmann_json_INCLUDE_DIRS}
+        ${Boost_INCLUDE_DIRS}
+        ${nlohmann_json_INCLUDE_DIRS}
+        ${FOLLY_INCLUDE_DIR}
 )
+
 target_link_libraries(RED_Safe_apiserver
     PRIVATE
-        OpenSSL::Crypto
-      ${Boost_LIBRARIES}
-      ${nlohmann_json_LIBS}
-      ${PQXX_TARGET}
-      ${sodium_PKG_TARGET}
+        ${OPENSSL_LIBRARIES}
+        ${Boost_LIBRARIES}
+        ${nlohmann_json_LIBS}
+        ${PQXX_TARGET}
+        ${sodium_PKG_TARGET}
+        ${FOLLY_LIBRARIES}
+        ${GFLAGS_LIBRARIES}
 )

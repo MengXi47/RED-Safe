@@ -87,7 +87,9 @@ class Server::Impl {
     numThreads = 1;
     io_.run();
 #else
-    if (numThreads == 0) numThreads = 2;
+    if (numThreads == 0) {
+      numThreads = 2;
+    }
 #if SERVER_THREAD_TYPE == 1
     workers.reserve(numThreads);
     for (unsigned int i = 0; i < numThreads; ++i)
@@ -102,7 +104,6 @@ class Server::Impl {
 
   static void clearandprintlogo(const std::string &port,
                                 const std::string &threadnumbers) {
-    [[maybe_unused]] auto e = system("clear");
     std::cout
         << " _____   ______  _____            _____          __\n"
         << "|  __ \\ |  ____||  __ \\          / ____|        / _|\n"
@@ -111,20 +112,18 @@ class Server::Impl {
         << "| | \\ \\ | |____ | |__| |         ____) || (_| || |  |  __/\n"
         << "|_|  \\_\\|______||_____/         |_____/  \\__,_||_|   \\___|\n"
         << "-----------------------------------------------------------\n";
-    {
-      constexpr int total_width = 59;
-      constexpr int inner_width = total_width - 2;
-      const std::string port_msg = "Server listening on port: " + port;
-      const int pad1 = (inner_width - static_cast<int>(port_msg.size())) / 2;
-      const int pad2 = inner_width - pad1 - static_cast<int>(port_msg.size());
-      std::cout << "-" << std::string(pad1, ' ') << port_msg
-                << std::string(pad2, ' ') << "-" << "\n";
-      const std::string thread_msg = "Threads: " + threadnumbers;
-      const int pad3 = (inner_width - static_cast<int>(thread_msg.size())) / 2;
-      const int pad4 = inner_width - pad3 - static_cast<int>(thread_msg.size());
-      std::cout << "-" << std::string(pad3, ' ') << thread_msg
-                << std::string(pad4, ' ') << "-" << "\n";
-    }
+    constexpr int total_width = 59;
+    constexpr int inner_width = total_width - 2;
+    const std::string port_msg = "Server listening on port: " + port;
+    const int pad1 = (inner_width - static_cast<int>(port_msg.size())) / 2;
+    const int pad2 = inner_width - pad1 - static_cast<int>(port_msg.size());
+    std::cout << "-" << std::string(pad1, ' ') << port_msg
+              << std::string(pad2, ' ') << "-" << "\n";
+    const std::string thread_msg = "Threads: " + threadnumbers;
+    const int pad3 = (inner_width - static_cast<int>(thread_msg.size())) / 2;
+    const int pad4 = inner_width - pad3 - static_cast<int>(thread_msg.size());
+    std::cout << "-" << std::string(pad3, ' ') << thread_msg
+              << std::string(pad4, ' ') << "-" << "\n";
     std::cout
         << "-----------------------------------------------------------\n";
   }
