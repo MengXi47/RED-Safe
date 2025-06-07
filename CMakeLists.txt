@@ -20,4 +20,8 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 # ── 子專案 ────────────────────────────────────────
+add_subdirectory("third_party/folly" EXCLUDE_FROM_ALL)
+
 add_subdirectory(api-server)
+
+#target_link_libraries(RED_Safe_server PRIVATE folly)

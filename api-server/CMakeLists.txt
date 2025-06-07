@@ -18,7 +18,6 @@ add_executable(RED_Safe_apiserver
     src/service/TokenService.cpp
     src/model/sql/write.cpp
     src/model/sql/read.cpp
-
 )
 
 if(APPLE)
@@ -48,9 +47,6 @@ find_package(nlohmann_json REQUIRED)
 find_package(libpqxx CONFIG QUIET)
 find_package(libsodium CONFIG QUIET)
 
-find_package(folly CONFIG REQUIRED)
-find_package(gflags REQUIRED)
-
 if (TARGET libpqxx::pqxx)                       # 成功找到
     set(PQXX_TARGET libpqxx::pqxx)
 else ()                                         # 回退到 pkg-config
@@ -77,7 +73,7 @@ target_include_directories(RED_Safe_apiserver
     PRIVATE
         ${Boost_INCLUDE_DIRS}
         ${nlohmann_json_INCLUDE_DIRS}
-        ${FOLLY_INCLUDE_DIR}
+        folly
 )
 
 target_link_libraries(RED_Safe_apiserver
@@ -87,6 +83,6 @@ target_link_libraries(RED_Safe_apiserver
         ${nlohmann_json_LIBS}
         ${PQXX_TARGET}
         ${sodium_PKG_TARGET}
-        ${FOLLY_LIBRARIES}
+        folly
         ${GFLAGS_LIBRARIES}
 )
