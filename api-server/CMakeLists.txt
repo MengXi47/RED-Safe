@@ -84,5 +84,4 @@ target_link_libraries(RED_Safe_apiserver
         ${PQXX_TARGET}
         ${sodium_PKG_TARGET}
         folly
-        ${GFLAGS_LIBRARIES}
 )
