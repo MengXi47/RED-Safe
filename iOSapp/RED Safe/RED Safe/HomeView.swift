@@ -1,10 +1,3 @@
-//
-//  HomeView.swift
-//  RED Safe
-//
-//  Created by boen on 2025/5/27.
-//
-
 import SwiftUI
 
 /// 表示單一裝置（以序號區分）及其線上狀態
@@ -45,7 +38,12 @@ struct HomeView: View {
                         Spacer()
                         HStack(spacing: 20) {
                             Image(systemName: "plus")
-                            Image(systemName: "bell")
+                            Button {
+                                AuthManager.shared.signOut()
+                            } label: {
+                                Image(systemName: "bell")
+                            }
+                            .buttonStyle(.plain)
                             Image(systemName: "ellipsis")
                         }
                         .font(.title3)

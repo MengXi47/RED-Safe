@@ -1,10 +1,3 @@
-//
-//  SignUpView.swift
-//  RED Safe
-//
-//  Created by boen on 2025/5/26.
-//
-
 import Foundation
 import SwiftUI
 import UIKit

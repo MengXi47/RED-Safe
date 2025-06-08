@@ -1,10 +1,3 @@
-//
-//  returnpage.swift
-//  RED Safe
-//
-//  Created by boen on 2025/5/28.
-//
-
 import SwiftUI
 import UIKit
 

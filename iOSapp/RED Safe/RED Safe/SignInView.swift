@@ -1,14 +1,8 @@
-//
-//  SignInView.swift
-//  RED Safe
-//
-//  Created by boen on 2025/5/26.
-//
-
 import SwiftUI
 import UIKit
 
 struct SignInView: View {
+    @ObservedObject private var auth = AuthManager.shared
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var isPasswordVisible: Bool = false
@@ -23,14 +17,14 @@ struct SignInView: View {
     @State private var showSignInAlert = false              // 顯示登入結果
     @State private var signInMessage = ""                   // Alert 內容
     @State private var proceedHomeAfterAlert = false        // 點確定後是否跳轉
-
+    
     // 用來追蹤哪個欄位正在聚焦
     @FocusState private var focusedField: Field?
-
+    
     private enum Field {
         case email, password
     }
-
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -68,7 +62,7 @@ struct SignInView: View {
                             if !email.isEmpty { emailSubmitted = true }
                             if !password.isEmpty { passwordSubmitted = true }
                         }
-
+                    
                     // 3. Email 輸入框
                     HStack {
                         Image(systemName: "envelope")
@@ -92,7 +86,7 @@ struct SignInView: View {
                             .stroke((emailSubmitted && email.isEmpty) ? Color.red : Color.clear, lineWidth: 2)
                     )
                     .padding(.horizontal)
-
+                    
                     // 4. Password 輸入框 (顯示/隱藏切換)
                     HStack {
                         Image(systemName: "lock")
@@ -126,7 +120,7 @@ struct SignInView: View {
                             .stroke((passwordSubmitted && password.isEmpty) ? Color.red : Color.clear, lineWidth: 2)
                     )
                     .padding(.horizontal)
-
+                    
                     // 5. Sign In 按鈕
                     Button(action: {
                         signIn()
@@ -154,7 +148,7 @@ struct SignInView: View {
                     .padding(.horizontal)
                     .disabled(email.isEmpty || password.isEmpty)
                     .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
-
+                    
                     // 6. Sign Up 按鈕 (NavigationLink)
                     NavigationLink(
                         destination: SignUpView()
@@ -225,7 +219,7 @@ struct SignInView: View {
         signInMessage   = ""
         errorMessage    = nil
         isLoading       = true
-        Network.shared.signIn(email: email, password: password) { result in
+        auth.signIn(email: email, password: password) { result in
             DispatchQueue.main.async {
                 isLoading = false
                 switch result {

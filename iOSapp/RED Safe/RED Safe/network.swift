@@ -1,10 +1,3 @@
-//
-//  network.swift
-//  RED Safe
-//
-//  Created by boen on 2025/5/26.
-//
-
 import Foundation
 
 /// 伺服器回傳的錯誤代碼對應列舉
@@ -26,7 +19,13 @@ enum ErrorCode: Int, Codable {
     case missingEmailOrPassword             = 403
     case missingUserIdOrAPNSToken           = 404
     case missingUserIdOrSerialNumber        = 405
+    case missingRefreshToken                = 406
+    case missingAccessToken                 = 407
     case internalServerError                = 500
+    case refreshTokenExpired                = 501
+    case refreshTokenInvalid                = 502
+    case accessTokenExpired                 = 503
+    case accessTokenInvalid                 = 504
 }
 
 extension ErrorCode {
@@ -41,6 +40,12 @@ extension ErrorCode {
         case .invalidEmailFormat:             return "Email 格式不正確"
         case .invalidPasswordFormat:          return "密碼格式不正確"
         case .internalServerError:            return "伺服器發生錯誤"
+        case .missingRefreshToken:            return "缺少 Refresh Token"
+        case .missingAccessToken:             return "缺少 Access Token"
+        case .refreshTokenExpired:            return "Refresh Token 已過期"
+        case .refreshTokenInvalid:            return "Refresh Token 無效"
+        case .accessTokenExpired:             return "Access Token 已過期"
+        case .accessTokenInvalid:             return "Access Token 無效"
         default:                              return "未知錯誤（\(rawValue)）"
         }
     }
@@ -62,16 +67,32 @@ struct SignUpRequest: Codable {
 /// 登入請求回應模型
 struct SignInResponse: Codable {
     let error_code:     ErrorCode
-    let user_id:        UUID?
     let user_name:      String?
-    let serial_number: [String]?
+    let access_token:   String?
+    var refresh_token:  String?
 }
 
 /// 註冊請求回應模型
 struct SignUpResponse: Codable {
     let error_code:     ErrorCode
-    let user_id: UUID?
+    let user_name:      String?
+    let email:          String?
 }
+
+/// Refresh Token API 回應模型
+struct RefreshResponse: Codable {
+    let access_token: String?
+    let error_code:   ErrorCode
+}
+
+/// 回應中包含 `error_code` 的通用協定
+protocol HasErrorCode: Decodable {
+    var error_code: ErrorCode { get }
+}
+
+extension SignInResponse: HasErrorCode {}
+extension SignUpResponse: HasErrorCode {}
+extension RefreshResponse: HasErrorCode {}
 
 /// 網路錯誤自訂列舉
 enum NetworkError: Error {
@@ -81,10 +102,58 @@ enum NetworkError: Error {
     case unknown(Error)                 // 其他未知錯誤
 }
 
-/// 單例模式的網路管理類別，負責發送各種 API 請求
+/// 單例模式的網路管理類別，負責所有 API 請求的發送與重試機制
 class Network: NSObject {
     static let shared = Network()
     private override init() {}
+    
+    /// 通用請求函式
+    /// - Parameters:
+    ///   - request: 已組裝好的 URLRequest
+    ///   - retry: 是否在存取令牌過期時自動重試（預設 true）
+    ///   - completion: 回傳解析後的結果或 NetworkError
+    private func sendRequest<T: HasErrorCode>(_ request: URLRequest, retry: Bool = true, completion: @escaping (Result<T, NetworkError>) -> Void) {
+        var request = request
+        // 如有 Access Token，將其加入 Authorization 標頭
+        if let token = AuthManager.shared.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            // 檢查網路層級錯誤
+            if let error = error {
+                completion(.failure(.unknown(error)))
+                return
+            }
+            // 驗證回傳是否為 HTTPURLResponse
+            guard let http = response as? HTTPURLResponse else {
+                completion(.failure(.serverError(statusCode: -1)))
+                return
+            }
+            guard let data = data else {
+                completion(.failure(.serverError(statusCode: http.statusCode)))
+                return
+            }
+            do {
+                // 將回傳 JSON 反序列化為對應模型
+                let result = try JSONDecoder().decode(T.self, from: data)
+                // 若 Access Token 過期或無效，嘗試以 Refresh Token 自動續期並重試
+                if retry && (result.error_code == .accessTokenExpired || result.error_code == .accessTokenInvalid) {
+                    AuthManager.shared.refreshAccessToken { success in
+                        if success {
+                            self.sendRequest(request, retry: false, completion: completion)
+                        } else {
+                            completion(.success(result))
+                        }
+                    }
+                    return
+                }
+                completion(.success(result))
+            } catch {
+                completion(.failure(.decodingError))
+            }
+        }.resume()
+    }
 
     /// 登入請求
     /// - Parameters:
@@ -124,13 +193,32 @@ class Network: NSObject {
                 completion(.failure(.serverError(statusCode: -1)))
                 return
             }
+            // Debug: 印出完整 HTTP 回應
+            print("Response statusCode: \(http.statusCode)")
+            print("Response headers: \(http.allHeaderFields)")
+            if let bodyData = data, let bodyString = String(data: bodyData, encoding: .utf8) {
+                print("Response body: \(bodyString)")
+            }
+            // 解析 Refresh Token
+            var refreshToken: String?
+            if let cookie = http.value(forHTTPHeaderField: "Set-Cookie"),
+               let range  = cookie.range(of: "refresh_token=") {
+                let sub = cookie[range.upperBound...]
+                refreshToken = sub.split(separator: ";").first.map(String.init)
+            }
             // 解析 JSON
             guard let data = data else {
                 completion(.failure(.serverError(statusCode: http.statusCode)))
                 return
             }
             do {
-                let result = try JSONDecoder().decode(SignInResponse.self, from: data)
+                var result = try JSONDecoder().decode(SignInResponse.self, from: data)
+                // 若 JSON 未帶 refresh_token，改用 Cookie 解析到的值
+                if result.refresh_token == nil {
+                    result.refresh_token = refreshToken
+                }
+                print("Access Token: \(result.access_token ?? "nil")")
+                print("Refresh Token: \(result.refresh_token ?? "nil")")
                 completion(.success(result))
             } catch {
                 completion(.failure(.decodingError))
@@ -185,6 +273,37 @@ class Network: NSObject {
             }
             do {
                 let result = try JSONDecoder().decode(SignUpResponse.self, from: data)
+                completion(.success(result))
+            } catch {
+                completion(.failure(.decodingError))
+            }
+        }.resume()
+    }
+    /// Refresh Access Token
+    func refreshAccessToken(refreshToken: String, completion: @escaping (Result<RefreshResponse, NetworkError>) -> Void) {
+        guard let url = URL(string: "https://api.redsafe-tw.com/auth/refresh") else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("refresh_token=\(refreshToken)", forHTTPHeaderField: "Cookie")
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                completion(.failure(.unknown(error)))
+                return
+            }
+            guard let http = response as? HTTPURLResponse else {
+                completion(.failure(.serverError(statusCode: -1)))
+                return
+            }
+            guard let data = data else {
+                completion(.failure(.serverError(statusCode: http.statusCode)))
+                return
+            }
+            do {
+                let result = try JSONDecoder().decode(RefreshResponse.self, from: data)
                 completion(.success(result))
             } catch {
                 completion(.failure(.decodingError))
