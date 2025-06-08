@@ -85,6 +85,14 @@ struct RefreshResponse: Codable {
     let error_code:   ErrorCode
 }
 
+/// 取得使用者資訊回應模型
+struct UserInfoResponse: Codable {
+    let error_code:    ErrorCode
+    let user_name:     String?
+    let email:         String?
+    let serial_number: [String]?
+}
+
 /// 回應中包含 `error_code` 的通用協定
 protocol HasErrorCode: Decodable {
     var error_code: ErrorCode { get }
@@ -93,6 +101,7 @@ protocol HasErrorCode: Decodable {
 extension SignInResponse: HasErrorCode {}
 extension SignUpResponse: HasErrorCode {}
 extension RefreshResponse: HasErrorCode {}
+extension UserInfoResponse: HasErrorCode {}
 
 /// 網路錯誤自訂列舉
 enum NetworkError: Error {
@@ -309,5 +318,20 @@ class Network: NSObject {
                 completion(.failure(.decodingError))
             }
         }.resume()
+    }
+
+    /// 取得使用者資訊
+    func getUserInfo(completion: @escaping (Result<UserInfoResponse, NetworkError>) -> Void) {
+        guard let url = URL(string: "https://api.redsafe-tw.com/user/all") else {
+            completion(.failure(.invalidURL))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        sendRequest(request) { (result: Result<UserInfoResponse, NetworkError>) in
+            completion(result)
+        }
     }
 }

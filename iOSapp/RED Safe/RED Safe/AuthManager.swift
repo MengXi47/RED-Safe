@@ -45,6 +45,7 @@ final class AuthManager: ObservableObject {
 
     /// Keychain 中儲存 Refresh Token 的鍵名
     private let refreshKey = "refresh_token"
+    let nameKey = "user_name"
 
     /// 追蹤登入狀態，供 UI 綁定
     @Published private(set) var isLoggedIn: Bool = false
@@ -57,6 +58,9 @@ final class AuthManager: ObservableObject {
 
     /// 嘗試從 Keychain 載入 Refresh Token，並續期取得新的 Access Token
     func loadSavedSession(completion: ((Bool) -> Void)? = nil) {
+        // 從 UserDefaults 讀取儲存的 user_name
+        self.userName = UserDefaults.standard.string(forKey: nameKey)
+
         guard let tokenData = KeychainHelper.load(key: refreshKey),
               let refresh = String(data: tokenData, encoding: .utf8) else {
             completion?(false)
@@ -84,6 +88,9 @@ final class AuthManager: ObservableObject {
                        let refresh = response.refresh_token {
                         self.accessToken = access
                         self.userName = response.user_name
+                        if let name = response.user_name {
+                            UserDefaults.standard.set(name, forKey: self.nameKey)
+                        }
                         KeychainHelper.save(key: self.refreshKey, data: Data(refresh.utf8))
                         self.isLoggedIn = true
                     }
@@ -125,6 +132,15 @@ final class AuthManager: ObservableObject {
                     if response.error_code == .success, let token = response.access_token {
                         self.accessToken = token
                         self.isLoggedIn = true
+                        // 取得使用者資訊
+                        Network.shared.getUserInfo { userResult in
+                            if case .success(let userInfo) = userResult, userInfo.error_code == .success {
+                                self.userName = userInfo.user_name
+                                if let name = userInfo.user_name {
+                                    UserDefaults.standard.set(name, forKey: self.nameKey)
+                                }
+                            }
+                        }
                         completion?(true)
                     } else {
                         self.isLoggedIn = false
@@ -147,6 +163,7 @@ final class AuthManager: ObservableObject {
         accessToken = nil
         userName = nil
         KeychainHelper.delete(key: refreshKey)
+        UserDefaults.standard.removeObject(forKey: nameKey)
         isLoggedIn = false
     }
 }
