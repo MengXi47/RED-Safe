@@ -196,15 +196,27 @@ struct SignUpView: View {
                 errorMessage = nil
             }
         }
-        .alert("伺服器回應", isPresented: $showResponseAlert) {
-            Button("確定") {
-                if shouldDismiss {
-                    dismiss()
+        // 註冊結果提示
+        .overlay(
+            Group {
+                if showResponseAlert {
+                    Text(responseMessage)
+                        .padding()
+                        .background(Color.black.opacity(0.7))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        .transition(.opacity)
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                showResponseAlert = false
+                                if shouldDismiss {
+                                    dismiss()
+                                }
+                            }
+                        }
                 }
             }
-        } message: {
-            Text(responseMessage)
-        }
+        )
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Image(systemName: "chevron.left")
@@ -227,6 +239,9 @@ struct SignUpView: View {
                     responseMessage = "\(response.error_code.localizedDescription)"
                     // 若為成功則設定 shouldDismiss = true，否則 false
                     shouldDismiss = (response.error_code == .success)
+                    if response.error_code == .success, let name = response.user_name {
+                        UserDefaults.standard.set(name, forKey: AuthManager.shared.nameKey)
+                    }
                     showResponseAlert = true
                 case .failure(let error):
                     // 失敗：顯示錯誤訊息
@@ -240,6 +255,9 @@ struct SignUpView: View {
                     case .unknown(let err):
                         print("發生錯誤：\(err.localizedDescription)")
                     }
+                    responseMessage = "網路錯誤"
+                    shouldDismiss = false
+                    showResponseAlert = true
                 }
             }
         }
