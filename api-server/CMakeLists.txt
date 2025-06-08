@@ -20,6 +20,8 @@ add_executable(RED_Safe_apiserver
     src/model/sql/read.cpp
 )
 
+target_compile_definitions(RED_Safe_apiserver PRIVATE SERVER_PORT=30678)
+
 if(APPLE)
     message(STATUS "Building on macOS")
     target_compile_definitions(RED_Safe_apiserver PRIVATE PLATFORM_MACOS)

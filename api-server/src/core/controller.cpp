@@ -19,7 +19,6 @@ derivatives in any form.
 #include "controller.hpp"
 
 #include <functional>
-#include <unordered_map>
 #include <folly/container/F14Map.h>
 
 #include "../service/EdgeService.hpp"
