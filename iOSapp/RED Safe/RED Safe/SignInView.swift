@@ -169,16 +169,27 @@ struct SignInView: View {
                     animate = true
                 }
             }
-            // 登入結果 Alert
-            .alert("登入結果", isPresented: $showSignInAlert) {
-                Button("確定") {
-                    if proceedHomeAfterAlert {
-                        navigateHome = true
+            // 彈出訊息，2 秒後自動消失
+            .overlay(
+                Group {
+                    if showSignInAlert {
+                        Text(signInMessage)
+                            .padding()
+                            .background(Color.black.opacity(0.7))
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                            .transition(.opacity)
+                            .onAppear {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    showSignInAlert = false
+                                    if proceedHomeAfterAlert {
+                                        navigateHome = true
+                                    }
+                                }
+                            }
                     }
                 }
-            } message: {
-                Text(signInMessage)
-            }
+            )
             
             // 跳轉到 HomeView
             .navigationDestination(isPresented: $navigateHome) {
@@ -226,16 +237,22 @@ struct SignInView: View {
                 case .success(let response):
                     signInMessage = response.error_code.localizedDescription
                     if response.error_code == .success {
-                        homeUserName = response.user_name ?? "Unknown User"
-                        homeDevices = [
-                            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-                            DeviceStatus(serial: "9876-5432-ZYXW", isOnline: false)
-                        ]
-                        proceedHomeAfterAlert = true
+                        // 成功登入後立即取得使用者資訊
+                        Network.shared.getUserInfo { infoResult in
+                            if case .success(let info) = infoResult, info.error_code == .success {
+                                homeUserName = info.user_name ?? response.user_name ?? ""
+                                homeDevices = info.serial_number?.map { DeviceStatus(serial: $0, isOnline: true) } ?? []
+                            } else {
+                                homeUserName = response.user_name ?? ""
+                                homeDevices = []
+                            }
+                            proceedHomeAfterAlert = true
+                            showSignInAlert = true
+                        }
                     } else {
                         proceedHomeAfterAlert = false
+                        showSignInAlert = true
                     }
-                    showSignInAlert = true
                 case .failure(let error):
                     switch error {
                     case .invalidURL:
@@ -247,6 +264,9 @@ struct SignInView: View {
                     case .unknown(let err):
                         print("發生錯誤：\(err.localizedDescription)")
                     }
+                    signInMessage = "網路錯誤"
+                    proceedHomeAfterAlert = false
+                    showSignInAlert = true
                 }
             }
         }
