@@ -2,21 +2,18 @@ import SwiftUI
 import UIKit
 
 struct SignInView: View {
-    @ObservedObject private var auth = AuthManager.shared
+    @StateObject private var auth = AuthManager.shared
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var isPasswordVisible: Bool = false
     @State private var animate: Bool = false
     @State private var emailSubmitted: Bool = false
     @State private var passwordSubmitted: Bool = false
-    @State private var isLoading = false                    // 網路請求中
     @State private var errorMessage: String?                // 錯誤訊息
-    @State private var navigateHome = false                 // 觸發跳轉
-    @State private var homeUserName = ""                    // 傳給 HomeView 的使用者名稱
-    @State private var homeDevices: [DeviceStatus] = []     // 傳給 HomeView 的裝置清單
+//    @State private var homeDevices: [DeviceStatus] = []     // 傳給 HomeView 的裝置清單
     @State private var showSignInAlert = false              // 顯示登入結果
     @State private var signInMessage = ""                   // Alert 內容
-    @State private var proceedHomeAfterAlert = false        // 點確定後是否跳轉
+    @State private var proceedHomeAfterAlert = false
     
     // 用來追蹤哪個欄位正在聚焦
     @FocusState private var focusedField: Field?
@@ -169,21 +166,29 @@ struct SignInView: View {
                     animate = true
                 }
             }
-            // 登入結果 Alert
-            .alert("登入結果", isPresented: $showSignInAlert) {
-                Button("確定") {
-                    if proceedHomeAfterAlert {
-                        navigateHome = true
+            
+            // 彈出訊息，1 秒後自動消失
+            .overlay(
+                Group{
+                    if showSignInAlert {
+                        Text(signInMessage)
+                            .padding()
+                            .background(Color.black.opacity(0.7))
+                            .foregroundStyle(.white)
+                            .cornerRadius(8)
+                            .transition(.opacity)
+                            .onAppear {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                                    showSignInAlert = false
+                                    if proceedHomeAfterAlert {
+                                        auth.setLoggedIn(true)
+
+                                    }
+                                }
+                            }
                     }
                 }
-            } message: {
-                Text(signInMessage)
-            }
-            
-            // 跳轉到 HomeView
-            .navigationDestination(isPresented: $navigateHome) {
-                HomeView(userName: homeUserName, devices: homeDevices)
-            }
+            )
             
             // 當焦點變更後，若不再聚焦在Email或Password就觸發驗證
             .onChange(of: focusedField) {
@@ -203,11 +208,7 @@ struct SignInView: View {
                 isPasswordVisible = false
                 emailSubmitted = false
                 passwordSubmitted = false
-                isLoading = false
                 errorMessage = nil
-                navigateHome = false
-                homeUserName = ""
-                homeDevices = []
                 showSignInAlert = false
                 signInMessage = ""
                 proceedHomeAfterAlert = false
@@ -218,22 +219,13 @@ struct SignInView: View {
     private func signIn() {
         signInMessage   = ""
         errorMessage    = nil
-        isLoading       = true
         auth.signIn(email: email, password: password) { result in
             DispatchQueue.main.async {
-                isLoading = false
                 switch result {
                 case .success(let response):
                     signInMessage = response.error_code.localizedDescription
                     if response.error_code == .success {
-                        homeUserName = response.user_name ?? "Unknown User"
-                        homeDevices = [
-                            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-                            DeviceStatus(serial: "9876-5432-ZYXW", isOnline: false)
-                        ]
                         proceedHomeAfterAlert = true
-                    } else {
-                        proceedHomeAfterAlert = false
                     }
                     showSignInAlert = true
                 case .failure(let error):
@@ -247,6 +239,8 @@ struct SignInView: View {
                     case .unknown(let err):
                         print("發生錯誤：\(err.localizedDescription)")
                     }
+                    signInMessage = "未知錯誤"
+                    showSignInAlert = true
                 }
             }
         }

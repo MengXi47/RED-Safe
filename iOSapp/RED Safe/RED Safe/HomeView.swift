@@ -8,8 +8,8 @@ struct DeviceStatus: Identifiable {
 }
 
 struct HomeView: View {
-    let userName: String
-    let devices: [DeviceStatus]?
+    let home_user_name: String
+    @State private var home_devices: [DeviceStatus]?
 
     var body: some View {
         NavigationStack {
@@ -29,7 +29,7 @@ struct HomeView: View {
                     // 頂部列：左上使用者名稱 + 下拉箭頭 / 右側功能圖示
                     HStack {
                         HStack(spacing: 4) {
-                            Text("\(userName)")
+                            Text("\(home_user_name)")
                                 .font(.title2.bold())
                                 .foregroundColor(.primary)
                             Image(systemName: "chevron.down")
@@ -55,7 +55,7 @@ struct HomeView: View {
                     // 中間卡片區：列出每個序號及其狀態
                     ScrollView {
                         VStack(spacing: 16) {
-                            ForEach(devices ?? []) { device in
+                            ForEach(home_devices ?? []) { device in
                                 HStack(spacing: 16) {
                                     Image(systemName: device.isOnline ? "wifi" : "wifi.slash")
                                         .font(.title2)
@@ -86,25 +86,29 @@ struct HomeView: View {
         }
         .navigationBarBackButtonHidden(true)
         .disablePopGesture()
+        
+        .onAppear {
+            Network.shared.getUserInfo { infoResult in
+                if case .success(let info) = infoResult, info.error_code == .success {
+                    // 成功：更新使用者名稱與裝置陣列
+                    DispatchQueue.main.async {
+                        home_devices = info.serial_number?
+                            .map { DeviceStatus(serial: $0, isOnline: true) } ?? []
+                    }
+                } else {
+                    // 失敗：保持原本登入回傳的資料，或視情況清空
+                    DispatchQueue.main.async {
+                        home_devices = []   // 失敗就清空裝置清單
+                    }
+                }
+            }
+        }
     }
 }
 
 #Preview {
     HomeView(
-        userName: "BoEn",
-        devices: [
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "1234-5678-ABCD", isOnline: true),
-            DeviceStatus(serial: "9876-5432-ZYXW", isOnline: false)
-        ]
+        home_user_name: "BoEn"
     )
 }
 

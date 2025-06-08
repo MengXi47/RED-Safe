@@ -42,10 +42,11 @@ final class AuthManager: ObservableObject {
     /// 全域唯一實例
     static let shared = AuthManager()
     private init() {}
-
-    /// Keychain 中儲存 Refresh Token 的鍵名
-    private let refreshKey = "refresh_token"
-
+    
+    /// Keychain 中儲存的鍵名
+    private let refreshKey = "refreshtoken"
+    private let usernameKey = "username"
+    
     /// 追蹤登入狀態，供 UI 綁定
     @Published private(set) var isLoggedIn: Bool = false
     /// 載入狀態，供 Loading 視圖綁定
@@ -54,7 +55,13 @@ final class AuthManager: ObservableObject {
     private(set) var accessToken: String?
     /// 登入使用者名稱
     private(set) var userName: String?
-
+    
+    /// 手動更新登入狀態
+    /// - Parameter loggedIn: 是否已登入
+    func setLoggedIn(_ loggedIn: Bool) {
+        self.isLoggedIn = loggedIn
+    }
+    
     /// 嘗試從 Keychain 載入 Refresh Token，並續期取得新的 Access Token
     func loadSavedSession(completion: ((Bool) -> Void)? = nil) {
         guard let tokenData = KeychainHelper.load(key: refreshKey),
@@ -64,28 +71,25 @@ final class AuthManager: ObservableObject {
         }
         refreshAccessToken(refreshToken: refresh, completion: completion)
     }
-
+    
     /// 執行登入，成功後儲存 Refresh Token 並更新狀態
     /// - Parameters:
     ///   - email: 使用者 Email
     ///   - password: 使用者 密碼
     ///   - completion: 回傳 SignInResponse 或 NetworkError
     func signIn(email: String, password: String, completion: @escaping (Result<SignInResponse, NetworkError>) -> Void) {
-        // 開始登入流程，啟動 Loading
-        self.isLoading = true
         Network.shared.signIn(email: email, password: password) { result in
             DispatchQueue.main.async {
-                // 登入請求結束，停止 Loading
-                self.isLoading = false
                 switch result {
                 case .success(let response):
                     if response.error_code == .success,
                        let access = response.access_token,
-                       let refresh = response.refresh_token {
+                       let refresh = response.refresh_token,
+                       let username = response.user_name {
                         self.accessToken = access
-                        self.userName = response.user_name
+                        self.userName = username
                         KeychainHelper.save(key: self.refreshKey, data: Data(refresh.utf8))
-                        self.isLoggedIn = true
+                        KeychainHelper.save(key: self.usernameKey, data: Data(username.utf8))
                     }
                     completion(.success(response))
                 case .failure(let error):
@@ -94,7 +98,7 @@ final class AuthManager: ObservableObject {
             }
         }
     }
-
+    
     /// 使用 Refresh Token 續期 Access Token
     /// - Parameters:
     ///   - refreshToken: 可選的外部提供 Token，預設會從 Keychain 讀取
@@ -103,22 +107,28 @@ final class AuthManager: ObservableObject {
         // 開始 Token 續期，啟動 Loading
         self.isLoading = true
         print("🔄 refreshAccessToken 開始，isLoading = \(self.isLoading)")
-            // 從參數或 Keychain 嘗試取得 Refresh Token
+        // 從參數或 Keychain 嘗試取得 Refresh Token
         guard let token = refreshToken ?? KeychainHelper.load(key: refreshKey).flatMap({ String(data: $0, encoding: .utf8) }) else {
-                // 續期失敗，停止 Loading
-                self.isLoading = false
+            // 續期失敗，停止 Loading
+            self.isLoading = false
             self.isLoggedIn = false
             completion?(false)
             return
         }
+        // 從 Keychain 嘗試取得使用者名稱
+        if let nameData = KeychainHelper.load(key: usernameKey),
+           let name = String(data: nameData, encoding: .utf8) {
+            self.userName = name
+            print("🔑 使用的 userName: \(name)")
+        }
         print("🔑 使用的 refreshToken: \(token)")
         print("📡 呼叫 Network.shared.refreshAccessToken")
-            // 向後端發送 refresh token 續期請求
+        // 向後端發送 refresh token 續期請求
         Network.shared.refreshAccessToken(refreshToken: token) { result in
-                // 切回主執行緒更新狀態
+            // 切回主執行緒更新狀態
             DispatchQueue.main.async {
                 print("✅ 切回主線程，收到續期結果: \(result)")
-                    // 處理成功回應，更新 Access Token
+                // 處理成功回應，更新 Access Token
                 switch result {
                 case .success(let response):
                     print("🎉 續期成功，error_code = \(response.error_code), access_token = \(response.access_token ?? "nil")")
@@ -141,12 +151,13 @@ final class AuthManager: ObservableObject {
             }
         }
     }
-
+    
     /// 登出並清除所有 Token 與使用者資料
     func signOut() {
         accessToken = nil
         userName = nil
         KeychainHelper.delete(key: refreshKey)
+        KeychainHelper.delete(key: usernameKey)
         isLoggedIn = false
     }
 }

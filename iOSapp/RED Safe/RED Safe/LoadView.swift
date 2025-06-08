@@ -17,11 +17,12 @@ struct LoadView: View {
                 Image("RED_Safe_icon1")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 200, height: 200)
+                    .frame(width: 300, height: 300)
 
                 ProgressView()  // 加上系統圓形指示器
                     .scaleEffect(1.5)
             }
+            .offset(y: -50)
         }
     }
 }

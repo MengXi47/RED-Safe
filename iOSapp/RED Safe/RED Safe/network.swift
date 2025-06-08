@@ -85,6 +85,14 @@ struct RefreshResponse: Codable {
     let error_code:   ErrorCode
 }
 
+/// 取得使用者資訊回應模型
+struct UserInfoResponse: Codable {
+    let error_code:    ErrorCode
+    let user_name:     String?
+    let email:         String?
+    let serial_number: [String]?
+}
+
 /// 回應中包含 `error_code` 的通用協定
 protocol HasErrorCode: Decodable {
     var error_code: ErrorCode { get }
@@ -93,6 +101,7 @@ protocol HasErrorCode: Decodable {
 extension SignInResponse: HasErrorCode {}
 extension SignUpResponse: HasErrorCode {}
 extension RefreshResponse: HasErrorCode {}
+extension UserInfoResponse: HasErrorCode {}
 
 /// 網路錯誤自訂列舉
 enum NetworkError: Error {
@@ -154,7 +163,7 @@ class Network: NSObject {
             }
         }.resume()
     }
-
+    
     /// 登入請求
     /// - Parameters:
     ///   - email: 使用者 email
@@ -166,12 +175,12 @@ class Network: NSObject {
             completion(.failure(.invalidURL))
             return
         }
-
+        
         // 2. 組裝 URLRequest
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
+        
         // 3. 編碼請求主體
         let body = SignInRequest(email: email, password: password)
         do {
@@ -180,7 +189,7 @@ class Network: NSObject {
             completion(.failure(.unknown(error)))
             return
         }
-
+        
         // 4. 發送請求
         URLSession.shared.dataTask(with: request) { data, response, error in
             // 網路層錯誤
@@ -279,6 +288,7 @@ class Network: NSObject {
             }
         }.resume()
     }
+    
     /// Refresh Access Token
     func refreshAccessToken(refreshToken: String, completion: @escaping (Result<RefreshResponse, NetworkError>) -> Void) {
         guard let url = URL(string: "https://api.redsafe-tw.com/auth/refresh") else {
@@ -309,5 +319,20 @@ class Network: NSObject {
                 completion(.failure(.decodingError))
             }
         }.resume()
+    }
+    
+    /// 取得使用者資訊
+    func getUserInfo(completion: @escaping (Result<UserInfoResponse, NetworkError>) -> Void) {
+        guard let url = URL(string: "https://api.redsafe-tw.com/user/all") else {
+            completion(.failure(.invalidURL))
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        
+        sendRequest(request) { (result: Result<UserInfoResponse, NetworkError>) in
+            completion(result)
+        }
     }
 }
