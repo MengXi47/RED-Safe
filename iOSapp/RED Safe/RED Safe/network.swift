@@ -85,6 +85,14 @@ struct RefreshResponse: Codable {
     let error_code:   ErrorCode
 }
 
+/// 取得使用者資訊回應模型
+struct UserInfoResponse: Codable {
+    let error_code:    ErrorCode
+    let user_name:     String?
+    let email:         String?
+    let serial_number: [String]?
+}
+
 /// 回應中包含 `error_code` 的通用協定
 protocol HasErrorCode: Decodable {
     var error_code: ErrorCode { get }
@@ -93,6 +101,7 @@ protocol HasErrorCode: Decodable {
 extension SignInResponse: HasErrorCode {}
 extension SignUpResponse: HasErrorCode {}
 extension RefreshResponse: HasErrorCode {}
+extension UserInfoResponse: HasErrorCode {}
 
 /// 網路錯誤自訂列舉
 enum NetworkError: Error {
@@ -118,6 +127,13 @@ class Network: NSObject {
         if let token = AuthManager.shared.accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
+
+        // 印出發送的請求資訊
+        print("➡️ \(request.httpMethod ?? "") \(request.url?.absoluteString ?? "")")
+        if let headers = request.allHTTPHeaderFields { print("Headers: \(headers)") }
+        if let body = request.httpBody, let bodyStr = String(data: body, encoding: .utf8) {
+            print("Body: \(bodyStr)")
+        }
         
         URLSession.shared.dataTask(with: request) { data, response, error in
             // 檢查網路層級錯誤
@@ -134,6 +150,11 @@ class Network: NSObject {
                 completion(.failure(.serverError(statusCode: http.statusCode)))
                 return
             }
+
+            // 印出回傳資訊
+            print("⬅️ status: \(http.statusCode)")
+            print("Headers: \(http.allHeaderFields)")
+            if let bodyStr = String(data: data, encoding: .utf8) { print("Body: \(bodyStr)") }
             do {
                 // 將回傳 JSON 反序列化為對應模型
                 let result = try JSONDecoder().decode(T.self, from: data)
@@ -172,6 +193,9 @@ class Network: NSObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        print("➡️ POST \(url.absoluteString)")
+        print("Headers: \(request.allHTTPHeaderFields ?? [:])")
+
         // 3. 編碼請求主體
         let body = SignInRequest(email: email, password: password)
         do {
@@ -179,6 +203,9 @@ class Network: NSObject {
         } catch {
             completion(.failure(.unknown(error)))
             return
+        }
+        if let bodyStr = String(data: request.httpBody ?? Data(), encoding: .utf8) {
+            print("Body: \(bodyStr)")
         }
 
         // 4. 發送請求
@@ -194,10 +221,10 @@ class Network: NSObject {
                 return
             }
             // Debug: 印出完整 HTTP 回應
-            print("Response statusCode: \(http.statusCode)")
-            print("Response headers: \(http.allHeaderFields)")
+            print("⬅️ status: \(http.statusCode)")
+            print("Headers: \(http.allHeaderFields)")
             if let bodyData = data, let bodyString = String(data: bodyData, encoding: .utf8) {
-                print("Response body: \(bodyString)")
+                print("Body: \(bodyString)")
             }
             // 解析 Refresh Token
             var refreshToken: String?
@@ -250,6 +277,9 @@ class Network: NSObject {
             completion(.failure(.unknown(error)))
             return
         }
+        if let bodyStr = String(data: request.httpBody ?? Data(), encoding: .utf8) {
+            print("Body: \(bodyStr)")
+        }
         // 4. 發送請求
         URLSession.shared.dataTask(with: request) { data, response, error in
             // 網路層錯誤
@@ -267,9 +297,10 @@ class Network: NSObject {
                 completion(.failure(.serverError(statusCode: http.statusCode)))
                 return
             }
-            // 印出伺服器回傳的原始 JSON 字串
+            print("⬅️ status: \(http.statusCode)")
+            print("Headers: \(http.allHeaderFields)")
             if let bodyString = String(data: data, encoding: .utf8) {
-                print("📥 SignUp response body: \(bodyString)")
+                print("Body: \(bodyString)")
             }
             do {
                 let result = try JSONDecoder().decode(SignUpResponse.self, from: data)
@@ -309,5 +340,20 @@ class Network: NSObject {
                 completion(.failure(.decodingError))
             }
         }.resume()
+    }
+
+    /// 取得使用者資訊
+    func getUserInfo(completion: @escaping (Result<UserInfoResponse, NetworkError>) -> Void) {
+        guard let url = URL(string: "https://api.redsafe-tw.com/user/all") else {
+            completion(.failure(.invalidURL))
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+
+        sendRequest(request) { (result: Result<UserInfoResponse, NetworkError>) in
+            completion(result)
+        }
     }
 }
