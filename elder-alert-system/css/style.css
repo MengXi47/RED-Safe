@@ -218,15 +218,16 @@ body, html {
 .sign-header {
   position: fixed;
   top: 0;
-  width: 100%;
-  background: rgba(28, 31, 36, 0.95);
+  width: 100%; 
+  z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: rgba(28, 31, 36, 0.95);
   padding: 1rem 2rem;
-  z-index: 2000;
   box-shadow: 0 2px 16px rgba(255,0,0,0.10);
 }
+
 .sign-mark {
   display: flex;
   align-items: center;
@@ -237,22 +238,72 @@ body, html {
   border-radius: 6px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+.button-group {
+  display: flex;
+  gap: 1.2rem;
+  align-items: center;
+}
+
+/* 主按鈕：Sign In / Sign Up */
 .sign-btn {
   background: linear-gradient(90deg, #ff4d4d 0%, #ff1a1a 100%);
   color: #fff;
   border: none;
-  border-radius: 18px;
-  padding: 0.4rem 1.1rem;
-  font-size: 1.2rem;
+  border-radius: 22px;
+  padding: 0.55rem 2.1rem;
+  font-size: 1.12rem;
+  font-weight: 700;
+  min-height: 46px;
+  box-shadow: 0 4px 16px rgba(255,0,0,0.14), 0 1.5px 4px rgba(0,0,0,0.08);
+  outline: none;
   cursor: pointer;
-  box-shadow: 0 2px 10px rgba(255,0,0,0.2);
-  transition: background 0.3s, transform 0.2s;
+  letter-spacing: 1px;
+  transition: background 0.25s, transform 0.18s, box-shadow 0.18s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   margin-right: 2rem;
 }
-.sign-btn:hover {
+
+/* 主按鈕 hover/active 效果 */
+.sign-btn:hover, .sign-btn:focus {
   background: linear-gradient(90deg, #ff1a1a 0%, #ff4d4d 100%);
-  transform: scale(1.05);
+  transform: translateY(-2px) scale(1.045);
+  box-shadow: 0 6px 18px rgba(255,0,0,0.22), 0 2px 8px rgba(0,0,0,0.13);
 }
+
+.about-btn {
+  background: #fff;
+  color: #ff1a1a;
+  border: 2px solid #ffb3b3;
+  border-radius: 22px;
+  padding: 0.55rem 1.7rem;
+  font-size: 1.12rem;
+  font-weight: 700;
+  min-height: 46px;
+  box-shadow: 0 3px 12px rgba(255,0,0,0.07), 0 1.5px 4px rgba(0,0,0,0.06);
+  outline: none;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: 
+    background 0.25s, 
+    color 0.22s, 
+    border-color 0.22s, 
+    transform 0.18s, 
+    box-shadow 0.18s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.about-btn:hover, .about-btn:focus {
+  background: linear-gradient(90deg, #ffb3b3 0%, #fff 100%);
+  color: #fff;
+  border-color: #ff4d4d;
+  transform: translateY(-2px) scale(1.045);
+  box-shadow: 0 6px 18px rgba(255,0,0,0.14), 0 2px 8px rgba(0,0,0,0.11);
+}
+
+
 
 /* ===== modal 彈窗 ===== */
 .modal {
@@ -261,7 +312,6 @@ body, html {
   z-index: 3000;
   left: 0; top: 0; width: 100vw; height: 100vh;
   background: rgba(0,0,0,0.7);
-  display: flex;
   align-items: center;
   justify-content: center;
   overflow: auto;
@@ -463,3 +513,5 @@ button[type="submit"]:hover {
     font-size: 1.05rem;
   }
 }
+
+

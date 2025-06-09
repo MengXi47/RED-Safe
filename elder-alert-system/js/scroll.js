@@ -1,4 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // --- goTopBtn 回首頁/滾頂功能 ---
+  const goTopBtn = document.getElementById('goTopBtn');
+  if (goTopBtn) {
+    goTopBtn.addEventListener('click', () => {
+      const path = window.location.pathname.replace(/\/+$/, '');
+      if (path === '' || path === '/index.html') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        window.location.href = '/';
+      }
+    });
+  }
   // 取得所有帶 fade-element 類別的元素（包含流程項目、卡片、頁尾等）
   const fadeEls = document.querySelectorAll('.fade-element');
 

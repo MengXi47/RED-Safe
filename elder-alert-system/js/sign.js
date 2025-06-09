@@ -1,4 +1,4 @@
-let signControl = 1; // 0=只阻止表單送出, 1=發送API
+let signControl = 0; // 0=只阻止表單送出, 1=發送API
 
 const ERROR_MESSAGES = {
   0:   "Success",
@@ -26,19 +26,7 @@ function getErrorMessage(code) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  // --- goTopBtn 回首頁/滾頂功能 ---
-  const goTopBtn = document.getElementById('goTopBtn');
-  if (goTopBtn) {
-    goTopBtn.addEventListener('click', () => {
-      const path = window.location.pathname.replace(/\/+$/, '');
-      if (path === '' || path === '/index.html') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        window.location.href = '/';
-      }
-    });
-  }
-
+  
   // --- sign 彈窗開關 ---
   const signBtn = document.getElementById('signBtn');
   const signModal = document.getElementById('signModal');
@@ -89,7 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (!response.ok) {
-          alert('Server response body:', body);
           alert('HTTP error: ' + response.status);
           return;
         }
@@ -98,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof body.error_code !== "undefined") {
           if (body.error_code === 0) {
-            alert('Login successful!\nUser name: ' + body.user_name + '\nEmail: ' + body.email + '\n' + JSON.stringify(body, null, 2));
+            alert('Login successful!\nUser name: ' + body.user_name + '\nEmail: ' + body.email);
             signModal.style.display = 'none';
           } else {
             alert(getErrorMessage(body.error_code));
@@ -143,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (typeof body.error_code !== "undefined") {
           if (body.error_code === 0) {
-            alert('Registration successful, please login.' + '\n' + body);
+            alert('Registration successful, please login.');
             loginTab.classList.add('active');
             signupTab.classList.remove('active');
             loginForm.classList.add('active');
@@ -157,6 +144,12 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         alert('Registration failed, please check your network or try again later.');
       }
+    };
+  }
+  const aboutBtn = document.getElementById('aboutBtn');
+  if (aboutBtn) {
+    aboutBtn.onclick = () => {
+      window.location.href = 'about/about.html';
     };
   }
 });
