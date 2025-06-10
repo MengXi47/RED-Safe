@@ -49,14 +49,12 @@ boost::asio::awaitable<void> Session::run() {
       co_await http::async_read(
           socket_, buffer_, req_, boost::asio::use_awaitable);
       auto raw_req = req_;
-#ifndef NDEBUG
       util::cout() << util::current_timestamp() << req_.base()["X-Real-IP"]
                    << " " << req_.method() << " " << req_.target() << " "
                    << req_.body() << '\n';
       util::log(util::LogFile::access, util::Level::INFO)
           << req_.base()["X-Real-IP"] << " " << req_.method() << " "
           << req_.target() << " " << req_.body();
-#endif
       auto response = std::make_shared<Controller>(req_)->handle_request();
       co_await http::async_write(socket_, response, boost::asio::use_awaitable);
     }
