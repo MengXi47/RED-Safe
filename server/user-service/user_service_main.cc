@@ -17,6 +17,7 @@ derivatives in any form.
 *******************************************************************************/
 
 #include <iostream>
+#include <thread>
 
 #include "config.hpp"
 #include "http/httpserver.hpp"
@@ -25,7 +26,7 @@ int main(const int argc, char* argv[]) {
   try {
     const redsafe::server::Server server(SERVER_PORT);
     server.start();
-    std::cin.get();
+    std::this_thread::sleep_for(std::chrono::hours{24 * 365 * 1});
   } catch (const std::exception& e) {
     std::cerr << "Server error: " << e.what() << "\n";
     std::cin.get();
