@@ -1,10 +1,18 @@
 #!/bin/bash
 
-# server
-systemctl stop RED_API_SERVER
-rm -rf /root/RED_Safe_apiserver
-cp /root/RED-Safe/build/api-server/RED_Safe_apiserver /root
-systemctl start RED_API_SERVER
+# user service
+systemctl stop RED_SERVER_USER_SERVICE
+rm -rf /root/server/user-service
+mkdir /root/server/user-service
+cp /root/RED-Safe/build/bin/RED_Safe_user_service /root/server/user-service
+systemctl start RED_SERVER_USER_SERVICE
+
+# edge service
+systemctl stop RED_SERVER_EDGE_SERVICE
+rm -rf /root/server/edge-service
+mkdir /root/server/edge-service
+cp /root/RED-Safe/build/bin/RED_Safe_edge_service /root/server/edge-service
+systemctl start RED_SERVER_EDGE_SERVICE
 
 # web
 rm -rf /var/www/elder-alert-system/

@@ -25,8 +25,7 @@ int main(const int argc, char* argv[]) {
   try {
     const redsafe::server::Server server(SERVER_PORT);
     server.start();
-    while (true) {
-    }
+    std::cin.get();
   } catch (const std::exception& e) {
     std::cerr << "Server error: " << e.what() << "\n";
     std::cin.get();

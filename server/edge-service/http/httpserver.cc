@@ -64,21 +64,19 @@ public:
 
 private:
   void do_accept() {
-    acceptor_.async_accept(
-        [this](auto ec, tcp::socket socket) {
-          if (ec) {
-            util::log(util::LogFile::server, util::Level::ERROR)
-                << "Accept failed: " << ec.message();
-            std::cerr << "Accept failed: " << ec.message() << '\n';
-          }
-          boost::asio::post(io_, [this]() { do_accept(); });
-          auto addr = socket.remote_endpoint().address().to_string();
-          auto port = socket.remote_endpoint().port();
-          std::make_shared<Session>(std::move(socket))->start();
-          util::cout() << util::current_timestamp() << "nginx connection: " <<
-              addr
-              << ':' << port << '\n';
-        });
+    acceptor_.async_accept([this](auto ec, tcp::socket socket) {
+      if (ec) {
+        util::log(util::LogFile::server, util::Level::ERROR)
+            << "Accept failed: " << ec.message();
+        std::cerr << "Accept failed: " << ec.message() << '\n';
+        boost::asio::post(io_, [this]() { do_accept(); });
+      }
+      util::cout() << util::current_timestamp() << "nginx connection: "
+                   << socket.remote_endpoint().address().to_string() << ':'
+                   << socket.remote_endpoint().port() << '\n';
+      std::make_shared<Session>(std::move(socket))->start();
+      boost::asio::post(io_, [this]() { do_accept(); });
+    });
   }
 
   static void loggerinit() {

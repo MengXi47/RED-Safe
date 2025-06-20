@@ -33,9 +33,8 @@ using tcp = ip::tcp;
 
 namespace redsafe::server {
 class Server::Impl {
-public:
-  explicit Impl(const uint16_t port)
-    : acceptor_{io_, {tcp::v4(), port}} {
+ public:
+  explicit Impl(const uint16_t port) : acceptor_{io_, {tcp::v4(), port}} {
     acceptor_.listen(1024);
   }
 
@@ -62,23 +61,21 @@ public:
 #endif
   }
 
-private:
+ private:
   void do_accept() {
-    acceptor_.async_accept(
-        [this](auto ec, tcp::socket socket) {
-          if (ec) {
-            util::log(util::LogFile::server, util::Level::ERROR)
-                << "Accept failed: " << ec.message();
-            std::cerr << "Accept failed: " << ec.message() << '\n';
-          }
-          boost::asio::post(io_, [this]() { do_accept(); });
-          auto addr = socket.remote_endpoint().address().to_string();
-          auto port = socket.remote_endpoint().port();
-          std::make_shared<Session>(std::move(socket))->start();
-          util::cout() << util::current_timestamp() << "nginx connection: " <<
-              addr
-              << ':' << port << '\n';
-        });
+    acceptor_.async_accept([this](auto ec, tcp::socket socket) {
+      if (ec) {
+        util::log(util::LogFile::server, util::Level::ERROR)
+            << "Accept failed: " << ec.message();
+        std::cerr << "Accept failed: " << ec.message() << '\n';
+        boost::asio::post(io_, [this]() { do_accept(); });
+      }
+      util::cout() << util::current_timestamp() << "nginx connection: "
+                   << socket.remote_endpoint().address().to_string() << ':'
+                   << socket.remote_endpoint().port() << '\n';
+      std::make_shared<Session>(std::move(socket))->start();
+      boost::asio::post(io_, [this]() { do_accept(); });
+    });
   }
 
   static void loggerinit() {
@@ -108,8 +105,7 @@ private:
   }
 
   static void clearandprintlogo(
-      const std::string& port,
-      const std::string& threadnumbers) {
+      const std::string& port, const std::string& threadnumbers) {
     std::cout
         << " _____   ______  _____            _____          __\n"
         << "|  __ \\ |  ____||  __ \\          / ____|        / _|\n"
@@ -124,12 +120,12 @@ private:
     const int pad1 = (inner_width - static_cast<int>(port_msg.size())) / 2;
     const int pad2 = inner_width - pad1 - static_cast<int>(port_msg.size());
     std::cout << "-" << std::string(pad1, ' ') << port_msg
-        << std::string(pad2, ' ') << "-" << "\n";
+              << std::string(pad2, ' ') << "-" << "\n";
     const std::string thread_msg = "Threads: " + threadnumbers;
     const int pad3 = (inner_width - static_cast<int>(thread_msg.size())) / 2;
     const int pad4 = inner_width - pad3 - static_cast<int>(thread_msg.size());
     std::cout << "-" << std::string(pad3, ' ') << thread_msg
-        << std::string(pad4, ' ') << "-" << "\n";
+              << std::string(pad4, ' ') << "-" << "\n";
     std::cout
         << "-----------------------------------------------------------\n";
   }
@@ -141,9 +137,7 @@ private:
   unsigned int numThreads = std::thread::hardware_concurrency();
 };
 
-Server::Server(const uint16_t port)
-  : impl_{std::make_unique<Impl>(port)} {
-}
+Server::Server(const uint16_t port) : impl_{std::make_unique<Impl>(port)} {}
 
 Server::~Server() = default;
 
@@ -154,4 +148,4 @@ void Server::start() const {
 void Server::stop() const {
   impl_->stop();
 }
-} // namespace redsafe::apiserver
+} // namespace redsafe::server
