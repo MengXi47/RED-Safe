@@ -21,5 +21,5 @@ cp -r /root/RED-Safe/elder-alert-system /var/www/elder-alert-system
 # nginx
 systemctl stop nginx
 rm -rf /etc/nginx/nginx.conf
-cp /root/RED-Safe/config/nginx.conf /etc/nginx/
+cp /root/RED-Safe/server/nginx.conf /etc/nginx/
 systemctl start nginx
