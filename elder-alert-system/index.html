@@ -14,10 +14,19 @@
     <span class="sign-mark" id="goTopBtn" style="cursor:pointer;">
       <img src="assets/icons/elder-icon.png" alt="logo" class="sign-icon"draggable="false">
     </span>
-    <div class="button-group">
-      <button id="aboutBtn" class="about-btn">介紹</button>
-      <button id="signBtn" class="sign-btn">Sign In / Sign Up</button>
+    <div class="button-group" id="userMenu">
+    <button class="about-btn">介紹</button>
+    <!-- 未登入時 -->
+    <button id="signBtn" class="sign-btn">Sign In / Sign Up</button>
+    <!-- 已登入時 -->
+    <div class="dropdown">
+      <button class="dropbtn user-name">👤 管理員</button>
+      <div class="dropdown-content">
+        <a href="#">會員專區</a>
+        <a href="#" id="logoutBtn">登出</a>
+      </div>
     </div>
+  </div>
   </div>
 
 
@@ -101,6 +110,7 @@
   <!-- ===== 引入 JavaScript ===== -->
   <script src="js/scroll.js" type="module"></script>
   <script src="js/sign.js"></script>
+  <script src="js/usermenu.js"></script>
   <script>
     // 頁面第一次載入時自動刷新一次，避免無限重載
     if (!sessionStorage.getItem('reloaded')) {

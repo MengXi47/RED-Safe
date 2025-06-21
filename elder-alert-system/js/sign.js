@@ -26,7 +26,6 @@ function getErrorMessage(code) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  
   // --- sign 彈窗開關 ---
   const signBtn = document.getElementById('signBtn');
   const signModal = document.getElementById('signModal');
@@ -37,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.onclick = (e) => {
       if (e.target === signModal) signModal.style.display = 'none';
     };
-
   }
 
   // --- 登入/註冊 tab 切換 ---
@@ -62,12 +60,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 登入表單送出 ---
     loginForm.onsubmit = async (e) => {
       e.preventDefault();
+      const email = loginForm.querySelector('input[type="text"], input[type="email"]').value;
+      const password = loginForm.querySelector('input[type="password"]').value;
+
       if (signControl === 0) {
         alert('Test mode: submit prevented, API not sent.');
         return;
       }
-      const email = loginForm.querySelector('input[type="text"], input[type="email"]').value;
-      const password = loginForm.querySelector('input[type="password"]').value;
+
+      // if (signControl === 0) {
+      //   // 只允許 admin@gmail.com / admin 登入
+      //   if (email === 'admin@gmail.com' && password === 'admin') {
+      //     localStorage.setItem('user', JSON.stringify({ name: '管理員', email }));
+      //     if (typeof renderUserMenu === 'function') renderUserMenu();
+      //     signModal.style.display = 'none';
+      //     alert('Test mode: 管理員登入成功（未送 API）');
+      //   } else {
+      //     alert('帳號或密碼錯誤！');
+      //   }
+      //   return;
+      // }
 
       try {
         const response = await fetch('https://api.redsafe-tw.com/user/signin', {
@@ -86,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof body.error_code !== "undefined") {
           if (body.error_code === 0) {
             alert('Login successful!\nUser name: ' + body.user_name + '\nEmail: ' + body.email);
+            if (typeof renderUserMenu === 'function') renderUserMenu();
             signModal.style.display = 'none';
           } else {
             alert(getErrorMessage(body.error_code));

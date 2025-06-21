@@ -12,9 +12,18 @@
     <span class="sign-mark" id="goTopBtn" style="cursor:pointer;">
       <img src="../assets/icons/elder-icon.png" alt="logo" class="sign-icon" draggable="false">
     </span>
-    <div class="button-group">
-      <button class="about-btn" onclick="window.location.href='../index.html'">回首頁</button>
+    <div class="button-group" id="userMenu">
+      <button class="about-btn">介紹</button>
+      <!-- 未登入時 -->
       <button id="signBtn" class="sign-btn">Sign In / Sign Up</button>
+      <!-- 已登入時 -->
+      <div class="dropdown">
+        <button class="dropbtn user-name">👤 管理員</button>
+        <div class="dropdown-content">
+          <a href="#">會員專區</a>
+          <a href="#" id="logoutBtn">登出</a>
+        </div>
+      </div>
     </div>
   </div>
   
@@ -79,9 +88,9 @@
 
     <!-- 應用場景圖片區塊 -->
     <section class="scroll-section about-img-row" id="about-imgs">
-      <img src="../about/png/owzqpshggwfzql71ngre.png" alt="長者居家安全情境" class="fade-element"draggable="false">
-      <img src="../about/png/oofdjghl18qpikuy5c64.png" alt="AI 影像分析示意" class="fade-element"draggable="false">
-      <img src="../about/png/nzjtzvdsl7im5gbrxk7f.png" alt="即時通報 App" class="fade-element"draggable="false"body style="background-color: #0b0c10;">
+      <img src="png/owzqpshggwfzql71ngre.png" alt="長者居家安全情境" class="fade-element"draggable="false">
+      <img src="png/oofdjghl18qpikuy5c64.png" alt="AI 影像分析示意" class="fade-element"draggable="false">
+      <img src="png/nzjtzvdsl7im5gbrxk7f.png" alt="即時通報 App" class="fade-element"draggable="false"body style="background-color: #0b0c10;">
     </section>
 
     <!-- 技術亮點與市場機會 -->
@@ -113,5 +122,6 @@
 
   <script src="script.js"></script>
   <script src="../js/sign.js"></script>
+  <script src="../js/usermenu.js"></script>
 </body>
 </html>

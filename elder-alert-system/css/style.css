@@ -135,7 +135,7 @@ body, html {
   padding: 0.5rem 1.5rem;
   cursor: pointer;
   border-radius: 12px;
-  border: none;
+  border: none; 
   background-color: #ff0000;
   color: white;
   box-shadow: 0 0 10px #ff0000;
@@ -334,7 +334,6 @@ body, html {
   box-sizing: border-box;
   max-height: 92vh;
   overflow-y: auto;
-  margin: 2vh 0;
 }
 @keyframes slideDown {
   from { transform: translateY(-60px); opacity: 0; }
@@ -414,6 +413,63 @@ button[type="submit"]:hover {
   margin-top: 0.3rem;
   text-align: left;
 }
+
+/* 下拉選單樣式 */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropbtn {
+  background-color: #4CAF50;
+  color: white;
+  padding: 0.55rem 1rem;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  margin-right: 40px;
+}
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  right: 5px;
+  background-color: #f9f9f9;
+  min-width: 140px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dropdown-content a {
+  color: #333;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  transition: background 0.2s;
+}
+
+.dropdown-content a:hover {
+  background-color: #f1f1f1;
+}
+
+.dropdown:hover .dropdown-content {
+  display: block;
+}
+
+.dropdown:hover .dropbtn {
+  background-color: #3e8e41;
+}
+
+/* 會員名稱按鈕 */
+.user-name {
+  font-weight: bold;
+  background: #4CAF50;
+  border: none;
+}
+
 
 /* ===== 響應式設計 ===== */
 @media (max-width: 768px) {
