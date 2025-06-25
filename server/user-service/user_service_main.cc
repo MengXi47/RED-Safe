@@ -22,6 +22,7 @@ derivatives in any form.
 #include "../http/httpserver.hpp"
 #include "config.hpp"
 #include "http/controller.hpp"
+#include "grpc/AuthServer.hpp"
 
 int main(const int argc, char* argv[]) {
   try {
@@ -29,6 +30,8 @@ int main(const int argc, char* argv[]) {
       return redsafe::server::Controller(req).handle_request();
     });
     server.start();
+    redsafe::server::grpc::AuthServer grpcServer;
+    grpcServer.Run("0.0.0.0:50051");
     std::this_thread::sleep_for(std::chrono::hours{24 * 365 * 1});
   } catch (const std::exception& e) {
     std::cerr << "Server error: " << e.what() << "\n";

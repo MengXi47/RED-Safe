@@ -1,0 +1,16 @@
+syntax = "proto3";
+package redsafe.grpc;
+
+service UserAuthService {
+  rpc DecodeAccessToken (DecodeRequest) returns (DecodeResponse);
+}
+
+message DecodeRequest {
+  string access_token = 1;
+}
+
+message DecodeResponse {
+  int32 code = 1;
+  string user_id = 2;
+  string error_message = 3;
+}

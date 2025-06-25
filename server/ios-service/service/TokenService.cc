@@ -22,6 +22,7 @@ derivatives in any form.
 #include <nlohmann/json.hpp>
 
 #include <jwt.h>
+#include "../grpc/AuthClient.hpp"
 #include "../model/sql/read.hpp"
 #include "../model/sql/write.hpp"
 #include "../util/IOstream.hpp"
@@ -68,46 +69,8 @@ DecodeAccessToken::DecodeAccessToken(std::string tokenStr)
 }
 
 int DecodeAccessToken::start() {
-  try {
-    // Decode the JWT token string (without immediate verification)
-    const auto decoded = jwt::decode(tokenValue);
-
-    // 先檢查是否含有 exp 欄位並檢查過期時間
-    if (decoded.has_expires_at()) {
-      if (const auto expTime = decoded.get_expires_at();
-        std::chrono::system_clock::now() > expTime) {
-        errorMessage = "Token 已過期";
-        return 1;
-      }
-    }
-
-    // 驗證 HS256 簽章與 issuer
-    jwt::verify()
-        .allow_algorithm(
-            jwt::algorithm::hs256{util::SecretManager::instance().getSecret()})
-        .with_issuer("RED-Safe")
-        .verify(decoded);
-
-    // 解析 payload 中的 sub 欄位作為 user_id
-    if (decoded.has_payload_claim("sub")) {
-      payloadUserId = util::AESManager::instance().decrypt(
-          decoded.get_payload_claim("sub").as_string());
-      return 0;
-    }
-    errorMessage = "Token 中缺少 sub 欄位";
-    return 2;
-  } catch (const std::exception& e) {
-    // Capture any decoding or verification errors
-    errorMessage = e.what();
-    std::cerr << e.what() << std::endl;
-    if (errorMessage == "invalid signature") {
-      return 3;
-    }
-    if (errorMessage == "invalid token supplied") {
-      return 4;
-    }
-    return 5;
-  }
+  server::grpc::AuthClient client("localhost:50051");
+  return client.Decode(tokenValue, payloadUserId, errorMessage);
 }
 
 std::string DecodeAccessToken::getUserId() const {
