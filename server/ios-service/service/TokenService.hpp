@@ -21,6 +21,7 @@ derivatives in any form.
 
 #include "../util/crypto.hpp"
 #include "../util/response.hpp"
+#include "../grpc/AuthClient.hpp"
 
 namespace redsafe::server::service::token {
 /**
