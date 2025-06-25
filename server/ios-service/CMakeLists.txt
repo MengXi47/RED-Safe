@@ -11,4 +11,3 @@ target_add_lib(RED_Safe_ios_service_lib
     redsafe_proto
 )
 target_add_bin(RED_Safe_ios_service ios_service_main.cc RED_Safe_ios_service_lib)
-
