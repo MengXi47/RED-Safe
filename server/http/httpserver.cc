@@ -23,9 +23,9 @@ derivatives in any form.
 #include <boost/asio.hpp>
 #include <boost/asio/thread_pool.hpp>
 
-#include "../config.hpp"
-#include "../util/IOstream.hpp"
-#include "../util/logger.hpp"
+#include "config.hpp"
+#include "util/IOstream.hpp"
+#include "util/logger.hpp"
 #include "httpsession.hpp"
 
 using namespace boost::asio;
@@ -33,9 +33,9 @@ using tcp = ip::tcp;
 
 namespace redsafe::server {
 class Server::Impl {
-public:
-  explicit Impl(const uint16_t port)
-    : acceptor_{io_, {tcp::v4(), port}} {
+ public:
+  Impl(uint16_t port, RequestHandler handler)
+      : acceptor_{io_, {tcp::v4(), port}}, handler_(std::move(handler)) {
     acceptor_.listen(1024);
   }
 
@@ -74,7 +74,7 @@ private:
       util::cout() << util::current_timestamp() << "nginx connection: "
                    << socket.remote_endpoint().address().to_string() << ':'
                    << socket.remote_endpoint().port() << '\n';
-      std::make_shared<Session>(std::move(socket))->start();
+      std::make_shared<Session>(std::move(socket), handler_)->start();
       boost::asio::post(io_, [this]() { do_accept(); });
     });
   }
@@ -137,10 +137,11 @@ private:
   std::unique_ptr<thread_pool> pool_;
   std::vector<std::jthread> workers;
   unsigned int numThreads = std::thread::hardware_concurrency();
+  RequestHandler handler_;
 };
 
-Server::Server(const uint16_t port)
-  : impl_{std::make_unique<Impl>(port)} {
+Server::Server(const uint16_t port, RequestHandler handler)
+    : impl_{std::make_unique<Impl>(port, std::move(handler))} {
 }
 
 Server::~Server() = default;
@@ -152,4 +153,5 @@ void Server::start() const {
 void Server::stop() const {
   impl_->stop();
 }
-} // namespace redsafe::apiserver
+} // namespace redsafe::server
+

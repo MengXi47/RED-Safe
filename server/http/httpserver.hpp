@@ -14,26 +14,29 @@ code;
 derivatives in any form.
 
    For licensing inquiries or to obtain a formal license, please contact:
-******************************************************************************/
+*******************************************************************************/
 
 #pragma once
 
 #include <memory>
-#include <boost/asio/awaitable.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/beast/core.hpp>
+#include <functional>
 #include <boost/beast/http.hpp>
 
 namespace redsafe::server {
-class Session : public std::enable_shared_from_this<Session> {
+class Server {
  public:
-  explicit Session(boost::asio::ip::tcp::socket sock);
-  void start();
+  using RequestHandler = std::function<
+      boost::beast::http::response<boost::beast::http::string_body>(
+          const boost::beast::http::request<boost::beast::http::string_body>&)>;
+
+  Server(uint16_t port, RequestHandler handler);
+  ~Server();
+
+  void start() const;
+  void stop() const;
 
  private:
-  boost::asio::awaitable<void> run();
-  boost::asio::ip::tcp::socket socket_;
-  boost::beast::flat_buffer buffer_;
-  boost::beast::http::request<boost::beast::http::string_body> req_;
+  class Impl;
+  std::unique_ptr<Impl> impl_;
 };
-} // namespace redsafe::server
+}  // namespace redsafe::server

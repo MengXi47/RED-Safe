@@ -19,6 +19,7 @@ derivatives in any form.
 #pragma once
 
 #include <memory>
+#include <functional>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
@@ -27,7 +28,11 @@ derivatives in any form.
 namespace redsafe::server {
 class Session : public std::enable_shared_from_this<Session> {
  public:
-  explicit Session(boost::asio::ip::tcp::socket sock);
+  using RequestHandler = std::function<
+      boost::beast::http::response<boost::beast::http::string_body>(
+          const boost::beast::http::request<boost::beast::http::string_body>&)>;
+
+  Session(boost::asio::ip::tcp::socket sock, RequestHandler handler);
   void start();
 
  private:
@@ -35,5 +40,6 @@ class Session : public std::enable_shared_from_this<Session> {
   boost::asio::ip::tcp::socket socket_;
   boost::beast::flat_buffer buffer_;
   boost::beast::http::request<boost::beast::http::string_body> req_;
+  RequestHandler handler_;
 };
 } // namespace redsafe::server

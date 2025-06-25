@@ -1,5 +1,6 @@
 target_add_lib(RED_Safe_ios_service_lib
     folly
+    redsafeserver_http
     ${OPENSSL_LIBRARIES}
     ${Boost_LIBRARIES}
     ${nlohmann_json_LIBS}
@@ -8,3 +9,4 @@ target_add_lib(RED_Safe_ios_service_lib
     jwt
 )
 target_add_bin(RED_Safe_ios_service ios_service_main.cc RED_Safe_ios_service_lib)
+

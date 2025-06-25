@@ -16,29 +16,6 @@ derivatives in any form.
    For licensing inquiries or to obtain a formal license, please contact:
 ******************************************************************************/
 
-/******************************************************************************
-
-                       _oo0oo_
-                      o8888888o
-                      88" . "88
-                      (| -_- |)
-                      0\  =  /0
-                    ___/`---'\___
-                  .' \\|     |// '.
-                 / \\|||  :  |||// \
-                / _||||| -:- |||||- \
-               |   | \\\  -  /// |   |
-               | \_|  ''\---/''  |_/ |
-               \  .-\__  '-'  ___/-. /
-             ___'. .'  /--.--\  `. .'___
-          ."" '<  `.___\_<|>_/___.' >' "".
-         | | :  `- \`.;`\ _ /`;.`/ - ` : | |
-         \  \ `_.   \_ __\ /__ _/   .-` /  /
-     =====`-.____`.___ \_____/___.-`___.-'=====
-                       `=---='
-
-******************************************************************************/
-
 #include "httpsession.hpp"
 
 #include <boost/asio/co_spawn.hpp>
@@ -46,16 +23,16 @@ derivatives in any form.
 #include <boost/asio/use_awaitable.hpp>
 #include <boost/beast/http.hpp>
 
-#include "../util/IOstream.hpp"
-#include "../util/logger.hpp"
-#include "controller.hpp"
+#include "util/IOstream.hpp"
+#include "util/logger.hpp"
 
 namespace beast = boost::beast;
 namespace http = beast::http;
 using tcp = boost::asio::ip::tcp;
 
 namespace redsafe::server {
-Session::Session(tcp::socket sock) : socket_(std::move(sock)) {}
+Session::Session(tcp::socket sock, RequestHandler handler)
+    : socket_(std::move(sock)), handler_(std::move(handler)) {}
 
 void Session::start() {
   boost::asio::co_spawn(
@@ -77,7 +54,7 @@ boost::asio::awaitable<void> Session::run() {
       util::log(util::LogFile::access, util::Level::INFO)
           << req_.base()["X-Real-IP"] << " " << req_.method() << " "
           << req_.target() << " " << req_.body();
-      auto response = std::make_shared<Controller>(req_)->handle_request();
+      auto response = handler_(req_);
       co_await http::async_write(socket_, response, boost::asio::use_awaitable);
     }
   } catch (const std::exception& e) {
@@ -91,3 +68,4 @@ boost::asio::awaitable<void> Session::run() {
   }
 }
 } // namespace redsafe::server
+
