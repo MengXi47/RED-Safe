@@ -18,8 +18,8 @@ derivatives in any form.
 
 #pragma once
 
-#include <memory>
 #include <functional>
+#include <memory>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>

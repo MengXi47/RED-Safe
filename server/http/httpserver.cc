@@ -24,9 +24,9 @@ derivatives in any form.
 #include <boost/asio/thread_pool.hpp>
 
 #include "config.hpp"
+#include "httpsession.hpp"
 #include "util/IOstream.hpp"
 #include "util/logger.hpp"
-#include "httpsession.hpp"
 
 using namespace boost::asio;
 using tcp = ip::tcp;
@@ -62,7 +62,7 @@ class Server::Impl {
 #endif
   }
 
-private:
+ private:
   void do_accept() {
     acceptor_.async_accept([this](auto ec, tcp::socket socket) {
       if (ec) {
@@ -106,8 +106,7 @@ private:
   }
 
   static void clearandprintlogo(
-      const std::string& port,
-      const std::string& threadnumbers) {
+      const std::string& port, const std::string& threadnumbers) {
     std::cout
         << " _____   ______  _____            _____          __\n"
         << "|  __ \\ |  ____||  __ \\          / ____|        / _|\n"
@@ -122,12 +121,12 @@ private:
     const int pad1 = (inner_width - static_cast<int>(port_msg.size())) / 2;
     const int pad2 = inner_width - pad1 - static_cast<int>(port_msg.size());
     std::cout << "-" << std::string(pad1, ' ') << port_msg
-        << std::string(pad2, ' ') << "-" << "\n";
+              << std::string(pad2, ' ') << "-" << "\n";
     const std::string thread_msg = "Threads: " + threadnumbers;
     const int pad3 = (inner_width - static_cast<int>(thread_msg.size())) / 2;
     const int pad4 = inner_width - pad3 - static_cast<int>(thread_msg.size());
     std::cout << "-" << std::string(pad3, ' ') << thread_msg
-        << std::string(pad4, ' ') << "-" << "\n";
+              << std::string(pad4, ' ') << "-" << "\n";
     std::cout
         << "-----------------------------------------------------------\n";
   }
@@ -141,8 +140,7 @@ private:
 };
 
 Server::Server(const uint16_t port, RequestHandler handler)
-    : impl_{std::make_unique<Impl>(port, std::move(handler))} {
-}
+    : impl_{std::make_unique<Impl>(port, std::move(handler))} {}
 
 Server::~Server() = default;
 
@@ -154,4 +152,3 @@ void Server::stop() const {
   impl_->stop();
 }
 } // namespace redsafe::server
-

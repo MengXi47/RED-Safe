@@ -22,6 +22,7 @@ derivatives in any form.
 #include <thread>
 #include <folly/container/F14Map.h>
 
+#include "../grpc/AuthClient.hpp"
 #include "../service/IOSAPPService.hpp"
 #include "../service/UserService.hpp"
 #include "../util/logger.hpp"
@@ -40,19 +41,28 @@ response Controller::handle_request() const {
            [](const http::request<http::string_body>& req) {
              try {
                const json body = json::parse(req.body());
-               if (!body.contains("user_id") || !body.contains("apns_token")) {
+               if (!body.contains("apns_token")) {
                  return util::Result{
                      util::status_code::BadRequest,
                      util::error_code::Missing_user_id_or_apns_token,
                      json{}};
                }
 
+               std::string jwt = get_access_token(req);
+               std::string user_id, errorM;
+               grpc::AuthClient a("0.0.0.0:50051");
+               a.Decode(jwt, user_id, errorM);
+
+               std::cout << jwt << std::endl
+                         << user_id << std::endl
+                         << errorM << std::endl;
+
                return service::IOSAPP::IOSAPPService::start(
                    body.value("ios_device_id", std::string{}),
-                   body.value("user_id", std::string{}),
+                   user_id,
                    body.value("apns_token", std::string{}),
                    body.value("device_name", std::string{}));
-             } catch ([[maybe_unused]] nlohmann::json::parse_error& e) {
+             } catch (nlohmann::json::parse_error& e) {
                return util::Result{
                    util::status_code::BadRequest,
                    util::error_code::Invalid_JSON,
