@@ -20,11 +20,14 @@ derivatives in any form.
 #include <thread>
 
 #include "config.hpp"
-#include "http/httpserver.hpp"
+#include "../http/httpserver.hpp"
+#include "http/controller.hpp"
 
 int main(const int argc, char* argv[]) {
   try {
-    const redsafe::server::Server server(SERVER_PORT);
+    const redsafe::server::Server server(
+        SERVER_PORT,
+        [](const auto& req) { return redsafe::server::Controller(req).handle_request(); });
     server.start();
     std::this_thread::sleep_for(std::chrono::hours{24 * 365 * 1});
   } catch (const std::exception& e) {
@@ -34,3 +37,4 @@ int main(const int argc, char* argv[]) {
   }
   return 0;
 }
+
