@@ -11,6 +11,7 @@ class AuthServer {
  public:
   AuthServer();
   void Run(const std::string& address);
+
  private:
   class ServiceImpl;
   std::unique_ptr<std::thread> server_thread_;

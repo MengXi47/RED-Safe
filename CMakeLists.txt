@@ -38,7 +38,6 @@ list(APPEND CMAKE_MODULE_PATH
 find_package(Boost REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(Protobuf REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 find_package(libpqxx CONFIG QUIET)
 find_package(libsodium CONFIG QUIET)
@@ -55,5 +54,4 @@ else ()
 endif ()
 
 add_subdirectory("third_party/folly" EXCLUDE_FROM_ALL)
-add_subdirectory(server/proto)
 add_subdirectory(server)

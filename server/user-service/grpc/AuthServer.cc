@@ -3,11 +3,13 @@
 
 namespace redsafe::server::grpc {
 
-class AuthServer::ServiceImpl final : public redsafe::grpc::UserAuthService::Service {
+class AuthServer::ServiceImpl final
+    : public redsafe::grpc::UserAuthService::Service {
  public:
-  grpc::Status DecodeAccessToken(grpc::ServerContext* context,
-                                 const redsafe::grpc::DecodeRequest* request,
-                                 redsafe::grpc::DecodeResponse* reply) override {
+  grpc::Status DecodeAccessToken(
+      grpc::ServerContext* context,
+      const redsafe::grpc::DecodeRequest* request,
+      redsafe::grpc::DecodeResponse* reply) override {
     service::token::DecodeAccessToken decode(request->access_token());
     const auto code = decode.start();
     reply->set_code(code);
