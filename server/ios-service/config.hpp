@@ -16,17 +16,35 @@ derivatives in any form.
    For licensing inquiries or to obtain a formal license, please contact:
 *******************************************************************************/
 
-#ifndef REDSAFE_EDGE_SERVICE_HPP
-#define REDSAFE_EDGE_SERVICE_HPP
+#pragma once
 
-#include "../util/response.hpp"
-
-namespace redsafe::server::service::edge {
-class Register {
- public:
-  static util::Result start(
-      const std::string& version, const std::string& serial_number);
-};
-} // namespace redsafe::apiserver::service::edge
-
+#ifndef SERVER_PORT
+#define SERVER_PORT 30678
 #endif
+
+#ifndef SERVER_LOGFILE_PATH
+#define SERVER_LOGFILE_PATH "server.log"
+#endif
+
+#ifndef ACCESS_LOGFILE_PATH
+#define ACCESS_LOGFILE_PATH "access.log"
+#endif
+
+#ifndef SQL_CONNECTION_STR
+#define SQL_CONNECTION_STR \
+  "host=127.0.0.1 "        \
+  "port=5432 "             \
+  "dbname=redsafedb "      \
+  "user=redsafedb_user "   \
+  "password=redsafedb_1204"
+#endif
+
+#ifndef SERVER_THREAD_TYPE
+#define SERVER_THREAD_TYPE \
+  1 // 0 -> single_thread,  1 -> std::jthread, 2 -> boost.asio.thread_pool
+#endif
+
+// 金鑰檔案名稱 (執行程式目錄)
+static constexpr auto SECRET_FILE_PATH = "jwt_secret.txt";
+
+static constexpr auto AES_KEY_FILE_PATH = "AES_KEY.txt";

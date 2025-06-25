@@ -22,7 +22,7 @@ derivatives in any form.
 #include <thread>
 #include <folly/container/F14Map.h>
 
-#include "../service/TokenService.hpp"
+#include "../service/IOSAPPService.hpp"
 #include "../service/UserService.hpp"
 #include "../util/logger.hpp"
 #include "../util/response.hpp"
@@ -36,22 +36,22 @@ response Controller::handle_request() const {
       std::string,
       std::function<util::Result(const http::request<http::string_body>&)>>
       POST_map = {
-          {"/user/signup",
+          {"/ios/signup",
            [](const http::request<http::string_body>& req) {
              try {
                const json body = json::parse(req.body());
-               if (!body.contains("email") || !body.contains("user_name") ||
-                   !body.contains("password")) {
+               if (!body.contains("user_id") || !body.contains("apns_token")) {
                  return util::Result{
                      util::status_code::BadRequest,
-                     util::error_code::Missing_email_or_user_name_or_password,
+                     util::error_code::Missing_user_id_or_apns_token,
                      json{}};
                }
 
-               return service::User::signup::run(
-                   body.value("email", std::string{}),
-                   body.value("user_name", std::string{}),
-                   body.value("password", std::string{}));
+               return service::IOSAPP::IOSAPPService::start(
+                   body.value("ios_device_id", std::string{}),
+                   body.value("user_id", std::string{}),
+                   body.value("apns_token", std::string{}),
+                   body.value("device_name", std::string{}));
              } catch ([[maybe_unused]] nlohmann::json::parse_error& e) {
                return util::Result{
                    util::status_code::BadRequest,
@@ -60,21 +60,28 @@ response Controller::handle_request() const {
              }
            }},
 
-          {"/user/signin",
+          {"/ios/bind",
            [](const http::request<http::string_body>& req) {
              try {
                const json body = json::parse(req.body());
-
-               if (!body.contains("email") || !body.contains("password")) {
+               if (!body.contains("serial_number")) {
                  return util::Result{
                      util::status_code::BadRequest,
-                     util::error_code::Missing_email_or_password,
+                     util::error_code::Missing_serial_number,
                      json{}};
                }
 
-               return service::User::signin::run(
-                   body.value("email", std::string{}),
-                   body.value("password", std::string{}));
+               const auto access_token = get_access_token(req);
+
+               if (access_token.empty()) {
+                 return util::Result{
+                     util::status_code::BadRequest,
+                     util::error_code::Access_Token_invalid,
+                 };
+               }
+
+               return service::User::Binding::bind(
+                   body.value("serial_number", std::string{}), access_token);
              } catch ([[maybe_unused]] nlohmann::json::parse_error& e) {
                return util::Result{
                    util::status_code::BadRequest,
@@ -83,68 +90,39 @@ response Controller::handle_request() const {
              }
            }},
 
-          ¸{"/auth/refresh",
-             [](const http::request<http::string_body>& req) {
-               const auto refresh_token = get_refresh_token(req);
+          {"/ios/unbind", [](const http::request<http::string_body>& req) {
+             try {
+               const json body = json::parse(req.body());
+               {
+                 if (!body.contains("serial_number"))
+                   return util::Result{
+                       util::status_code::BadRequest,
+                       util::error_code::Missing_serial_number,
+                       json{}};
+               }
 
-               if (refresh_token.empty()) {
+               const auto access_token = get_access_token(req);
+
+               if (access_token.empty()) {
                  return util::Result{
                      util::status_code::BadRequest,
-                     util::error_code::Missing_refresh_token,
+                     util::error_code::Access_Token_invalid,
                      json{}};
                }
 
-               return service::token::CheckAndRefreshRefreshToken::run(
-                   refresh_token);
-             }},
-
-          {"/auth/out",
-           [](const http::request<http::string_body>& req) {
-             const auto refresh_token = get_refresh_token(req);
-
-             if (refresh_token.empty()) {
+               return service::User::Binding::unbind(
+                   body.value("serial_number", std::string{}), access_token);
+             } catch ([[maybe_unused]] nlohmann::json::parse_error& e) {
                return util::Result{
                    util::status_code::BadRequest,
-                   util::error_code::Missing_refresh_token,
+                   util::error_code::Invalid_JSON,
                    json{}};
              }
-
-             return service::token::RevokeRefreshToken::run(refresh_token);
-           }},
-      };
-
-  static const folly::F14FastMap<
-      std::string,
-      std::function<util::Result(const http::request<http::string_body>&)>>
-      GET_map = {
-          {"/user/all",
-           [this](const http::request<http::string_body>& req) {
-             const auto access_token = get_access_token(req);
-
-             if (access_token.empty()) {
-               return util::Result{
-                   util::status_code::BadRequest,
-                   util::error_code::Access_Token_invalid,
-                   json{}};
-             }
-
-             return service::User::GetUserInformation::run(access_token);
-           }},
-      };
+           }}};
 
   util::Result ResponseBody;
 
-  if (req_.method() == http::verb::get) {
-    if (const auto it = GET_map.find(req_.target()); it != GET_map.end()) {
-      ResponseBody = it->second(req_);
-    } else {
-      return make_response(
-          static_cast<int>(util::status_code::NotFound),
-          json{
-              {"error_code",
-               static_cast<int>(util::error_code::Unknown_endpoint)}});
-    }
-  } else if (req_.method() == http::verb::post) {
+  if (req_.method() == http::verb::post) {
     if (const auto it = POST_map.find(req_.target()); it != POST_map.end()) {
       ResponseBody = it->second(req_);
     } else {
