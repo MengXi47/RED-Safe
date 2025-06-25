@@ -19,7 +19,7 @@ derivatives in any form.
 #pragma once
 
 #ifndef SERVER_PORT
-#define SERVER_PORT 30678
+#define SERVER_PORT 30680
 #endif
 
 #ifndef SERVER_LOGFILE_PATH

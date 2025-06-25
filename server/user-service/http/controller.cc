@@ -83,7 +83,7 @@ response Controller::handle_request() const {
              }
            }},
 
-          ¸{"/auth/refresh",
+          {"/auth/refresh",
              [](const http::request<http::string_body>& req) {
                const auto refresh_token = get_refresh_token(req);
 
