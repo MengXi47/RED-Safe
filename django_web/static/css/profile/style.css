@@ -1,0 +1,225 @@
+body {
+    background: #18181c;
+    color: #F7F7F7;
+    font-family: 'Noto Sans TC', 'Microsoft JhengHei', Arial, sans-serif;
+    margin: 0;
+    min-height: 100vh;
+}
+
+/* 導覽列 */
+nav {
+    width: 100%;
+    padding: 0.5rem 0;
+    background: #111114;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 2px 12px #0008;
+}
+#userMenu {
+    margin-right: 2vw;
+    display: flex;
+    align-items: center;
+}
+
+/* 介紹按鈕（白底紅框，hover 紅底白字） */
+#userMenu .about-btn {
+    background: #fff;
+    color: #e53935;
+    border: 2px solid #e53935;
+    border-radius: 20px;
+    padding: 0.5em 1.5em;
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-right: 1em;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border 0.2s;
+    box-shadow: 0 2px 8px #0002;
+}
+#userMenu .about-btn:hover {
+    background: #e53935;
+    color: #fff;
+    border-color: #e53935;
+}
+
+/* 會員名稱按鈕（紅底白字，hover 深紅） */
+#userMenu .user-name {
+    background: #e53935;
+    color: #fff;
+    border: 2px solid #e53935;
+    border-radius: 20px;
+    padding: 0.5em 1.5em;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, border 0.2s, color 0.2s;
+    box-shadow: 0 2px 8px #0002;
+}
+#userMenu .user-name:hover {
+    background: #b71c1c;
+    color: #fff;
+    border-color: #b71c1c;
+}
+
+/* 下拉選單 */
+#userMenu .dropdown {
+    position: relative;
+}
+#userMenu .dropdown-content {
+    display: none;
+    position: absolute;
+    background: #232328;
+    min-width: 140px;
+    box-shadow: 0 2px 10px #0008;
+    border-radius: 8px;
+    z-index: 100;
+    right: 0;
+    margin-top: 0.5em;
+}
+#userMenu .dropdown:hover .dropdown-content,
+#userMenu .dropdown:focus-within .dropdown-content {
+    display: block;
+}
+#userMenu .dropdown-content a {
+    color: #fff;
+    padding: 0.8em 1.2em;
+    text-decoration: none;
+    display: block;
+    font-size: 1em;
+    border-bottom: 1px solid #333;
+    transition: background 0.2s, color 0.2s;
+}
+#userMenu .dropdown-content a:last-child {
+    border-bottom: none;
+}
+#userMenu .dropdown-content a:hover {
+    background: #e53935;
+    color: #fff;
+}
+
+/* 登入/註冊按鈕 */
+#userMenu .sign-btn {
+    background: #e53935;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 0.5em 1.5em;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    margin-left: 1em;
+    box-shadow: 0 2px 8px #0002;
+}
+#userMenu .sign-btn:hover {
+    background: #b71c1c;
+    color: #fff;
+}
+
+/* 會員專區表單容器 */
+.profile-container {
+    background: #232328;
+    margin: 60px auto 0;
+    max-width: 370px;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px #0006;
+    padding: 2.8em 2.5em 2em 2.5em;
+    text-align: center;
+}
+.profile-container h2 {
+    color: #e53935;
+    font-size: 2em;
+    margin-bottom: 1.2em;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+}
+
+/* 表單樣式 */
+.profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.3em;
+}
+.form-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+.form-row label {
+    font-size: 1.1em;
+    color: #ffab91;
+    margin-bottom: 0.4em;
+    letter-spacing: 0.05em;
+}
+.form-row input {
+    width: 100%;
+    padding: 0.7em 1em;
+    border: none;
+    border-radius: 8px;
+    background: #292933;
+    color: #fff;
+    font-size: 1.1em;
+    outline: none;
+    transition: box-shadow 0.2s;
+    box-shadow: 0 1px 4px #0003;
+}
+.form-row input:focus {
+    box-shadow: 0 0 0 2px #e53935;
+    background: #232328;
+}
+.save-btn {
+    margin-top: 0.7em;
+    background: linear-gradient(90deg, #e53935 0%, #b71c1c 100%);
+    color: #fff;
+    font-size: 1.2em;
+    font-weight: bold;
+    border: none;
+    border-radius: 12px;
+    padding: 0.9em 0;
+    cursor: pointer;
+    box-shadow: 0 2px 8px #0003;
+    transition: background 0.2s, color 0.2s;
+}
+.save-btn:hover {
+    background: linear-gradient(90deg, #b71c1c 0%, #e53935 100%);
+    color: #fff;
+}
+
+/* 回首頁連結 */
+.back-link {
+    display: inline-block;
+    margin-top: 2em;
+    color: #e53935;
+    font-size: 1em;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+.back-link:hover {
+    color: #fff;
+    text-decoration: underline;
+}
+
+/* 訊息提示 */
+.msg-success {
+    background: #388e3c;
+    color: #fff;
+    border-radius: 8px;
+    padding: 0.7em 1em;
+    margin-bottom: 1em;
+    font-size: 1em;
+    box-shadow: 0 1px 4px #0003;
+}
+
+/* 響應式設計 */
+@media (max-width: 600px) {
+    .profile-container {
+        max-width: 95vw;
+        padding: 1.5em 0.8em 1em 0.8em;
+    }
+    nav {
+        padding: 0.5rem 0.5rem;
+    }
+}

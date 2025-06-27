@@ -1,0 +1,77 @@
+{% load static %}
+{% url 'about' as about_url %}
+{% url 'index' as index_url %}
+{% url 'profile' as profile_url %}
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>會員專區</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <link rel="stylesheet" href="{% static 'css/profile/style.css' %}">
+    <script>
+      window.ABOUT_URL = "{{ about_url }}";
+      window.INDEX_URL = "{{ index_url }}";
+      window.PROFILE_URL = "{{ profile_url }}";
+    </script>
+    <script src="{% static 'js/usermenu.js' %}"></script>
+    <script src="{% static 'js/sign.js' %}"></script>
+</head>
+<body>
+    <nav>
+        <div id="userMenu"></div>
+    </nav>
+    <div class="profile-container">
+        <h2>會員專區</h2>
+        <form id="profileForm" class="profile-form">
+            <div class="form-row">
+                <label for="username">使用者名稱</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-row">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <button type="submit" class="save-btn">儲存變更</button>
+        </form>
+        <a class="back-link" href="{% url 'index' %}">← 回首頁</a>
+    </div>
+
+    <!-- 登入/註冊彈窗 -->
+    <div id="signModal" style="display:none;">
+      <!-- 你的 sign modal 結構 -->
+    </div>
+
+    <script>
+    // 1. 載入 localStorage 的 user 資料到表單
+    function fillProfileForm() {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (user) {
+        document.getElementById('username').value = user.name || '';
+        document.getElementById('email').value = user.email || '';
+      }
+    }
+
+    // 2. 未登入就彈出登入視窗
+    document.addEventListener('DOMContentLoaded', function() {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user || !user.name) {
+        document.getElementById('signModal').style.display = 'flex';
+      } else {
+        fillProfileForm();
+      }
+    });
+
+    // 3. 表單送出時更新 localStorage 或呼叫 API
+    document.getElementById('profileForm').onsubmit = function(e) {
+      e.preventDefault();
+      const name = document.getElementById('username').value;
+      const email = document.getElementById('email').value;
+      // 這裡可以呼叫 API 更新會員資料，或只更新 localStorage
+      localStorage.setItem('user', JSON.stringify({ name, email }));
+      alert('資料已更新');
+      if (typeof renderUserMenu === 'function') renderUserMenu();
+    };
+    </script>
+</body>
+</html>
