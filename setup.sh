@@ -22,8 +22,8 @@ cp /root/RED-Safe/build/bin/RED_Safe_ios_service /root/server/ios-service
 systemctl start RED_SERVER_IOS_SERVICE
 
 # web
-rm -rf /var/www/elder-alert-system/
-cp -r /root/RED-Safe/elder-alert-system /var/www/elder-alert-system
+rm -rf /var/www/web/
+cp -r /root/RED-Safe/web /var/www/web
 
 # nginx
 systemctl stop nginx
