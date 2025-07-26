@@ -42,7 +42,6 @@ find_package(Protobuf CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 find_package(libpqxx CONFIG QUIET)
 find_package(libsodium CONFIG QUIET)
-find_package(absl REQUIRED)
 
 if (TARGET libpqxx::pqxx)
   set(PQXX_TARGET libpqxx::pqxx)

@@ -2,7 +2,6 @@
 #include <memory>
 #include <string>
 #include <thread>
-#include "absl/status/status.h"
 #include <grpcpp/grpcpp.h>
 #include "auth.grpc.pb.h"
 
