@@ -35,19 +35,6 @@ case "$OS" in
       for pkg in "${packages[@]}"; do
         dpkg -s "$pkg" >/dev/null 2>&1 || $SUDO apt-get install -y "$pkg"
       done
-      # 安裝 liburing（包含 zero-copy receive 支援）
-      echo "Installing liburing from source for zero-copy support..."
-      tmpdir=$("${SUDO}" mktemp -d)
-      cd "$tmpdir"
-      git clone https://github.com/axboe/liburing.git
-      cd liburing
-      # 使用主分支（已包含 zcrx patch）
-      mkdir -p build && cd build
-      cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local
-      make -j"$(nproc)"
-      "${SUDO}" make install
-      "${SUDO}" ldconfig
-      cd -
     else
       echo "Unsupported Linux distribution. Install dependencies manually."
       exit 1
