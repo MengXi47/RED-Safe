@@ -14,6 +14,13 @@ mkdir /root/server/edge-service
 cp /root/RED-Safe/build/bin/RED_Safe_edge_service /root/server/edge-service
 systemctl start RED_SERVER_EDGE_SERVICE
 
+# ios service
+systemctl stop RED_SERVER_IOS_SERVICE
+rm -rf /root/server/ios-service
+mkdir /root/server/ios-service
+cp /root/RED-Safe/build/bin/RED_Safe_ios_service /root/server/ios-service
+systemctl start RED_SERVER_IOS_SERVICE
+
 # web
 rm -rf /var/www/elder-alert-system/
 cp -r /root/RED-Safe/elder-alert-system /var/www/elder-alert-system
