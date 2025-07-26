@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "absl/status/status.h"
 #include <grpcpp/grpcpp.h>
 #include "auth.grpc.pb.h"
 
