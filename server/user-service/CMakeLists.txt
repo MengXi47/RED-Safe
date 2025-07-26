@@ -9,7 +9,6 @@ target_add_lib(RED_Safe_user_service_lib
     jwt
     gRPC::grpc++
     redsafe_proto
-    absl::status
 )
 target_add_bin(RED_Safe_user_service user_service_main.cc RED_Safe_user_service_lib)
 
