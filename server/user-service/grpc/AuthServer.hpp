@@ -1,5 +1,9 @@
 #pragma once
 #include <memory>
+#include "absl/status/status.h"
+#ifndef GRPC_CUSTOM_UTIL_STATUS
+#define GRPC_CUSTOM_UTIL_STATUS ::absl::Status
+#endif
 #include <string>
 #include <thread>
 #include <grpcpp/grpcpp.h>

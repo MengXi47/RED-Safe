@@ -1,5 +1,3 @@
-#include "absl/status/status.h"
-using absl::Status;
 #include "AuthClient.hpp"
 
 namespace redsafe::server::grpc {

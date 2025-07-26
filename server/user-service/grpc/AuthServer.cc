@@ -1,5 +1,3 @@
-#include "absl/status/status.h"
-using absl::Status;
 #include "AuthServer.hpp"
 #include "../service/TokenService.hpp"
 
