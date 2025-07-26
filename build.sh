@@ -31,7 +31,7 @@ case "$OS" in
     if command -v apt-get >/dev/null 2>&1; then
       $SUDO apt-get update
       INSTALL_CMD="apt-get install -y"
-      packages=(build-essential cmake libboost-all-dev libssl-dev nlohmann-json3-dev libpqxx-dev libsodium-dev pkg-config git libdouble-conversion-dev libgoogle-glog-dev libgflags-dev libevent-dev libfmt-dev libunwind-dev libbz2-dev liblz4-dev liblzma-dev libzstd-dev libsnappy-dev libiberty-dev libdwarf-dev libaio-dev liburing-dev libgrpc-dev libgrpc++-dev protobuf-compiler-grpc libfast-float-dev)
+      packages=(build-essential cmake libboost-all-dev libssl-dev nlohmann-json3-dev libpqxx-dev libsodium-dev pkg-config git libdouble-conversion-dev libgoogle-glog-dev libgflags-dev libevent-dev libfmt-dev libunwind-dev libbz2-dev liblz4-dev liblzma-dev libzstd-dev libsnappy-dev libiberty-dev libdwarf-dev libaio-dev liburing-dev libfast-float-dev)
       for pkg in "${packages[@]}"; do
         dpkg -s "$pkg" >/dev/null 2>&1 || $SUDO apt-get install -y "$pkg"
       done
