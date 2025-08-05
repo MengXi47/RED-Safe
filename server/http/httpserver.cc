@@ -22,6 +22,7 @@ derivatives in any form.
 #include <thread>
 #include <boost/asio.hpp>
 #include <boost/asio/thread_pool.hpp>
+#include <print>
 
 #include "config.hpp"
 #include "httpsession.hpp"
