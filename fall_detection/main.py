@@ -5,6 +5,7 @@ import numpy as np
 from collections import deque
 import threading
 import time
+import queue
 import config
 from models import FallLSTM
 
@@ -74,11 +75,11 @@ def select_cameras(available_cams):
             return valid
         print("輸入無效，請重新選擇。")
 
-# ----------- 多攝像頭即時推論主流程 -----------
+# ----------- 多攝像頭即時推論主流程（含影像佇列） -----------
 
-def camera_loop(camera_index, device):
+def camera_loop(camera_index, device, frame_queue):
     """
-    每個攝像頭開一個執行緒，進行即時關鍵點＋角度序列蒐集與跌倒推論
+    每個攝像頭開一個執行緒，進行即時關鍵點＋角度序列蒐集與跌倒推論，結果放入影像佇列
     """
     mp_pose = mp.solutions.pose
     pose = mp_pose.Pose(static_image_mode=False, model_complexity=2, smooth_landmarks=True,
@@ -125,14 +126,16 @@ def camera_loop(camera_index, device):
             cv2.putText(frame, "偵測中...", (30, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 0), 3)
 
         mp.solutions.drawing_utils.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-        cv2.imshow(f"攝像頭 {camera_index}", frame)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            print(f"攝像頭 {camera_index} 中止")
-            break
+        # 放入影像佇列，避免阻塞
+        if frame_queue.full():
+            try:
+                frame_queue.get_nowait()  # 舊畫面出列避免阻塞
+            except queue.Empty:
+                pass
+        frame_queue.put(frame)
 
     cap.release()
-    cv2.destroyWindow(f"攝像頭 {camera_index}")
 
 # ----------- 主程式入口 -----------
 
@@ -146,20 +149,43 @@ if __name__ == "__main__":
         print("未偵測到可用攝像頭")
         exit()
 
-    # 互動式選擇
+    # 互動式選擇攝像頭
     selected_cams = select_cameras(camera_indices)
     print("已選擇攝像頭：", selected_cams)
 
+    # 給每個攝像頭一個影像佇列
+    frame_queues = {idx: queue.Queue(maxsize=1) for idx in selected_cams}
+
     threads = []
     try:
+        # 啟動攝像頭執行緒
         for idx in selected_cams:
-            t = threading.Thread(target=camera_loop, args=(idx, device))
+            t = threading.Thread(target=camera_loop, args=(idx, device, frame_queues[idx]))
             t.daemon = True
             t.start()
             threads.append(t)
 
-        while any(t.is_alive() for t in threads):
-            time.sleep(0.5)
+        # 主執行緒負責顯示影像
+        while True:
+            for idx in selected_cams:
+                if not frame_queues[idx].empty():
+                    frame = frame_queues[idx].get()
+                    cv2.imshow(f"攝像頭 {idx}", frame)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                print("中止所有攝像頭")
+                break
+            elif key == ord('x'):
+                print("強制終止程式")
+                exit(0)  # 強制終止不執行 finally
+
+            if not any(t.is_alive() for t in threads):
+                print("所有攝像頭執行緒已結束")
+                break
+
+            time.sleep(0.01)
+
     except KeyboardInterrupt:
         print("\n正在關閉所有攝像頭...")
     finally:

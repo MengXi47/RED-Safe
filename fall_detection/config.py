@@ -1,10 +1,10 @@
 # config.py
-OLD_DATA_DIR = "D:/fall_detection/data/processed/old"
-NEW_DATA_DIR = "D:/fall_detection/data/processed/new"
-RAW_DIR = "D:/fall_detection/data/raw"
-MODEL_PATH = "D:/fall_detection/model/best_model.pth"
-LOG_DIR = "D:/fall_detection/logs"
-LOG_FILE = "D:/fall_detection/output/logs.txt"
+OLD_DATA_DIR = "data/processed/old"
+NEW_DATA_DIR = "data/processed/new"
+RAW_DIR = "data/raw"
+MODEL_PATH = "model/best_model.pth"
+LOG_DIR = "logs"
+LOG_FILE = "output/logs.txt"
 SEQ_LEN = 30
 INPUT_SIZE = 138
 BATCH_SIZE = 32
