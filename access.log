@@ -1,2 +1,0 @@
-[2025-08-06 12:24:41:811] [INFO] 127.0.0.1 POST /edge/signup {"serial_number": "RED_AAAAAAAA", "version": "1.0"}
-[2025-08-06 12:25:45:630] [INFO] 127.0.0.1 POST /edge/signup {"serial_number": "RED-AAAAAAAA", "version": "1.0"}

@@ -54,5 +54,4 @@ else ()
   set(PQXX_TARGET pqxx)
 endif ()
 
-add_subdirectory("third_party/folly" EXCLUDE_FROM_ALL)
 add_subdirectory(server)
