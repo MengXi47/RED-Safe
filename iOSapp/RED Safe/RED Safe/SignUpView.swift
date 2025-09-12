@@ -231,3 +231,6 @@ fileprivate extension View {
             .animation(.easeOut(duration: 0.5).delay(delay), value: animate)
     }
 }
+#Preview {
+    SignUpView()
+}

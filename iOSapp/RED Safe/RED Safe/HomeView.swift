@@ -11,6 +11,11 @@ struct HomeView: View {
     let home_user_name: String
     @State private var home_devices: [DeviceStatus]?
 
+    init(home_user_name: String, previewDevices: [DeviceStatus]? = nil) {
+        self.home_user_name = home_user_name
+        _home_devices = State(initialValue: previewDevices)
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -88,17 +93,19 @@ struct HomeView: View {
         .disablePopGesture()
         
         .onAppear {
-            Network.shared.getUserInfo { infoResult in
-                if case .success(let info) = infoResult, info.error_code == .success {
-                    // 成功：更新使用者名稱與裝置陣列
-                    DispatchQueue.main.async {
-                        home_devices = info.serial_number?
-                            .map { DeviceStatus(serial: $0, isOnline: true) } ?? []
-                    }
-                } else {
-                    // 失敗：保持原本登入回傳的資料，或視情況清空
-                    DispatchQueue.main.async {
-                        home_devices = []   // 失敗就清空裝置清單
+            if home_devices == nil {
+                Network.shared.getUserInfo { infoResult in
+                    if case .success(let info) = infoResult, info.error_code == .success {
+                        // 成功：更新使用者名稱與裝置陣列
+                        DispatchQueue.main.async {
+                            home_devices = info.serial_number?
+                                .map { DeviceStatus(serial: $0, isOnline: true) } ?? []
+                        }
+                    } else {
+                        // 失敗：保持原本登入回傳的資料，或視情況清空
+                        DispatchQueue.main.async {
+                            home_devices = []   // 失敗就清空裝置清單
+                        }
                     }
                 }
             }
@@ -108,7 +115,13 @@ struct HomeView: View {
 
 #Preview {
     HomeView(
-        home_user_name: "BoEn"
+        home_user_name: "Admin",
+        previewDevices: [
+            DeviceStatus(serial: "客廳1", isOnline: true),
+            DeviceStatus(serial: "客廳2", isOnline: true),
+            DeviceStatus(serial: "廚房", isOnline: true),
+            DeviceStatus(serial: "房間", isOnline: false)
+        ]
     )
 }
 
