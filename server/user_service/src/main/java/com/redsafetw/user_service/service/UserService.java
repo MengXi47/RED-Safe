@@ -1,21 +1,19 @@
 package com.redsafetw.user_service.service;
 
 import com.redsafetw.user_service.dto.*;
-        import com.redsafetw.user_service.domain.Userdomain;
-import com.redsafetw.user_service.util.PasswordCrypto;
+import com.redsafetw.user_service.domain.UserDomain;
+import com.redsafetw.user_service.util.*;
 import com.redsafetw.user_service.repository.UserRepository;
+import com.redsafetw.user_service.repository.AuthRepository;
+import com.redsafetw.user_service.domain.AuthDomain;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.Base64;
-import java.util.UUID;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+
 
 /**
  * 使用者服務
@@ -24,52 +22,34 @@ import javax.crypto.spec.SecretKeySpec;
  */
 @Service
 @Transactional
+@RequiredArgsConstructor
 public class UserService {
     private final UserRepository users;
-    private static final String JWT_HS256_SECRET = "redsafe";
-    private static final long ACCESS_TOKEN_MINUTES = 10;
-    private static final long REFRESH_TOKEN_DAYS = 30;
-
-    private static String b64Url(byte[] data) {
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
-    }
-
-    private static String hmacSha256(String data) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(UserService.JWT_HS256_SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-            return b64Url(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception e) {
-            throw new IllegalStateException("JWT HMAC 失敗", e);
-        }
-    }
-
-    private static String issueJwtHs256(String subject, OffsetDateTime issuedAt, OffsetDateTime expiresAt, String type) {
-        String headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
-        String payloadJson = String.format("{\"sub\":\"%s\",\"iat\":%d,\"exp\":%d,\"jti\":\"%s\",\"typ\":\"%s\"}",
-                subject, issuedAt.toEpochSecond(), expiresAt.toEpochSecond(), UUID.randomUUID(), type);
-        String header = b64Url(headerJson.getBytes(StandardCharsets.UTF_8));
-        String payload = b64Url(payloadJson.getBytes(StandardCharsets.UTF_8));
-        String signingInput = header + "." + payload;
-        String signature = hmacSha256(signingInput);
-        return signingInput + "." + signature;
-    }
-
-    public UserService(UserRepository users) {
-        this.users = users;
-    }
+    private final AuthRepository auths;
 
     public SignupResponse signup(SignupRequest req) {
+        // 基本檢查
+        if (req == null || req.getEmail() == null || req.getPassword() == null || req.getUser_name() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "缺少參數");
+        }
+
+        // 驗證Email使否重複
         if (users.existsByEmail(req.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
         }
-        Userdomain user = new Userdomain();
+
+        // 寫入資料庫
+        UserDomain user = new UserDomain();
         user.setEmail(req.getEmail());
         user.setUser_name(req.getUser_name());
-        user.setPassword_hash(PasswordCrypto.hash(req.getPassword()));
+        user.setUser_password_hash(Argon2id.hash(req.getPassword()));
+        user.setStatus(true);
         user = users.save(user);
 
-        return new SignupResponse(user.getUser_id(), user.getUser_name());
+        return SignupResponse.builder()
+                .user_id(user.getUser_id())
+                .user_name(user.getUser_name())
+                .build();
     }
 
     public SigninResponse signin(SigninRequest req) {
@@ -87,26 +67,32 @@ public class UserService {
 
         var user = userOpt.get();
 
-        // 驗證密碼（使用 Spring Security Crypto 的 Argon2id）
-        boolean ok = PasswordCrypto.verify(user.getPassword_hash(), req.getPassword());
+        // 驗證密碼
+        boolean ok = Argon2id.verify(user.getUser_password_hash(), req.getPassword());
         if (!ok) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "FUCK PASSWORD INCORRECT");
         }
 
-        // 簽發 JWT 與 Refresh Token（示範使用 HS256，請將密鑰改成外部設定）
-        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
-        OffsetDateTime accessExp = now.plusMinutes(ACCESS_TOKEN_MINUTES);
-        OffsetDateTime refreshExp = now.plusDays(REFRESH_TOKEN_DAYS);
+        String accessToken = JWT.createToken(user.getUser_id());
+        String refreshToken = RefreshToken.generateRefreshToken();
 
-        String accessToken = issueJwtHs256(user.getUser_id().toString(), now, accessExp, "access");
-        String refreshToken = issueJwtHs256(user.getUser_id().toString(), now, refreshExp, "refresh");
+        // 更新使用者最後登入時間（使用已載入的持久化實體）
+        user.setLast_login_at(OffsetDateTime.now());
+        users.save(user); // 在 @Transactional 作用下，save 或自動 flush 皆可
+
+        AuthDomain auth = new AuthDomain();
+        auth.setUser(user);
+        auth.setRefresh_token(refreshToken);
+        auth.setCreated_at(OffsetDateTime.now());
+        auth.setExpires_at(OffsetDateTime.now().plusDays(30));
+        auth.setRevoked(false);
+        auths.save(auth);
 
         return SigninResponse.builder()
-                .user_id(user.getUser_id())
                 .user_name(user.getUser_name())
                 .access_token(accessToken)
                 .refresh_token(refreshToken)
-                .accessTokenExpiresAt(accessExp)
                 .build();
     }
+
 }

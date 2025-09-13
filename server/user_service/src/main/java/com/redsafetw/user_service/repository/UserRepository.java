@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.redsafetw.user_service.domain.Userdomain;
+import com.redsafetw.user_service.domain.UserDomain;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -14,8 +14,8 @@ import org.springframework.stereotype.Repository;
  * @create 2025-09-11 11:20 pm
  **/
 @Repository
-public interface UserRepository extends JpaRepository<Userdomain, UUID> {
-    Optional<Userdomain> findByEmail(String email);
+public interface UserRepository extends JpaRepository<UserDomain, UUID> {
+    Optional<UserDomain> findByEmail(String email);
 
     boolean existsByEmail(String email);
 }

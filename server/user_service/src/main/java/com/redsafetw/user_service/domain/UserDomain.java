@@ -17,11 +17,11 @@ import org.hibernate.annotations.UuidGenerator;
 @Getter
 @Entity
 @Table(name = "users")
-public class Userdomain {
+public class UserDomain {
 
     /**
      * 使用者的唯一識別碼
-     */
+     **/
     @Id
     @UuidGenerator
     @Column(name = "user_id", nullable = false, updatable = false)
@@ -29,32 +29,37 @@ public class Userdomain {
 
     /**
      * 使用者電子郵件
-     */
+     **/
     @Column(name = "email", nullable = false, unique = true)
     private String email;
 
     /**
      * 使用者名稱
-     */
+     **/
     @Column(name = "user_name")
     private String user_name;
 
     /**
      * 使用者密碼的雜湊值
-     */
-    @Column(name = "password", nullable = false)
-    private String password_hash;
+     **/
+    @Column(name = "user_password_hash", nullable = false)
+    private String user_password_hash;
 
     /**
      * 使用者帳號建立時間，資料庫預設為當前時間
-     */
+     **/
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false, columnDefinition = "TIMESTAMPTZ DEFAULT NOW()")
     private OffsetDateTime created_at;
 
     /**
      * 使用者最後登入時間
      */
-    @Column(name = "login_at")
-    private OffsetDateTime login_at;
+    @Column(name = "last_login_at")
+    private OffsetDateTime last_login_at;
 
+    /**
+     * 帳號狀態
+     **/
+    @Column(name = "status")
+    private Boolean status;
 }

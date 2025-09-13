@@ -1,14 +1,13 @@
 package com.redsafetw.user_service.controller;
 
-import com.redsafetw.user_service.dto.SigninRequest;
-import com.redsafetw.user_service.dto.SigninResponse;
-import com.redsafetw.user_service.dto.SignupRequest;
-import com.redsafetw.user_service.dto.SignupResponse;
+import com.redsafetw.user_service.dto.*;
+import com.redsafetw.user_service.service.AuthService;
 import com.redsafetw.user_service.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
  * 使用者服務控制器
@@ -16,12 +15,15 @@ import org.springframework.web.bind.annotation.RestController;
  * @create 2025-09-11 11:22 pm
  **/
 @RestController
+@RequestMapping("/auth")
 public class UserController {
     private final UserService user;
+    private final AuthService auth;
 
     @Autowired
-    public UserController(UserService user) {
+    public UserController(UserService user, AuthService auth) {
         this.user = user;
+        this.auth = auth;
     }
 
     @PostMapping("/signup")
@@ -32,5 +34,10 @@ public class UserController {
     @PostMapping("/signin")
     public SigninResponse signin(@RequestBody SigninRequest signinRequest) {
         return user.signin(signinRequest);
+    }
+
+    @PostMapping("/refresh")
+    public RefreshResponse refresh(@RequestBody RefreshRequest refreshRequest) {
+        return auth.refresh(refreshRequest);
     }
 }

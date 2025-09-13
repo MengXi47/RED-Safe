@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package jwt;
+
+option java_multiple_files = true;
+option java_package = "com.grpc.jwt";
+option java_generic_services = true;
+
+service jwtService {
+  rpc Check(jwtchkRequset) returns (jwtchkResponse);
+}
+
+message jwtchkRequset {
+  string jwt = 1;
+}
+
+message jwtchkResponse {
+  bool chk = 1;
+  string user_id = 2;
+}
