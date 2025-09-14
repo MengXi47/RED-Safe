@@ -1,5 +1,6 @@
 package com.redsafetw.user_service.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 import java.util.UUID;
@@ -15,6 +16,10 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class SignupResponse {
-    private UUID user_id;
-    private String user_name;
+
+    @JsonProperty("user_id")
+    private UUID userId;
+
+    @JsonProperty("user_name")
+    private String userName;
 }

@@ -6,7 +6,7 @@ option java_multiple_files = true;
 option java_package = "com.grpc.jwt";
 option java_generic_services = true;
 
-service jwtService {
+service JwtService {
   rpc Check(jwtchkRequset) returns (jwtchkResponse);
 }
 

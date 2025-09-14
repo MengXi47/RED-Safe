@@ -14,7 +14,7 @@ import java.util.UUID;
  * @create 2025-09-13
  */
 @GrpcService
-public class JWTgRPC extends jwtServiceGrpc.jwtServiceImplBase {
+public class AuthGrpcServer extends JwtServiceGrpc.JwtServiceImplBase {
 
     /**
      * gRPC 方法實作：Check

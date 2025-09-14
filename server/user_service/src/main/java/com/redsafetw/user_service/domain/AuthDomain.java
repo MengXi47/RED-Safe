@@ -1,5 +1,3 @@
-
-
 package com.redsafetw.user_service.domain;
 
 import jakarta.persistence.*;

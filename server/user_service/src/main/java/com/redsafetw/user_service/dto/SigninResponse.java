@@ -1,5 +1,6 @@
 package com.redsafetw.user_service.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.AllArgsConstructor;
@@ -18,14 +19,12 @@ import lombok.Builder;
 @Builder
 public class SigninResponse {
 
-    private String user_name;
-    /** JWT 訪問權杖（Bearer Token） */
-    private String access_token;
+    @JsonProperty("user_name")
+    private String userName;
 
-    /** 用於換發新的 access token */
-    private String refresh_token;
+    @JsonProperty("access_token")
+    private String accessToken;
 
-    /** 權杖類型，預設 Bearer */
-    @Builder.Default
-    private String tokenType = "Bearer";
+    @JsonProperty("refresh_token")
+    private String refreshToken;
 }

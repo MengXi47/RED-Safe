@@ -1,4 +1,4 @@
-package com.redsafetw.user_service.config;
+package com.redsafetw.edge_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,7 +10,7 @@ import org.springframework.security.web.SecurityFilterChain;
 /**
  * 安全性設定
  *
- * @create 2025-09-11 10:40 pm
+ * @create 2025-09-14
  **/
 @Configuration
 public class SecurityConfig {

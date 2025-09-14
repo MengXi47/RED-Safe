@@ -1,6 +1,5 @@
-package com.redsafetw.user_service.command;
+package com.redsafetw.edge_service.command;
 
-import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,7 +14,7 @@ import java.util.Map;
 /**
  * 全域異常處理器
  *
- * @create 2025-09-12
+ * @create 2025-09-14
  **/
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -23,20 +22,12 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, Object> handleValidationException(MethodArgumentNotValidException ex) {
         Map<String, Object> body = new HashMap<>();
+
         String message = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
         body.put("error_code", message);
+
         return body;
     }
-
-    @ExceptionHandler(ConstraintViolationException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, Object> handleConstraintViolation(ConstraintViolationException ex) {
-        Map<String, Object> body = new HashMap<>();
-        String message = ex.getConstraintViolations().iterator().next().getMessage();
-        body.put("error_code", message);
-        return body;
-    }
-
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleAllExceptions(Exception ex) {

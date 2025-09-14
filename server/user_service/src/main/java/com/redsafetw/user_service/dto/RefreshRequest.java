@@ -1,5 +1,6 @@
 package com.redsafetw.user_service.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,5 +14,6 @@ import lombok.Setter;
 @Setter
 public class RefreshRequest {
     @NotBlank
-    private String refresh_token;
+    @JsonProperty("refresh_token")
+    private String refreshToken;
 }
