@@ -15,10 +15,7 @@
 
 1. [專案簡介](#專案簡介)  
 2. [核心功能](#核心功能)  
-3. [系統架構](#系統架構)  
-4. [Clone](#Clone)
-5. [Build in unix](#build-in-unix)
-6. [Build in windows](#build-in-windows)
+3. [系統架構](#系統架構) 
 
 ---
 
@@ -42,31 +39,6 @@
 
 ## 系統架構
 
-![RED‑Safe Architecture](docs/image/redsafe‑architecture_v1.png)
+![RED‑Safe Architecture](docs/image/架構白.png)
 
 ---
-
-## Clone
-
-```bash
-git clone https://github.com/MengXi47/RED-Safe.git
-cd RED-Safe
-```
-
-## Build in unix
-
-```bash
-mkdir build
-cd build
-cmake ..
-cmake --build .
-```
-
-## Build in windows
-
-```bash
-mkdir build
-cd build
-cmake -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows ..
-cmake --build .
-```

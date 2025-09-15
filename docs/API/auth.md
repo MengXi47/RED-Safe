@@ -1,74 +1,141 @@
-
-
-# Token 續期 API
-
-本檔案說明 `/auth` 路徑下的 API，目標在於利用 **Refresh Token** 取得新的 **Access Token**。目前僅有一個端點：`/auth/refresh`。
+# 🔐 Auth API 文件
 
 ---
 
-## 目錄
-1. [刷新 Access Token `/auth/refresh`](#刷新-access-token-authrefresh)
+## 📝 使用者註冊 API
 
----
+### Endpoint
+`POST https://api.redsafe-tw.com/auth/signup`
 
-## 刷新 Access Token `/auth/refresh`
-<a name="刷新-access-token-authrefresh"></a>
+### Headers
+- `Content-Type: application/json`
 
-- **HTTP 方法**：`POST`
-- **Endpoint**：`/auth/refresh`
-- **授權方式**：  
-  - 必須在 Cookie 內攜帶 `refresh_token=<64hex>`  
-    `Set-Cookie` 由 `/user/signin` 或 `/edge/signup` 等接口取得  
-  - 前端呼叫時需設定 `credentials: "include"`，讓瀏覽器自動夾帶 HttpOnly Cookie
-
-### 功能說明
-當 **Access Token** 即將過期或已過期時，前端可呼叫 `/auth/refresh`。  
-伺服器將驗證 `refresh_token` 是否有效、未過期且未被撤銷：  
-1. 驗證成功 → 回傳新的 `access_token`，並將 `error_code` 設為 `0`。  
-2. 若 `refresh_token` 過期或無效 → 回傳錯誤碼（`501/502`)，前端需引導使用者重新登入。  
-
-### 必填參數
-
-| 參數 | 類型 | 必填 | 說明                            |
-|------|------|------|---------------------------------|
-| *無* | —    | —    | 僅需在 Cookie 中帶 `refresh_token`|
-
-### Request 範例  
-
-```http
-POST /auth/refresh HTTP/1.1
-Host: api.redsafe-tw.com
-Connection: keep-alive
-Cookie: refresh_token=8e80bcc649f7477ec5fae9b70e6bda2f07ca6c45277540d91546b06f94e05817
-```
-
-> **注意：** 請求 body 不需攜帶任何 JSON；僅透過 Cookie 夾帶 `refresh_token`。
-
-### Response 範例（成功：HTTP 200）
-
-```http
-HTTP/1.1 200 OK
-Connection: keep-alive
-Content-Type: application/json
-
+### Request Body
+```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3NDkwMzU5OTEsImlhdCI6MTc0OTAzNTM5MSwiaXNzIjoiUkVELVNhZmUiLCJzdWIiOiI4RjI0QzVBMDk4MTI4OTgwREE3RkZEQjU4MUQwMUYzODRDMzc0NTMyRkRFQkJGMUM2NDY2QUM1NjgyNjgyNTFCQzA1NTBGOTcwOEY3NDQxMkZGMDg2NDlDNzZGRTI3QUI1RjY0Q0E5NzJCNjIwMTAzQUI2QzY5Q0FGMzFEQzI4OCJ9.dZDvFQWVViOrdXDHJkekb5BTh3J1W-2I24CwtzGz26Y",
-  "error_code": 0
+  "email": "admin@gmail.com",
+  "user_name": "admin",
+  "password": "password"
 }
 ```
 
-### Response 範例（失敗：HTTP 400）
+#### 📌 參數說明
+| 欄位        | 型別   | 必填 | 說明         |
+|-------------|--------|------|--------------|
+| `email`     | string | ✅   | 使用者 Email |
+| `user_name` | string | ✅   | 使用者名稱   |
+| `password`  | string | ✅   | 使用者密碼   |
 
-```http
-HTTP/1.1 400 Bad Request
-Content-Type: application/json
+### Response
 
+✅ 成功回應
+```json
 {
-  "error_code": 406
+  "user_id": "85f22dda-efc2-459d-b518-640400a69e8d",
+  "user_name": "admin"
 }
 ```
 
+❌ 失敗回應
+```json
+{
+  "error_code": "error_code"
+}
+```
+
+#### ⚠️ 常見錯誤碼
+- `124` - email 格式錯誤  
+- `129` - Email 為空  
+- `130` - Password 為空  
+- `131` - user_name 為空  
+- `133` - Email 已存在  
+
 ---
 
-> 前端應在 Access Token 驗證失敗 (`error_code=503/504`) 時，自動呼叫 `/auth/refresh`。<br>
-> 如果 `/auth/refresh` 仍回傳錯誤 (`error_code!=0`)，代表使用者必須重新登入。
+## 🔑 使用者登入 API
+
+### Endpoint
+`POST https://api.redsafe-tw.com/auth/signin`
+
+### Headers
+- `Content-Type: application/json`
+
+### Request Body
+```json
+{
+  "email": "admin@gmail.com",
+  "password": "admin"
+}
+```
+
+#### 📌 參數說明
+| 欄位      | 型別   | 必填 | 說明         |
+|-----------|--------|------|--------------|
+| `email`   | string | ✅   | 使用者 Email |
+| `password`| string | ✅   | 使用者密碼   |
+
+### Response
+
+✅ 成功回應
+```json
+{
+  "user_name": "admin",
+  "access_token": "eyJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "XEEamaoT3xgoY5hkuo5x..."
+}
+```
+
+❌ 失敗回應
+```json
+{
+  "error_code": "error_code"
+}
+```
+
+#### ⚠️ 常見錯誤碼
+- `124` - email 格式錯誤  
+- `128` - 帳號密碼錯誤  
+- `129` - Email 為空  
+- `130` - Password 為空  
+
+---
+
+## ♻️ 刷新 Token API
+
+### Endpoint
+`POST https://api.redsafe-tw.com/auth/refresh`
+
+### Headers
+- `Content-Type: application/json`
+
+### Request Body
+```json
+{
+  "refresh_token": "8r9kmmRMka9MxKlPdCW7Nxq1udPaWX1Yd9zx5a8wWMs"
+}
+```
+
+#### 📌 參數說明
+| 欄位           | 型別   | 必填 | 說明                |
+|----------------|--------|------|---------------------|
+| `refresh_token`| string | ✅   | 使用者 Refresh Token |
+
+### Response
+
+✅ 成功回應
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+❌ 失敗回應
+```json
+{
+  "error_code": "error_code"
+}
+```
+
+#### ⚠️ 常見錯誤碼
+- `132` - refresh_token 失效  
+- `137` - refresh_token 為空  

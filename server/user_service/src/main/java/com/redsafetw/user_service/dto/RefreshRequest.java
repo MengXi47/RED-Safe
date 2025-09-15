@@ -13,7 +13,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class RefreshRequest {
-    @NotBlank
+    @NotBlank(message = "137")
     @JsonProperty("refresh_token")
     private String refreshToken;
 }
