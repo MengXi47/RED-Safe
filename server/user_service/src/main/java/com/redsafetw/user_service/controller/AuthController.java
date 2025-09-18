@@ -21,17 +21,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequiredArgsConstructor
 @RequestMapping("/auth")
 public class AuthController {
-    private final UserService user;
     private final AuthService auth;
 
     @PostMapping("/signup")
     public SignupResponse signup(@Valid @RequestBody SignupRequest signupRequest) {
-        return user.signup(signupRequest);
+        return auth.signup(signupRequest);
     }
 
     @PostMapping("/signin")
     public SigninResponse signin(@Valid @RequestBody SigninRequest signinRequest) {
-        return user.signin(signinRequest);
+        return auth.signin(signinRequest);
     }
 
     @PostMapping("/refresh")

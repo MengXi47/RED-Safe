@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,6 +23,7 @@ public class SignupRequest {
 
     @NotBlank(message = "131")
     @JsonProperty("user_name")
+    @Size(max = 16, message = "139")
     private String userName;
 
     @NotBlank(message = "130")

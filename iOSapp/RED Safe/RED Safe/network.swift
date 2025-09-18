@@ -171,7 +171,7 @@ class Network: NSObject {
     ///   - completion: 結果回呼，成功回傳 SignInResponse，失敗回傳 NetworkError
     func signIn(email: String, password: String, completion: @escaping (Result<SignInResponse, NetworkError>) -> Void) {
         // 1. 建立 URL
-        guard let url = URL(string: "https://api.redsafe-tw.com/user/signin") else {
+        guard let url = URL(string: "https://api.redsafe-tw.com/auth/signin") else {
             completion(.failure(.invalidURL))
             return
         }
@@ -243,7 +243,7 @@ class Network: NSObject {
     ///   - completion: 結果回呼，成功回傳 SignUpResponse，失敗回傳 NetworkError
     func signUp(email: String, userName: String, password: String, completion: @escaping (Result<SignUpResponse, NetworkError>) -> Void) {
         // 1. 建立 URL
-        guard let url = URL(string: "https://api.redsafe-tw.com/user/signup") else {
+        guard let url = URL(string: "https://api.redsafe-tw.com/auth/signup") else {
             completion(.failure(.invalidURL))
             return
         }

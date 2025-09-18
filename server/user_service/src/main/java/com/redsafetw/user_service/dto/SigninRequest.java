@@ -18,6 +18,7 @@ public class SigninRequest {
     @Email
     @Pattern(regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$", message = "124")
     private String email;
+
     @NotBlank(message = "130")
     private String password;
 }

@@ -1,6 +1,6 @@
 package com.redsafetw.user_service.grpc;
 
-import com.redsafetw.user_service.util.JWT;
+import com.redsafetw.user_service.service.JwtService;
 import io.grpc.stub.StreamObserver;
 import org.springframework.grpc.server.service.GrpcService;
 import com.grpc.jwt.*;
@@ -29,7 +29,7 @@ public class AuthGrpcServer extends JwtServiceGrpc.JwtServiceImplBase {
         String token = request.getJwt();
 
         // 驗證 JWT 並取得對應的使用者 UUID
-        UUID userId = JWT.verifyAndGetUserId(token);
+        UUID userId = JwtService.verifyAndGetUserId(token);
 
         // 判斷 userId 是否有效（不是全 0 UUID）
         boolean ok = !userId.equals(new UUID(0L, 0L));

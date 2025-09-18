@@ -46,10 +46,26 @@ public class UserController {
     }
 
     @PostMapping("/update/edge_name")
-    public UpdataEdgeNameResponse updataEdgeName(
-            @Valid @RequestBody UpdataEdgeNameRequest updataEdgeNameRequest,
+    public ErrorCodeResponse updataEdgeName(
+            @Valid @RequestBody UpdateEdgeNameRequest updateEdgeNameRequest,
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
         String token = authorization.replace("Bearer ", "");
-        return userService.updataEdgeName(updataEdgeNameRequest, token);
+        return userService.updataEdgeName(updateEdgeNameRequest, token);
+    }
+
+    @PostMapping("/update/user_name")
+    public ErrorCodeResponse updateUserName(
+            @Valid @RequestBody UpdateUserNameRequest updateUserNameRequest,
+            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
+        String token = authorization.replace("Bearer ", "");
+        return userService.updateUserName(updateUserNameRequest, token);
+    }
+
+    @PostMapping("/update/password")
+    public ErrorCodeResponse updatePassword(
+            @Valid @RequestBody UpdateUserPasswordRequest  updateUserPasswordRequest,
+            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
+        String token = authorization.replace("Bearer ", "");
+        return userService.updateUserPassword(updateUserPasswordRequest,  token);
     }
 }

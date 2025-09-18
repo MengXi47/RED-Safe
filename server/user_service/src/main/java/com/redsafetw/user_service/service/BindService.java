@@ -1,10 +1,8 @@
 package com.redsafetw.user_service.service;
 
-import com.grpc.edge.EdgeServiceGrpc;
 import com.redsafetw.user_service.domain.UserEdgeBindDomain;
 import com.redsafetw.user_service.dto.*;
 import com.redsafetw.user_service.grpc.EdgeGrpcClient;
-import com.redsafetw.user_service.repository.AuthRepository;
 import com.redsafetw.user_service.repository.UserEdgeBindRepository;
 import com.redsafetw.user_service.util.*;
 import jakarta.transaction.Transactional;
@@ -15,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Scanner;
 import java.util.UUID;
 
 /**
@@ -34,7 +31,7 @@ public class BindService {
 
     public BindResponse bind(String access_token, String edge_id) {
 
-        UUID userId = JWT.verifyAndGetUserId(access_token);
+        UUID userId = JwtService.verifyAndGetUserId(access_token);
         if (userId.equals(new UUID(0L, 0L))) {
             logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} access_token 失效", userId, edge_id);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
@@ -63,7 +60,7 @@ public class BindService {
 
     public UnbindResponse unbind(String access_token, String edge_id) {
 
-        UUID userId = JWT.verifyAndGetUserId(access_token);
+        UUID userId = JwtService.verifyAndGetUserId(access_token);
         if (userId.equals(new UUID(0L, 0L))) {
             logger.info("UserEdgeUnbind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} access_token 失效", userId, edge_id);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");

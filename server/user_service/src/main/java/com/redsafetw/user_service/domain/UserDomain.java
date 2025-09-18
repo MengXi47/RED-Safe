@@ -25,7 +25,7 @@ public class UserDomain {
     @Id
     @UuidGenerator
     @Column(name = "user_id", nullable = false, updatable = false)
-    private UUID user_id;
+    private UUID userId;
 
     /**
      * 使用者電子郵件

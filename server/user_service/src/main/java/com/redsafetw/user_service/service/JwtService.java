@@ -1,7 +1,8 @@
-package com.redsafetw.user_service.util;
+package com.redsafetw.user_service.service;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.time.OffsetDateTime;
@@ -13,7 +14,8 @@ import java.util.UUID;
  *
  * @create 2025-09-11 10:35 pm
  */
-public abstract class JWT {
+@Service
+public abstract class JwtService {
     private static final Key key = Keys.secretKeyFor(io.jsonwebtoken.SignatureAlgorithm.HS256);
 
     /**
