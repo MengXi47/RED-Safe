@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 import json
 import os
-import sys
 import requests
 
-BASE_URL = "https://api.redsafe-tw.com"
-#BASE_URL = "https://localhost"
+BASE_URL = os.environ.get("RED_API_BASE_URL", "https://api.redsafe-tw.com").rstrip("/")
 TOKEN_FILE = ".tokens.json"
 
 
@@ -27,21 +25,31 @@ def load_tokens():
     return data.get("access_token"), data.get("refresh_token")
 
 
-def api_post(path, payload, token=None):
-    url = BASE_URL.rstrip("/") + path
-    headers = {
-        "Content-Type": "application/json"
-    }
+def request_json(method, path, token=None, payload=None):
+    url = f"{BASE_URL}{path}"
+    headers = {}
+    if payload is not None:
+        headers["Content-Type"] = "application/json"
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    print(url)
-    print(headers)
+    print(f"\n➡️ {method.upper()} {url}")
+    if headers:
+        print("Headers:", headers)
+    if payload is not None:
+        print("Body:", json.dumps(payload, ensure_ascii=False))
 
     try:
-        resp = requests.post(url, verify=False, headers=headers, json=payload, timeout=15)
-    except requests.RequestException as e:
-        print(f"❌ 網路連線失敗: {e}")
+        resp = requests.request(
+            method=method,
+            url=url,
+            headers=headers or None,
+            json=payload,
+            verify=False,
+            timeout=15,
+        )
+    except requests.RequestException as exc:
+        print(f"❌ 網路連線失敗: {exc}")
         return None
 
     try:
@@ -51,9 +59,19 @@ def api_post(path, payload, token=None):
         return None
 
     if not resp.ok:
-        print("❌ API 錯誤：", data)
+        print(f"❌ API 錯誤 (HTTP {resp.status_code}):", data)
         return None
+
+    print("✅ 成功:", data)
     return data
+
+
+def api_post(path, payload, token=None):
+    return request_json("post", path, token=token, payload=payload)
+
+
+def api_get(path, token=None):
+    return request_json("get", path, token=token)
 
 
 def do_signup():
@@ -91,7 +109,8 @@ def do_refresh():
 def do_register_edge():
     edge_id = input("Edge ID: ")
     version = input("Version: ")
-    payload = {"edge_id": edge_id, "version": version}
+    edge_password = input("Initial Edge Password: ")
+    payload = {"edge_id": edge_id, "edge_password": edge_password, "version": version}
     data = api_post("/edge/reg", payload)
     if data:
         print("✅ Edge 註冊成功:", data)
@@ -99,55 +118,32 @@ def do_register_edge():
 
 def do_bind_edge():
     edge_id = input("Edge ID to bind: ")
+    edge_name = input("Edge Name: ")
+    edge_password = input("Edge Password: ")
     token, _ = load_tokens()
     if not token:
         print("❌ 請先 signin 取得 access_token")
         return
-    # 假如你的 API route 是 POST /bind/{edge_id}
-    path = f"/user/bind/{edge_id}"
-    payload = {}  # 如果你的 bind API 不需要 body，可以傳空 dict
-    data = api_post(path, payload, token=token)
-    if data:
-        print("✅ Bind 成功:", data)
-
-
-# 新增 do_unbind_edge
+    payload = {
+        "edge_id": edge_id,
+        "edge_name": edge_name,
+        "edge_password": edge_password,
+    }
+    api_post("/user/bind", payload, token=token)
 def do_unbind_edge():
     edge_id = input("Edge ID to unbind: ")
     token, _ = load_tokens()
     if not token:
         print("❌ 請先 signin 取得 access_token")
         return
-    # 假如你的 API route 是 POST /unbind/{edge_id}
-    path = f"/user/unbind/{edge_id}"
-    payload = {}  # 如果你的 unbind API 不需要 body，可以傳空 dict
-    data = api_post(path, payload, token=token)
-    if data:
-        print("✅ Unbind 成功:", data)
+    api_post(f"/user/unbind/{edge_id}", {}, token=token)
 
 def do_list_edges():
     token, _ = load_tokens()
     if not token:
         print("❌ 請先 signin 取得 access_token")
         return
-    url = BASE_URL.rstrip("/") + "/user/list/edge_id"
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
-    try:
-        resp = requests.get(url, verify=False, headers=headers, timeout=15)
-    except requests.RequestException as e:
-        print(f"❌ 網路連線失敗: {e}")
-        return
-    try:
-        data = resp.json()
-    except ValueError:
-        print(f"❌ 非 JSON 回應，HTTP {resp.status_code}: {resp.text[:300]}")
-        return
-    if not resp.ok:
-        print("❌ API 錯誤：", data)
-        return
-    print("✅ List Edges 成功:", data)
+    api_get("/user/list/edge_id", token=token)
 
 
 def do_update_edge_name():
@@ -158,9 +154,64 @@ def do_update_edge_name():
     edge_id = input("Edge ID: ")
     edge_name = input("New Edge Name: ")
     payload = {"edge_id": edge_id, "edge_name": edge_name}
-    data = api_post("/user/update/edge_name", payload, token=token)
-    if data:
-        print("✅ Update Edge Name 成功:", data)
+    api_post("/user/update/edge_name", payload, token=token)
+
+
+def do_update_user_name():
+    token, _ = load_tokens()
+    if not token:
+        print("❌ 請先 signin 取得 access_token")
+        return
+    user_name = input("New User Name: ")
+    payload = {"user_name": user_name}
+    api_post("/user/update/user_name", payload, token=token)
+
+
+def do_update_user_password():
+    token, _ = load_tokens()
+    if not token:
+        print("❌ 請先 signin 取得 access_token")
+        return
+    password = input("Current Password: ")
+    new_password = input("New Password: ")
+    payload = {"password": password, "new_password": new_password}
+    api_post("/user/update/password", payload, token=token)
+
+
+def do_update_edge_password():
+    token, _ = load_tokens()
+    if not token:
+        print("❌ 請先 signin 取得 access_token")
+        return
+    edge_id = input("Edge ID: ")
+    edge_password = input("Current Edge Password: ")
+    new_edge_password = input("New Edge Password: ")
+    payload = {
+        "edge_id": edge_id,
+        "edge_password": edge_password,
+        "new_edge_password": new_edge_password,
+    }
+    api_post("/user/update/edge_password", payload, token=token)
+
+
+def do_ios_register():
+    token, _ = load_tokens()
+    if not token:
+        print("❌ 請先 signin 取得 access_token")
+        return
+    ios_device_id = input("iOS Device ID (optional, UUID): ").strip()
+    if not ios_device_id:
+        ios_device_id = None
+    apns_token = input("APNS Token: ")
+    device_name = input("Device Name (optional): ").strip() or None
+    payload = {
+        "apns_token": apns_token,
+    }
+    if ios_device_id:
+        payload["ios_device_id"] = ios_device_id
+    if device_name:
+        payload["device_name"] = device_name
+    api_post("/ios/reg", payload, token=token)
 
 
 def main():
@@ -176,6 +227,10 @@ def main():
         print("6) unbind edge")
         print("7) list edges")
         print("8) update edge name")
+        print("9) update user name")
+        print("10) update user password")
+        print("11) update edge password")
+        print("12) register iOS device")
         choice = input("選擇操作: ").strip()
         if choice == "1":
             do_signup()
@@ -193,6 +248,14 @@ def main():
             do_list_edges()
         elif choice == "8":
             do_update_edge_name()
+        elif choice == "9":
+            do_update_user_name()
+        elif choice == "10":
+            do_update_user_password()
+        elif choice == "11":
+            do_update_edge_password()
+        elif choice == "12":
+            do_ios_register()
         else:
             print("無效選項")
 

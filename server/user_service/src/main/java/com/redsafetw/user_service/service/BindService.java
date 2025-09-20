@@ -4,7 +4,6 @@ import com.redsafetw.user_service.domain.UserEdgeBindDomain;
 import com.redsafetw.user_service.dto.*;
 import com.redsafetw.user_service.grpc.EdgeGrpcClient;
 import com.redsafetw.user_service.repository.UserEdgeBindRepository;
-import com.redsafetw.user_service.util.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -29,30 +28,37 @@ public class BindService {
     private final UserEdgeBindRepository userEdgeBindRepository;
     private static final Logger logger = LoggerFactory.getLogger(BindService.class);
 
-    public BindResponse bind(String access_token, String edge_id) {
+    public BindResponse bind(String access_token, BindRequest bindRequest) {
 
         UUID userId = JwtService.verifyAndGetUserId(access_token);
+        String edgeId = bindRequest.getEdgeId();
         if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} access_token 失效", userId, edge_id);
+            logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} access_token 失效", userId, edgeId);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
         }
 
-        if (!edgeGrpcClient.CheckEdgeIdExists(edge_id)) {
-            logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} edge_id 不存在", userId, edge_id);
+        if (!edgeGrpcClient.CheckEdgeIdExists(edgeId)) {
+            logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} edge_id 不存在", userId, edgeId);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "123");
         }
 
-        if (userEdgeBindRepository.existsByUserIdAndEdgeId(userId, edge_id)) {
-            logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} 已綁定", userId, edge_id);
+        if (!edgeGrpcClient.verifyEdgeCredentials(edgeId, bindRequest.getEdgePassword())) {
+            logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} edge 密碼驗證失敗", userId, edgeId);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "147");
+        }
+
+        if (userEdgeBindRepository.existsByUserIdAndEdgeId(userId, edgeId)) {
+            logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} 已綁定", userId, edgeId);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "134");
         }
 
         UserEdgeBindDomain userEdgeBindDomain = new UserEdgeBindDomain();
         userEdgeBindDomain.setUserId(userId);
-        userEdgeBindDomain.setEdgeId(edge_id);
+        userEdgeBindDomain.setEdgeId(edgeId);
+        userEdgeBindDomain.setDisplayName(bindRequest.getEdgeName());
         userEdgeBindRepository.save(userEdgeBindDomain);
 
-        logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} Bind successful", userId, edge_id);
+        logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} Bind successful", userId, edgeId);
         return BindResponse.builder()
                 .errorCode("0")
                 .build();

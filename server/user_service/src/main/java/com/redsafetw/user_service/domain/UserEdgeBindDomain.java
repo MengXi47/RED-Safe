@@ -28,6 +28,9 @@ public class UserEdgeBindDomain {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Column(name = "display_name")
+    private String displayName;
+
     // JPA 複合主鍵類別
     @Getter
     @Setter

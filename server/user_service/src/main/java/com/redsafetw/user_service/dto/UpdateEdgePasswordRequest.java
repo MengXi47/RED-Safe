@@ -7,19 +7,21 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * 邊緣裝置重命名請求體
- *
- * @create 2025-09-14
- **/
+ * 邊緣裝置密碼更新請求體
+ */
 @Getter
 @Setter
-public class UpdataEdgeNameRequest {
+public class UpdateEdgePasswordRequest {
     @JsonProperty("edge_id")
     @NotBlank(message = "125")
     @Pattern(regexp = "^RED-[0-9A-F]{8}$", message = "120")
     private String edgeId;
 
-    @JsonProperty("edge_name")
-    @NotBlank(message = "122")
-    private String edgeName;
+    @JsonProperty("edge_password")
+    @NotBlank(message = "144")
+    private String edgePassword;
+
+    @JsonProperty("new_edge_password")
+    @NotBlank(message = "148")
+    private String newEdgePassword;
 }

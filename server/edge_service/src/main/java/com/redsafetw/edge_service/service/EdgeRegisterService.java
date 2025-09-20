@@ -4,6 +4,7 @@ import com.redsafetw.edge_service.dto.EdgeRegisterRequest;
 import com.redsafetw.edge_service.repository.EdgeRepository;
 import com.redsafetw.edge_service.dto.EdgeRegisterResponse;
 import com.redsafetw.edge_service.domain.EdgeDeviceDomain;
+import com.redsafetw.edge_service.util.Argon2id;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -27,21 +28,16 @@ public class EdgeRegisterService {
     private static final Logger log = LoggerFactory.getLogger(EdgeRegisterService.class);
 
     public EdgeRegisterResponse registerEdge(EdgeRegisterRequest req) {
-        if (req.getEdgeId() == null || req.getVersion() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Edge Id and Version Required");
-        }
-
-        if (!req.getEdgeId().matches("^RED-[0-9A-F]{8}$")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Edge Id format");
-        }
-
         if (edgeRepository.existsByEdgeId(req.getEdgeId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Edge Id already registered");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "146");
         }
+
+        String hashedPassword = Argon2id.hash(req.getEdgePassword());
 
         log.info("Edge Device Registered Successfully: id: {}", req.getEdgeId());
         EdgeDeviceDomain device = new EdgeDeviceDomain();
         device.setEdgeId(req.getEdgeId());
+        device.setEdgePasswordHash(hashedPassword);
         device.setVersion(req.getVersion());
         device.setRegisteredAt(OffsetDateTime.now());
         edgeRepository.save(device);

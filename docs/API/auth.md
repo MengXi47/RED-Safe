@@ -1,11 +1,11 @@
 # 🔐 Auth API 文件
 
+Auth 服務提供註冊、登入與刷新 Access Token 的功能。
+
 ---
 
-## 📝 使用者註冊 API
-
-### Endpoint
-`POST https://api.redsafe-tw.com/auth/signup`
+## POST /auth/signup
+建立全新的使用者帳號。
 
 ### Headers
 - `Content-Type: application/json`
@@ -13,49 +13,39 @@
 ### Request Body
 ```json
 {
-  "email": "admin@gmail.com",
-  "user_name": "admin",
-  "password": "password"
+  "email": "user@example.com",
+  "user_name": "USER_NAME",
+  "password": "StrongPassword123"
 }
 ```
 
-#### 📌 參數說明
-| 欄位        | 型別   | 必填 | 說明         |
-|-------------|--------|------|--------------|
-| `email`     | string | ✅   | 使用者 Email |
-| `user_name` | string | ✅   | 使用者名稱   |
-| `password`  | string | ✅   | 使用者密碼   |
+| 欄位 | 型別 | 必填 | 約束 |
+|------|------|------|------|
+| `email` | string | ✅ | 合法 Email 格式，不能為空 |
+| `user_name` | string | ✅ | 最長 16 字元，不能為空 |
+| `password` | string | ✅ | 不能為空 |
 
-### Response
-
-✅ 成功回應
+### 成功回應 (200)
 ```json
 {
   "user_id": "85f22dda-efc2-459d-b518-640400a69e8d",
-  "user_name": "admin"
+  "user_name": "displayName"
 }
 ```
 
-❌ 失敗回應
+### 失敗回應範例
 ```json
 {
-  "error_code": "error_code"
+  "error_code": "133"
 }
 ```
 
-#### ⚠️ 常見錯誤碼
-- `124` - email 格式錯誤  
-- `129` - Email 為空  
-- `130` - Password 為空  
-- `131` - user_name 為空  
-- `133` - Email 已存在  
+**常見錯誤碼**：`124`、`129`、`130`、`131`、`139`、`133`
 
 ---
 
-## 🔑 使用者登入 API
-
-### Endpoint
-`POST https://api.redsafe-tw.com/auth/signin`
+## POST /auth/signin
+使用 Email 與密碼換取 JWT 與 Refresh Token。
 
 ### Headers
 - `Content-Type: application/json`
@@ -63,47 +53,38 @@
 ### Request Body
 ```json
 {
-  "email": "admin@gmail.com",
-  "password": "admin"
+  "email": "user@example.com",
+  "password": "Password"
 }
 ```
 
-#### 📌 參數說明
-| 欄位      | 型別   | 必填 | 說明         |
-|-----------|--------|------|--------------|
-| `email`   | string | ✅   | 使用者 Email |
-| `password`| string | ✅   | 使用者密碼   |
+| 欄位 | 型別 | 必填 | 約束 |
+|------|------|------|------|
+| `email` | string | ✅ | 合法 Email 格式，不能為空 |
+| `password` | string | ✅ | 不能為空 |
 
-### Response
-
-✅ 成功回應
+### 成功回應 (200)
 ```json
 {
-  "user_name": "admin",
+  "user_name": "USER_NAME",
   "access_token": "eyJhbGciOiJIUzI1NiJ9...",
-  "refresh_token": "XEEamaoT3xgoY5hkuo5x..."
+  "refresh_token": "ajh23kjasd..."
 }
 ```
 
-❌ 失敗回應
+### 失敗回應範例
 ```json
 {
-  "error_code": "error_code"
+  "error_code": "128"
 }
 ```
 
-#### ⚠️ 常見錯誤碼
-- `124` - email 格式錯誤  
-- `128` - 帳號密碼錯誤  
-- `129` - Email 為空  
-- `130` - Password 為空  
+**常見錯誤碼**：`124`、`128`、`129`、`130`
 
 ---
 
-## ♻️ 刷新 Token API
-
-### Endpoint
-`POST https://api.redsafe-tw.com/auth/refresh`
+## POST /auth/refresh
+透過 Refresh Token 換取新的 Access Token。
 
 ### Headers
 - `Content-Type: application/json`
@@ -111,31 +92,26 @@
 ### Request Body
 ```json
 {
-  "refresh_token": "8r9kmmRMka9MxKlPdCW7Nxq1udPaWX1Yd9zx5a8wWMs"
+  "refresh_token": "rFT4nq9J..."
 }
 ```
 
-#### 📌 參數說明
-| 欄位           | 型別   | 必填 | 說明                |
-|----------------|--------|------|---------------------|
-| `refresh_token`| string | ✅   | 使用者 Refresh Token |
+| 欄位 | 型別 | 必填 | 約束 |
+|------|------|------|------|
+| `refresh_token` | string | ✅ | 不能為空 |
 
-### Response
-
-✅ 成功回應
+### 成功回應 (200)
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiJ9..."
 }
 ```
 
-❌ 失敗回應
+### 失敗回應範例
 ```json
 {
-  "error_code": "error_code"
+  "error_code": "132"
 }
 ```
 
-#### ⚠️ 常見錯誤碼
-- `132` - refresh_token 失效  
-- `137` - refresh_token 為空  
+**常見錯誤碼**：`132`、`137`

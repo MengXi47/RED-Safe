@@ -17,8 +17,21 @@ import java.util.List;
 @Builder
 public class EdgeIdListResponse {
     /**
-     * 所有綁定的邊緣裝置 edge ID 列表
+     * 所有綁定的邊緣裝置資訊
      */
-    @JsonProperty("edge_id")
-    private List<String> edgeIds;
+    @JsonProperty("edges")
+    private List<EdgeItem> edges;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class EdgeItem {
+        @JsonProperty("edge_id")
+        private String edgeId;
+
+        @JsonProperty("display_name")
+        private String displayName;
+    }
 }

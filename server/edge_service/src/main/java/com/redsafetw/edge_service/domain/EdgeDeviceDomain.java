@@ -2,6 +2,8 @@ package com.redsafetw.edge_service.domain;
 
 import jakarta.persistence.*;
 import java.time.OffsetDateTime;
+
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,11 +24,12 @@ public class EdgeDeviceDomain {
     @Column(name = "edge_id", length = 12, nullable = false, updatable = false)
     private String edgeId;
 
+
     /**
-     * 邊緣裝置名稱
+     * Edge裝置密碼的雜湊值
      **/
-    @Column(name = "edge_name")
-    private String edgeName;
+    @Column(name = "edge_password_hash", nullable = false)
+    private String edgePasswordHash;
 
     /**
      * 邊緣裝置版本
@@ -35,7 +38,7 @@ public class EdgeDeviceDomain {
     private String version;
 
     /**
-     * 邊緣裝置註冊時間 RED-[0-9A-F]{8}
+     * 邊緣裝置註冊時間
      */
     @Column(name = "registered_at", nullable = false, insertable = false, updatable = false,
             columnDefinition = "TIMESTAMPTZ DEFAULT NOW()")

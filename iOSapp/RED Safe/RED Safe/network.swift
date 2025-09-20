@@ -146,6 +146,10 @@ class Network: NSObject {
             do {
                 // 將回傳 JSON 反序列化為對應模型
                 let result = try JSONDecoder().decode(T.self, from: data)
+                
+                // Debug: 解碼後印出 error_code
+                print("📦 Decoded \(T.self) error_code = \(result.error_code) (\(result.error_code.rawValue))")
+                
                 // 若 Access Token 過期或無效，嘗試以 Refresh Token 自動續期並重試
                 if retry && (result.error_code == .accessTokenExpired || result.error_code == .accessTokenInvalid) {
                     AuthManager.shared.refreshAccessToken { success in
@@ -207,6 +211,13 @@ class Network: NSObject {
             print("Response headers: \(http.allHeaderFields)")
             if let bodyData = data, let bodyString = String(data: bodyData, encoding: .utf8) {
                 print("Response body: \(bodyString)")
+                
+                // 直接從 body 中抽出 error_code 供 debug
+                if let bodyData = bodyString.data(using: .utf8),
+                   let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any],
+                   let code = json["error_code"] as? Int {
+                    print("🧩 Parsed error_code from body: \(code)")
+                }
             }
             // 解析 Refresh Token
             var refreshToken: String?
@@ -226,6 +237,8 @@ class Network: NSObject {
                 if result.refresh_token == nil {
                     result.refresh_token = refreshToken
                 }
+                // Debug: 印出 error_code 與 token
+                print("🔖 SignIn error_code = \(result.error_code) (\(result.error_code.rawValue))")
                 print("Access Token: \(result.access_token ?? "nil")")
                 print("Refresh Token: \(result.refresh_token ?? "nil")")
                 completion(.success(result))
@@ -279,9 +292,15 @@ class Network: NSObject {
             // 印出伺服器回傳的原始 JSON 字串
             if let bodyString = String(data: data, encoding: .utf8) {
                 print("📥 SignUp response body: \(bodyString)")
+                // 直接從 body 中抽出 error_code 供 debug
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let code = json["error_code"] as? Int {
+                    print("🧩 Parsed SignUp error_code from body: \(code)")
+                }
             }
             do {
                 let result = try JSONDecoder().decode(SignUpResponse.self, from: data)
+                print("🔖 SignUp error_code = \(result.error_code) (\(result.error_code.rawValue))")
                 completion(.success(result))
             } catch {
                 completion(.failure(.decodingError))
@@ -314,6 +333,7 @@ class Network: NSObject {
             }
             do {
                 let result = try JSONDecoder().decode(RefreshResponse.self, from: data)
+                print("🔖 Refresh error_code = \(result.error_code) (\(result.error_code.rawValue))")
                 completion(.success(result))
             } catch {
                 completion(.failure(.decodingError))

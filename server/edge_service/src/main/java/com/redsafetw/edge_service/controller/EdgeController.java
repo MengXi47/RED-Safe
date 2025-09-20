@@ -4,6 +4,7 @@ import com.redsafetw.edge_service.dto.*;
 import com.redsafetw.edge_service.service.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -11,14 +12,25 @@ import org.springframework.web.bind.annotation.*;
  *
  * @create 2025-09-14
  */
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/edge")
 public class EdgeController {
     private final EdgeRegisterService EdgeRegister;
+    private final EdgeVerify edgeVerify;
 
     @PostMapping("/reg")
     public EdgeRegisterResponse registerEdge(@Valid @RequestBody EdgeRegisterRequest edgeRegisterRequest) {
         return EdgeRegister.registerEdge(edgeRegisterRequest);
+    }
+
+    @PostMapping("/update/edge_password")
+    public ErrorCodeResponse updateEdgePassword(
+            @Valid @RequestBody EdgePasswordUpdateRequest request) {
+        edgeVerify.updatePassword(request.getEdgeId(), request.getEdgePassword(), request.getNewEdgePassword());
+        return ErrorCodeResponse.builder()
+                .errorCode("0")
+                .build();
     }
 }

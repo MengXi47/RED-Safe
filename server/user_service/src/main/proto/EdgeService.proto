@@ -9,8 +9,10 @@ option java_generic_services = true;
 service EdgeService {
   // 查詢 edge_id 是否存在
   rpc CheckEdgeIdExists (CheckEdgeIdExistsRequest) returns (CheckEdgeIdExistsResponse);
-  // 更新 edge_name
-  rpc UpdataEdgeName (UpdataEdgeNameRequest) returns (UpdataEdgeNameResponse);
+  // 驗證 edge_id 與密碼是否匹配
+  rpc VerifyEdgeCredentials (VerifyEdgeCredentialsRequest) returns (VerifyEdgeCredentialsResponse);
+  // 更新 edge 密碼
+  rpc UpdateEdgePassword (UpdateEdgePasswordRequest) returns (UpdateEdgePasswordResponse);
 }
 
 message CheckEdgeIdExistsRequest {
@@ -21,11 +23,21 @@ message CheckEdgeIdExistsResponse {
   bool exists = 1;
 }
 
-message UpdataEdgeNameRequest {
+message VerifyEdgeCredentialsRequest {
   string edge_id = 1;
-  string edge_name = 2;
+  string password = 2;
 }
 
-message UpdataEdgeNameResponse {
+message VerifyEdgeCredentialsResponse {
+  bool valid = 1;
+}
+
+message UpdateEdgePasswordRequest {
+  string edge_id = 1;
+  string edge_password = 2;
+  string new_edge_password = 3;
+}
+
+message UpdateEdgePasswordResponse {
   string error_code = 1;
 }

@@ -22,12 +22,13 @@ public class UserController {
 
     private final BindService bindService;
     private final UserService userService;
-    @PostMapping("/bind/{edge_id}")
+
+    @PostMapping("/bind")
     public BindResponse bind(
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization,
-            @PathVariable @NotBlank(message = "125") String edge_id) {
+            @Valid @RequestBody BindRequest req) {
         String token = authorization.replace("Bearer ", "");
-        return bindService.bind(token, edge_id);
+        return bindService.bind(token, req);
     }
 
     @PostMapping("/unbind/{edge_id}")
@@ -67,5 +68,13 @@ public class UserController {
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
         String token = authorization.replace("Bearer ", "");
         return userService.updateUserPassword(updateUserPasswordRequest,  token);
+    }
+
+    @PostMapping("/update/edge_password")
+    public ErrorCodeResponse updateEdgePassword(
+            @Valid @RequestBody UpdateEdgePasswordRequest updateEdgePasswordRequest,
+            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
+        String token = authorization.replace("Bearer ", "");
+        return userService.updateEdgePassword(updateEdgePasswordRequest, token);
     }
 }

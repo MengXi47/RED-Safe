@@ -2,7 +2,6 @@ package com.redsafetw.user_service.controller;
 
 import com.redsafetw.user_service.dto.*;
 import com.redsafetw.user_service.service.AuthService;
-import com.redsafetw.user_service.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;

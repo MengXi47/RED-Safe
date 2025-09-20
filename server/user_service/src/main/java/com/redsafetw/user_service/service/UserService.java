@@ -29,9 +29,9 @@ import java.util.UUID;
 public class UserService {
     private final UserRepository userRepository;
     private final UserEdgeBindRepository userEdgeBindRepository;
-    private final EdgeGrpcClient edgeGrpcClient;
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private final AuthService authService;
+    private final EdgeGrpcClient edgeGrpcClient;
 
     public EdgeIdListResponse getEdgeIdList(String accessToken) {
 
@@ -41,18 +41,21 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
         }
 
-        List<UserEdgeBindDomain> EdgeIds = userEdgeBindRepository.findByUserId(userId);
-        if (EdgeIds.isEmpty()) {
+        List<UserEdgeBindDomain> edgeBindings = userEdgeBindRepository.findByUserId(userId);
+        if (edgeBindings.isEmpty()) {
             logger.info("getEdgeIdList: {\"user_id\":\"{}\"} edge_id 數量為 0", userId);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "136");
         }
 
-        List<String> edgeIds = EdgeIds.stream()
-                .map(UserEdgeBindDomain::getEdgeId)
+        List<EdgeIdListResponse.EdgeItem> edges = edgeBindings.stream()
+                .map(bind -> EdgeIdListResponse.EdgeItem.builder()
+                        .edgeId(bind.getEdgeId())
+                        .displayName(bind.getDisplayName())
+                        .build())
                 .toList();
 
         return EdgeIdListResponse.builder()
-                .edgeIds(edgeIds)
+                .edges(edges)
                 .build();
     }
 
@@ -72,12 +75,24 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "135");
         }
 
-        String errorCode = edgeGrpcClient.UpdataEdgeName(
-                updateEdgeNameRequest.getEdgeId(),
-                updateEdgeNameRequest.getEdgeName());
+        UserEdgeBindDomain.BindId bindId = new UserEdgeBindDomain.BindId();
+        bindId.setUserId(userId);
+        bindId.setEdgeId(updateEdgeNameRequest.getEdgeId());
+
+        UserEdgeBindDomain userEdgeBind = userEdgeBindRepository.findById(bindId)
+                .orElseThrow(() -> {
+                    logger.info("updataEdgeName: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} 紀錄不存在",
+                            userId, updateEdgeNameRequest.getEdgeId());
+                    return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "135");
+                });
+
+        userEdgeBind.setDisplayName(updateEdgeNameRequest.getEdgeName());
+        userEdgeBindRepository.save(userEdgeBind);
+
+        
 
         return ErrorCodeResponse.builder()
-                .errorCode(errorCode)
+                .errorCode("0")
                 .build();
     }
 
@@ -122,6 +137,40 @@ public class UserService {
 
         user.setUser_password_hash(newPasswordHash);
         userRepository.save(user);
+
+        return ErrorCodeResponse.builder()
+                .errorCode("0")
+                .build();
+    }
+
+    public ErrorCodeResponse updateEdgePassword(
+            UpdateEdgePasswordRequest updateEdgePasswordRequest,
+            String accessToken) {
+        UUID userId = JwtService.verifyAndGetUserId(accessToken);
+        if (userId.equals(new UUID(0L, 0L))) {
+            logger.info("updateEdgePassword: {\"access_token\":\"{}\"} access_token 失效", accessToken);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
+        }
+
+        String edgeId = updateEdgePasswordRequest.getEdgeId();
+        if (!userEdgeBindRepository.existsByUserIdAndEdgeId(userId, edgeId)) {
+            logger.info("updateEdgePassword: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} 未綁定", userId, edgeId);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "135");
+        }
+
+        String errorCode = edgeGrpcClient.updateEdgePassword(
+                edgeId,
+                updateEdgePasswordRequest.getEdgePassword(),
+                updateEdgePasswordRequest.getNewEdgePassword());
+
+        if (!"0".equals(errorCode)) {
+            logger.info("updateEdgePassword: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} gRPC error {}", userId, edgeId, errorCode);
+            HttpStatus status = switch (errorCode) {
+                case "123", "147" -> HttpStatus.UNAUTHORIZED;
+                default -> HttpStatus.BAD_REQUEST;
+            };
+            throw new ResponseStatusException(status, errorCode);
+        }
 
         return ErrorCodeResponse.builder()
                 .errorCode("0")

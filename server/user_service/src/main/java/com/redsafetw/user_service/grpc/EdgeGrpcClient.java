@@ -25,17 +25,30 @@ public class EdgeGrpcClient {
     }
 
     /**
-     * 通過 gRPC 更新 edge_name
-     * @param edge_name new name
-     * @param edge_id id
-     * @return error_code
+     * 透過 gRPC 驗證 edge_id 與明文密碼
+     * @param edgeId edge_id
+     * @param rawPassword 明文密碼
+     * @return True -> 驗證成功
      */
-    public String UpdataEdgeName(String edge_id, String edge_name) {
-        UpdataEdgeNameRequest req = UpdataEdgeNameRequest.newBuilder()
-                .setEdgeId(edge_id)
-                .setEdgeName(edge_name)
+    public boolean verifyEdgeCredentials(String edgeId, String rawPassword) {
+        VerifyEdgeCredentialsRequest req = VerifyEdgeCredentialsRequest.newBuilder()
+                .setEdgeId(edgeId)
+                .setPassword(rawPassword)
                 .build();
-        UpdataEdgeNameResponse resp = stub.updataEdgeName(req);
+        VerifyEdgeCredentialsResponse resp = stub.verifyEdgeCredentials(req);
+        return resp.getValid();
+    }
+
+    /**
+     * 透過 gRPC 更新 edge 密碼，返回 error_code
+     */
+    public String updateEdgePassword(String edgeId, String currentPassword, String newPassword) {
+        UpdateEdgePasswordRequest req = UpdateEdgePasswordRequest.newBuilder()
+                .setEdgeId(edgeId)
+                .setEdgePassword(currentPassword)
+                .setNewEdgePassword(newPassword)
+                .build();
+        UpdateEdgePasswordResponse resp = stub.updateEdgePassword(req);
         return resp.getErrorCode();
     }
 }

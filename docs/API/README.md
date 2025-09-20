@@ -1,28 +1,30 @@
 # 🚀 RED Safe API 導航
 
-本文件提供所有 API 的快速導覽連結，方便快速查找與使用。
+Base URL：`https://api.redsafe-tw.com`
 
 ---
 
-## 🔐 Auth 認證相關
-- [使用者註冊 API](auth.md#-使用者註冊-api)
-- [使用者登入 API](auth.md#-使用者登入-api)
-- [刷新 Refresh Token API](auth.md#-刷新-token-api)
+## 🔐 Auth 認證服務
+- [註冊使用者](auth.md#post-authsignup)
+- [使用者登入](auth.md#post-authsignin)
+- [刷新 Access Token](auth.md#post-authrefresh)
 
----
+## 👤 User 使用者服務
+- [綁定 Edge 裝置](user.md#post-userbind)
+- [解除綁定 Edge 裝置](user.md#post-userunbindedge_id)
+- [查詢綁定的 Edge 裝置](user.md#get-userlistedge_id)
+- [更新 Edge 裝置名稱](user.md#post-userupdateedge_name)
+- [更新使用者名稱](user.md#post-userupdateuser_name)
+- [更新使用者密碼](user.md#post-userupdatepassword)
+- [更新 Edge 裝置密碼](user.md#post-userupdateedge_password)
 
-## 👤 User 使用者相關
-- [綁定使用者與 Edge API](user.md#-綁定使用者與-edge-裝置-api)
-- [解除綁定使用者與 Edge API](user.md#-解除綁定使用者與-edge-裝置-api)
-- [獲取使用者所有已綁定 Edge 裝置 API](user.md#-獲取使用者所有已綁定-edge-裝置-api)
-- [修改 Edge 裝置名稱 API](user.md#-修改-edge-裝置名稱-api)
+## 🖥️ Edge 裝置服務
+- [Edge 裝置註冊](edge.md#post-edgereg)
+- [Edge 裝置密碼更新](edge.md#post-edgeupdateedge_password)
 
----
+## 📱 iOS 裝置服務
+- [註冊或更新 iOS 裝置](ios.md#post-iosreg)
 
-## 🖥️ Edge 裝置相關
-- [Edge 裝置註冊 API](edge.md#-edge-裝置註冊-api)
-
----
-
-## ⚠️ Error Code 錯誤碼
-- [錯誤碼清單](error_code.md#錯誤碼)
+## ⚠️ 通用錯誤碼
+- [錯誤碼總覽](error_code.md#錯誤碼)
+- [iOS 服務錯誤識別碼](error_code.md#ios-服務錯誤識別碼)

@@ -1,16 +1,14 @@
 package com.redsafetw.edge_service.grpc;
 
+import com.grpc.edge.*;
 import com.redsafetw.edge_service.repository.EdgeRepository;
+import com.redsafetw.edge_service.service.EdgeVerify;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.grpc.server.service.GrpcService;
-import com.grpc.edge.*;
-import com.redsafetw.edge_service.service.EdgeRenameService;
-import com.redsafetw.edge_service.dto.EdgeRenameRequest;
-
-import java.util.Set;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * gRPC Edge服務
@@ -21,8 +19,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
     private final EdgeRepository edgeRepository;
-    private final EdgeRenameService edgeRenameService;
-    private final Validator validator;
+    private final EdgeVerify edgeVerify;
 
     @Override
     public void checkEdgeIdExists(
@@ -40,33 +37,57 @@ public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
     }
 
     @Override
-    public void updataEdgeName(
-            UpdataEdgeNameRequest request,
-            StreamObserver<UpdataEdgeNameResponse> responseStreamObserver) {
+    public void verifyEdgeCredentials(
+            VerifyEdgeCredentialsRequest request,
+            StreamObserver<VerifyEdgeCredentialsResponse> responseObserver) {
+        boolean valid = edgeVerify.verifyCredentials(request.getEdgeId(), request.getPassword());
 
-        EdgeRenameRequest req = new EdgeRenameRequest();
-        req.setEdgeId(request.getEdgeId());
-        req.setEdgeName(request.getEdgeName());
-
-        Set<ConstraintViolation<EdgeRenameRequest>> violations = validator.validate(req);
-        if (!violations.isEmpty()) {
-            String errorCode = violations.iterator().next().getMessage(); // 120 或 122
-            UpdataEdgeNameResponse reply = UpdataEdgeNameResponse.newBuilder()
-                    .setErrorCode(errorCode)
-                    .build();
-            responseStreamObserver.onNext(reply);
-            responseStreamObserver.onCompleted();
-            return;
-        }
-
-        boolean result = edgeRenameService.rename(req);
-
-        String errorCode = result ? "0" : "123";
-        UpdataEdgeNameResponse reply = UpdataEdgeNameResponse.newBuilder()
-                .setErrorCode(errorCode)
+        VerifyEdgeCredentialsResponse reply = VerifyEdgeCredentialsResponse.newBuilder()
+                .setValid(valid)
                 .build();
 
-        responseStreamObserver.onNext(reply);
-        responseStreamObserver.onCompleted();
+        responseObserver.onNext(reply);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void updateEdgePassword(
+            UpdateEdgePasswordRequest request,
+            StreamObserver<UpdateEdgePasswordResponse> responseObserver) {
+        try {
+            edgeVerify.updatePassword(request.getEdgeId(), request.getEdgePassword(), request.getNewEdgePassword());
+
+            UpdateEdgePasswordResponse reply = UpdateEdgePasswordResponse.newBuilder()
+                    .setErrorCode("0")
+                    .build();
+
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (ResponseStatusException ex) {
+            String errorCode = mapToErrorCode(ex);
+            UpdateEdgePasswordResponse reply = UpdateEdgePasswordResponse.newBuilder()
+                    .setErrorCode(errorCode)
+                    .build();
+            responseObserver.onNext(reply);
+            responseObserver.onCompleted();
+        } catch (Exception ex) {
+            responseObserver.onError(Status.INTERNAL.withDescription(ex.getMessage()).withCause(ex).asRuntimeException());
+        }
+    }
+
+    private String mapToErrorCode(ResponseStatusException ex) {
+        int statusCode = ex.getStatusCode().value();
+        String reason = ex.getReason();
+
+        if (statusCode == HttpStatus.NOT_FOUND.value()) {
+            return "123";
+        }
+        if (statusCode == HttpStatus.UNAUTHORIZED.value()) {
+            return "147";
+        }
+        if ("EDGE_UPDATE_PASSWORD_INVALID_REQUEST".equals(reason)) {
+            return "400";
+        }
+        return "999";
     }
 }

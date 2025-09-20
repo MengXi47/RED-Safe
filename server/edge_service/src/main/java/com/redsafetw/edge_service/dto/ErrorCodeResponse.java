@@ -1,20 +1,19 @@
 package com.redsafetw.edge_service.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 /**
- * 邊緣裝置註冊回覆
+ * 統一回覆
  *
- * @create 2025-09-14
+ * @create 2025-09-18
  **/
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class EdgeRegisterResponse {
-    @JsonProperty("edge_id")
-    private String edgeId;
+public class ErrorCodeResponse {
+    @JsonProperty("error_code")
+    private String errorCode;
 }
