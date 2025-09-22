@@ -1,252 +1,432 @@
 import SwiftUI
 import UIKit
 
+/// SignInView 提供使用者登入介面，聚焦於輸入與回饋體驗。
 struct SignInView: View {
-    @StateObject private var auth = AuthManager.shared
-    @State private var email: String = ""
-    @State private var password: String = ""
-    @State private var isPasswordVisible: Bool = false
-    @State private var animate: Bool = false
-    @State private var emailSubmitted: Bool = false
-    @State private var passwordSubmitted: Bool = false
-    @State private var errorMessage: String?                // 錯誤訊息
-//    @State private var homeDevices: [DeviceStatus] = []     // 傳給 HomeView 的裝置清單
-    @State private var showSignInAlert = false              // 顯示登入結果
-    @State private var signInMessage = ""                   // Alert 內容
-    @State private var proceedHomeAfterAlert = false
-    
-    // 用來追蹤哪個欄位正在聚焦
-    @FocusState private var focusedField: Field?
-    
-    private enum Field {
-        case email, password
-    }
-    
+    @StateObject private var viewModel = SignInViewModel()
+    @FocusState private var focusedField: SignInViewModel.Field?
+    @State private var animateBackground = false
+
     var body: some View {
         NavigationStack {
             ZStack {
-                // 1. 全螢幕漸層背景
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 240/255, green: 248/255, blue: 255/255),
-                        Color(red: 210/255, green: 235/255, blue: 250/255)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    // 點擊空白時隱藏鍵盤並驗證已輸入欄位
-                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    if !email.isEmpty { emailSubmitted = true }
-                    if !password.isEmpty { passwordSubmitted = true }
-                }
-                
-                VStack(spacing: 20) {
-                    // 2. Logo
-                    Image("RED_Safe_icon1")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 300, height: 300)
-                        .padding(.bottom, 10)
-                        .scaleEffect(animate ? 1 : 0.5)
-                        .opacity(animate ? 1 : 0)
-                        .animation(.spring(response: 0.6, dampingFraction: 0.6).delay(0.1), value: animate)
-                        .onTapGesture {
-                            // 點擊 Logo 隱藏鍵盤並驗證已輸入欄位
-                            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                            if !email.isEmpty { emailSubmitted = true }
-                            if !password.isEmpty { passwordSubmitted = true }
-                        }
-                    
-                    // 3. Email 輸入框
-                    HStack {
-                        Image(systemName: "envelope")
-                            .foregroundColor(.gray)
-                        TextField("Email", text: $email)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                            .focused($focusedField, equals: .email)
+                backgroundLayer
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 36) {
+                        heroSection
+                        credentialCard
+                        featureHighlights
                     }
-                    .offset(x: animate ? 0 : -200)
-                    .opacity(animate ? 1 : 0)
-                    .animation(.easeOut(duration: 0.5).delay(0.2), value: animate)
-                    .padding()
-                    .background(Color.white.opacity(0.8))
-                    .cornerRadius(10)
-                    .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                    .submitLabel(.done)
-                    .onSubmit { emailSubmitted = true }
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke((emailSubmitted && email.isEmpty) ? Color.red : Color.clear, lineWidth: 2)
-                    )
-                    .padding(.horizontal)
-                    
-                    // 4. Password 輸入框 (顯示/隱藏切換)
-                    HStack {
-                        Image(systemName: "lock")
-                            .padding(.horizontal, 4.5)
-                            .foregroundColor(.gray)
-                        if isPasswordVisible {
-                            TextField("Password", text: $password)
-                                .focused($focusedField, equals: .password)
-                        } else {
-                            SecureField("Password", text: $password)
-                                .focused($focusedField, equals: .password)
-                        }
-                        Button(action: {
-                            isPasswordVisible.toggle()
-                        }) {
-                            Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .offset(x: animate ? 0 : 200)
-                    .opacity(animate ? 1 : 0)
-                    .animation(.easeOut(duration: 0.5).delay(0.3), value: animate)
-                    .padding()
-                    .background(Color.white.opacity(0.8))
-                    .cornerRadius(10)
-                    .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-                    .submitLabel(.done)
-                    .onSubmit { passwordSubmitted = true }
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke((passwordSubmitted && password.isEmpty) ? Color.red : Color.clear, lineWidth: 2)
-                    )
-                    .padding(.horizontal)
-                    
-                    // 5. Sign In 按鈕
-                    Button(action: {
-                        signIn()
-                    }) {
-                        Text("登入")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    }
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: email.isEmpty || password.isEmpty
-                                               ? [Color.gray.opacity(0.6), Color.gray.opacity(0.3)]
-                                               : [Color(red: 65/255, green: 160/255, blue: 255/255),
-                                                  Color(red: 120/255, green: 190/255, blue: 255/255)]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .offset(y: animate ? 0 : 50)
-                    .opacity(animate ? 1 : 0)
-                    .animation(.easeOut(duration: 0.5).delay(0.4), value: animate)
-                    .padding(.horizontal)
-                    .disabled(email.isEmpty || password.isEmpty)
-                    .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 2)
-                    
-                    // 6. Sign Up 按鈕 (NavigationLink)
-                    NavigationLink(
-                        destination: SignUpView()
-                    ) {
-                        Text("註冊")
-                            .font(.headline)
-                            .foregroundColor(.blue)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    }
-                    .offset(y: animate ? 0 : 50)
-                    .opacity(animate ? 1 : 0)
-                    .animation(.easeOut(duration: 0.5).delay(0.5), value: animate)
-                    .cornerRadius(10)
-                    .padding(.top, -10)          // 讓「註冊」貼近「登入」
-                }
-                .onAppear() {
-                    animate = true
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 48)
+                    .padding(.top, 32)
                 }
             }
-            
-            // 彈出訊息，1 秒後自動消失
-            .overlay(
-                Group{
-                    if showSignInAlert {
-                        Text(signInMessage)
-                            .padding()
-                            .background(Color.black.opacity(0.7))
-                            .foregroundStyle(.white)
-                            .cornerRadius(8)
-                            .transition(.opacity)
-                            .onAppear {
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                                    showSignInAlert = false
-                                    if proceedHomeAfterAlert {
-                                        auth.setLoggedIn(true)
-
-                                    }
-                                }
-                            }
-                    }
-                }
-            )
-            
-            // 當焦點變更後，若不再聚焦在Email或Password就觸發驗證
-            .onChange(of: focusedField) {
-                // 當焦點變更後，若不再聚焦在Email或Password就觸發驗證
-                if focusedField != .email && !email.isEmpty {
-                    emailSubmitted = true
-                }
-                if focusedField != .password && !password.isEmpty {
-                    passwordSubmitted = true
+            .contentShape(Rectangle())
+            .onTapGesture { focusedField = nil }
+            .onAppear { animateBackground = true }
+            .onChange(of: viewModel.banner) { banner in
+                guard banner != nil else { return }
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            }
+            .toolbar(.hidden, for: .navigationBar)
+            .overlay(alignment: .top) {
+                if let banner = viewModel.banner {
+                    BannerView(banner: banner)
+                        .padding(.top, 24)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
-            
-            .onDisappear {
-                // 重置所有狀態
-                email = ""
-                password = ""
-                isPasswordVisible = false
-                emailSubmitted = false
-                passwordSubmitted = false
-                errorMessage = nil
-                showSignInAlert = false
-                signInMessage = ""
-                proceedHomeAfterAlert = false
+            .overlay {
+                if viewModel.isSubmitting {
+                    ZStack {
+                        Color.black.opacity(0.25).ignoresSafeArea()
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
+                            .scaleEffect(1.2)
+                    }
+                }
+            }
+            .animation(.spring(response: 0.45, dampingFraction: 0.85), value: viewModel.banner)
+            .safeAreaInset(edge: .top) {
+                Color.clear.frame(height: 4)
             }
         }
     }
-    
-    private func signIn() {
-        signInMessage   = ""
-        errorMessage    = nil
-        auth.signIn(email: email, password: password) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let response):
-                    signInMessage = response.error_code.localizedDescription
-                    if response.error_code == .success {
-                        proceedHomeAfterAlert = true
+
+    // MARK: - Sections
+
+    private var backgroundLayer: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(red: 244/255, green: 248/255, blue: 255/255),
+                    Color(red: 224/255, green: 234/255, blue: 250/255),
+                    Color(red: 204/255, green: 221/255, blue: 246/255)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+
+            Circle()
+                .fill(Color.white.opacity(0.5))
+                .frame(width: animateBackground ? 360 : 220)
+                .blur(radius: 60)
+                .offset(x: -150, y: animateBackground ? -260 : -140)
+                .animation(.easeOut(duration: 1.0), value: animateBackground)
+
+            Circle()
+                .fill(Color.white.opacity(0.35))
+                .frame(width: animateBackground ? 320 : 200)
+                .blur(radius: 48)
+                .offset(x: 170, y: animateBackground ? 280 : 160)
+                .animation(.easeOut(duration: 1.0).delay(0.05), value: animateBackground)
+        }
+    }
+
+    private var heroSection: some View {
+        VStack(spacing: 14) {
+            Image("RED_Safe_icon1")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 160, height: 160)
+                .shadow(color: Color.black.opacity(0.25), radius: 20, x: 0, y: 18)
+                .scaleEffect(animateBackground ? 1 : 0.85)
+                .opacity(animateBackground ? 1 : 0)
+                .animation(.spring(response: 0.7, dampingFraction: 0.65).delay(0.05), value: animateBackground)
+
+            VStack(spacing: 6) {
+                Text("歡迎回到 RED Safe")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.primary)
+                    .multilineTextAlignment(.center)
+                Text("登入以即時掌握家人的安全狀態")
+                    .font(.callout)
+                    .foregroundStyle(Color.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 8)
+        }
+    }
+
+    private var credentialCard: some View {
+        VStack(spacing: 24) {
+            VStack(spacing: 18) {
+                CustomTextField(
+                    title: "電子郵件",
+                    text: $viewModel.email,
+                    icon: "envelope.fill",
+                    keyboard: .emailAddress,
+                    isSecure: false,
+                    isValid: viewModel.shouldShowEmailError ? viewModel.isEmailValid : true,
+                    errorText: viewModel.emailErrorMessage
+                )
+                .focused($focusedField, equals: .email)
+                .submitLabel(.next)
+                .onSubmit { focusedField = .password }
+
+                CustomTextField(
+                    title: "登入密碼",
+                    text: $viewModel.password,
+                    icon: "lock.fill",
+                    keyboard: .default,
+                    isSecure: !viewModel.isPasswordVisible,
+                    isValid: viewModel.shouldShowPasswordError ? viewModel.isPasswordValid : true,
+                    errorText: viewModel.passwordErrorMessage,
+                    trailingIcon: viewModel.isPasswordVisible ? "eye.slash" : "eye",
+                    trailingAction: { viewModel.isPasswordVisible.toggle() }
+                )
+                .focused($focusedField, equals: .password)
+                .submitLabel(.done)
+                .onSubmit { Task { await viewModel.submit() } }
+            }
+
+            Button(action: { Task { await viewModel.submit() } }) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: viewModel.canSubmit ? [
+                                    Color(red: 118/255, green: 186/255, blue: 255/255),
+                                    Color(red: 78/255, green: 156/255, blue: 255/255)
+                                ] : [
+                                    Color(UIColor.systemGray5),
+                                    Color(UIColor.systemGray4)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(viewModel.canSubmit ? Color.white.opacity(0.4) : Color.black.opacity(0.08))
+                    HStack(spacing: 12) {
+                        if viewModel.isSubmitting {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(.white)
+                        } else {
+                            Image(systemName: "arrow.right.circle.fill")
+                                .font(.title3)
+                                .foregroundStyle(viewModel.canSubmit ? .white : .secondary)
+                        }
+                        Text(viewModel.isSubmitting ? "登入中" : "登入")
+                            .font(.headline.weight(.semibold))
+                            .foregroundColor(viewModel.canSubmit ? .white : .secondary)
                     }
-                    showSignInAlert = true
-                case .failure(let error):
-                    switch error {
-                    case .invalidURL:
-                        print("無效的伺服器位址")
-                    case .serverError(let status):
-                        print("伺服器錯誤 (\(status))")
-                    case .decodingError:
-                        print("資料解析失敗")
-                    case .unknown(let err):
-                        print("發生錯誤：\(err.localizedDescription)")
-                    }
-                    signInMessage = "未知錯誤"
-                    showSignInAlert = true
+                    .padding(.vertical, 16)
                 }
+                .frame(height: 60)
+            }
+            .buttonStyle(.plain)
+            .disabled(!viewModel.canSubmit)
+            .shadow(color: Color.black.opacity(viewModel.canSubmit ? 0.35 : 0.0), radius: 24, x: 0, y: 18)
+
+            NavigationLink(destination: SignUpView()) {
+                Text("還沒有帳號？立即註冊")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(.accentColor)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .glassCard(cornerRadius: 16, opacity: 0.95)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(24)
+        .glassCard(cornerRadius: 32)
+    }
+
+    private var featureHighlights: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("RED Safe 優勢")
+                .font(.title3.weight(.semibold))
+                .foregroundColor(.primary)
+
+            VStack(alignment: .leading, spacing: 14) {
+                FeatureRow(icon: "bell.badge.fill", title: "即時警示", detail: "當 Edge 裝置偵測到異常情況時立即收到通知")
+                FeatureRow(icon: "lock.shield", title: "企業級安全", detail: "Refresh Token 自動續期，登入狀態無縫保持")
+                FeatureRow(icon: "rectangle.connected.to.line.below", title: "全方位裝置管理", detail: "綁定、重命名及管理多台 Edge 裝置更直覺")
+            }
+            .padding(24)
+            .glassCard(cornerRadius: 28)
+        }
+    }
+}
+
+// MARK: - Components
+
+private struct FeatureRow: View {
+    let icon: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            Image(systemName: icon)
+                .foregroundColor(.accentColor)
+                .font(.title3)
+                .frame(width: 32, height: 32)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Text(detail)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+    }
+}
+
+private struct CustomTextField: View {
+    let title: String
+    @Binding var text: String
+    let icon: String
+    let keyboard: UIKeyboardType
+    let isSecure: Bool
+    let isValid: Bool
+    var errorText: String?
+    var trailingIcon: String?
+    var trailingAction: (() -> Void)?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .foregroundStyle(Color.accentColor.opacity(0.8))
+                if isSecure {
+                    SecureField(title, text: $text)
+                        .keyboardType(keyboard)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .foregroundColor(.primary)
+                } else {
+                    TextField(title, text: $text)
+                        .keyboardType(keyboard)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .foregroundColor(.primary)
+                }
+
+                if let trailingIcon {
+                    Button(action: { trailingAction?() }) {
+                        Image(systemName: trailingIcon)
+                            .foregroundStyle(Color.accentColor.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.95))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(isValid ? Color.accentColor.opacity(0.25) : Color.red.opacity(0.7), lineWidth: 1.2)
+            )
+
+            if let errorText, !isValid {
+                Text(errorText)
+                    .font(.footnote)
+                    .foregroundStyle(Color.red.opacity(0.85))
+                    .transition(.opacity)
             }
         }
     }
 }
 
-#Preview {
-    SignInView()
+private struct BannerView: View {
+    let banner: SignInViewModel.Banner
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: banner.kind == .success ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(banner.kind == .success ? Color.green : Color.red)
+                .font(.title3)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(banner.title)
+                    .font(.headline)
+                Text(banner.message)
+                    .font(.footnote)
+            }
+            .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.thinMaterial, in: Capsule())
+        .shadow(color: Color.black.opacity(0.2), radius: 18, x: 0, y: 12)
+    }
+}
+
+// MARK: - View Model
+
+@MainActor
+/// SignInViewModel 負責處理驗證與表單狀態，保持 View 簡潔 (SRP)。
+final class SignInViewModel: ObservableObject {
+    enum Field: Hashable {
+        case email
+        case password
+    }
+
+    struct Banner: Identifiable, Equatable {
+        enum Kind { case success, error }
+        let id = UUID()
+        let title: String
+        let message: String
+        let kind: Kind
+    }
+
+    @Published var email: String = ""
+    @Published var password: String = ""
+    @Published var isPasswordVisible: Bool = false
+    @Published var isSubmitting: Bool = false
+    @Published var banner: Banner?
+
+    private var bannerDismissTask: Task<Void, Never>?
+
+    private var trimmedEmail: String {
+        email.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedPassword: String {
+        password.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var isEmailValid: Bool {
+        let regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+        return NSPredicate(format: "SELF MATCHES %@", regex).evaluate(with: trimmedEmail)
+    }
+
+    var isPasswordValid: Bool {
+        !trimmedPassword.isEmpty
+    }
+
+    var shouldShowEmailError: Bool {
+        !email.isEmpty && !isEmailValid
+    }
+
+    var shouldShowPasswordError: Bool {
+        !password.isEmpty && !isPasswordValid
+    }
+
+    var emailErrorMessage: String? {
+        shouldShowEmailError ? "請輸入有效的 Email 格式" : nil
+    }
+
+    var passwordErrorMessage: String? {
+        shouldShowPasswordError ? "密碼不可為空" : nil
+    }
+
+    var canSubmit: Bool {
+        isEmailValid && isPasswordValid && !isSubmitting
+    }
+
+    /// 驗證輸入並觸發登入流程。
+    func submit() async {
+        guard canSubmit else {
+            if !isEmailValid {
+                showBanner(title: "無效的 Email", message: "請確認電子郵件格式是否正確", kind: .error)
+            } else if !isPasswordValid {
+                showBanner(title: "請輸入密碼", message: "登入需要您的帳號密碼", kind: .error)
+            }
+            return
+        }
+
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        do {
+            let profile = try await AuthManager.shared.signIn(email: trimmedEmail, password: trimmedPassword)
+            showBanner(title: "登入成功", message: "歡迎回來，\(profile.displayName)", kind: .success)
+            clearSensitiveFields()
+        } catch {
+            showBanner(title: "登入失敗", message: resolveMessage(from: error), kind: .error)
+        }
+    }
+
+    private func resolveMessage(from error: Error) -> String {
+        if let apiError = error as? ApiError {
+            return apiError.errorDescription ?? "未知錯誤"
+        }
+        return error.localizedDescription
+    }
+
+    /// 登入成功後清除密碼等敏感資料。
+    private func clearSensitiveFields() {
+        password = ""
+    }
+
+    /// 顯示短暫提示讓使用者理解目前狀態。
+    private func showBanner(title: String, message: String, kind: Banner.Kind) {
+        bannerDismissTask?.cancel()
+        banner = Banner(title: title, message: message, kind: kind)
+        bannerDismissTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 2_200_000_000)
+            await MainActor.run { self?.banner = nil }
+        }
+    }
 }
