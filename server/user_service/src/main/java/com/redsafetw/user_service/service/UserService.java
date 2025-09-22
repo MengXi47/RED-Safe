@@ -51,6 +51,7 @@ public class UserService {
                 .map(bind -> EdgeIdListResponse.EdgeItem.builder()
                         .edgeId(bind.getEdgeId())
                         .displayName(bind.getDisplayName())
+                        .isOnline(bind.getIsOnline())
                         .build())
                 .toList();
 
