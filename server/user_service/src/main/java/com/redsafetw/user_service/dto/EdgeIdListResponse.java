@@ -33,15 +33,8 @@ public class EdgeIdListResponse {
 
         @JsonProperty("display_name")
         private String displayName;
-<<<<<<< HEAD
 
         @JsonProperty("is_online")
-<<<<<<< HEAD
         private Boolean isOnline;
-=======
-        private boolean isOnline;
->>>>>>> origin/app_test_1
-=======
->>>>>>> origin/main
     }
 }
