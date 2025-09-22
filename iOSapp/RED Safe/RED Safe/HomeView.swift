@@ -1,151 +1,98 @@
 import SwiftUI
+import UIKit
 
-/// 表示單一裝置（以序號區分）及其線上狀態
-struct DeviceStatus: Identifiable {
-    let id = UUID()
-    let serial: String
-    let isOnline: Bool
-}
-
+/// HomeView 為登入後的主要容器，負責整合儀表板與帳號兩大分頁。
 struct HomeView: View {
-    let home_user_name: String
-    @State private var home_devices: [DeviceStatus]?
+    @StateObject private var homeVM = HomeViewModel()
+    @StateObject private var profileVM = ProfileViewModel()
+    @ObservedObject private var auth = AuthManager.shared
 
-    init(home_user_name: String, previewDevices: [DeviceStatus]? = nil) {
-        self.home_user_name = home_user_name
-        _home_devices = State(initialValue: previewDevices)
+    @State private var deviceSheet: DeviceSheet?
+    @State private var deviceToUnbind: EdgeSummary?
+    @State private var showUnbindConfirmation = false
+    @State private var animateDashboard = false
+    @State private var profileSheet: ProfileSheet?
+
+    private var toast: ToastPayload? {
+        if homeVM.showMessage, let message = homeVM.message {
+            return ToastPayload(text: message, kind: .info)
+        }
+        if profileVM.showMessage, let message = profileVM.message {
+            return ToastPayload(text: message, kind: .info)
+        }
+        return nil
     }
 
+    private var isBusy: Bool { homeVM.isLoading || profileVM.isWorking }
+
     var body: some View {
-        NavigationStack {
-            ZStack {
-                // 背景漸層
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 240/255, green: 248/255, blue: 255/255),
-                        Color(red: 210/255, green: 235/255, blue: 250/255)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
-                
-                VStack(alignment: .leading, spacing: 24) {
-                    // 頂部列：左上使用者名稱 + 下拉箭頭 / 右側功能圖示
-                    HStack {
-                        HStack(spacing: 4) {
-                            Text("\(home_user_name)")
-                                .font(.title2.bold())
-                                .foregroundColor(.primary)
-                            Image(systemName: "chevron.down")
-                                .foregroundColor(.primary)
-                        }
-                        Spacer()
-                        HStack(spacing: 20) {
-                            Image(systemName: "plus")
-                            Button {
-                                AuthManager.shared.signOut()
-                            } label: {
-                                Image(systemName: "bell")
-                            }
-                            .buttonStyle(.plain)
-                            Image(systemName: "ellipsis")
-                        }
-                        .font(.title3)
-                        .foregroundColor(.primary)
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    
-                    // 中間卡片區：列出每個序號及其狀態
-                    ScrollView {
-                        VStack(spacing: 16) {
-                            ForEach(home_devices ?? []) { device in
-                                HStack(spacing: 16) {
-                                    Image(systemName: device.isOnline ? "wifi" : "wifi.slash")
-                                        .font(.title2)
-                                        .foregroundColor(device.isOnline ? .green : .gray)
-                                    
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(device.serial)
-                                            .font(.headline)
-                                        Text(device.isOnline ? "在線上" : "離線")
-                                            .font(.subheadline)
-                                            .foregroundColor(device.isOnline ? .green : .red)
-                                    }
-                                    Spacer()
-                                }
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.white.opacity(0.9))
-                                .cornerRadius(12)
-                                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-                                .padding(.horizontal)
-                            }
-                        }
-                        .padding(.top, 8)
-                    }
-                    Spacer()
+        TabView {
+            DashboardView(
+                homeVM: homeVM,
+                auth: auth,
+                deviceSheet: $deviceSheet,
+                deviceToUnbind: $deviceToUnbind,
+                showUnbindConfirm: $showUnbindConfirmation,
+                animateBackground: $animateDashboard
+            )
+            .tabItem { Label("儀表板", systemImage: "house.fill") }
+
+            AccountView(
+                auth: auth,
+                profileVM: profileVM,
+                profileSheet: $profileSheet
+            )
+            .tabItem { Label("帳號", systemImage: "person.crop.circle") }
+        }
+        .task {
+            if homeVM.edges.isEmpty {
+                homeVM.loadEdges()
+            }
+        }
+        .overlay(alignment: .top) {
+            if let toast {
+                ToastOverlay(payload: toast)
+                    .padding(.top, 18)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .overlay {
+            if isBusy {
+                ZStack {
+                    Color.black.opacity(0.25).ignoresSafeArea()
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(.white)
+                        .scaleEffect(1.2)
                 }
             }
         }
-        .navigationBarBackButtonHidden(true)
-        .disablePopGesture()
-        
-        .onAppear {
-            if home_devices == nil {
-                Network.shared.getUserInfo { infoResult in
-                    if case .success(let info) = infoResult, info.error_code == .success {
-                        // 成功：更新使用者名稱與裝置陣列
-                        DispatchQueue.main.async {
-                            home_devices = info.serial_number?
-                                .map { DeviceStatus(serial: $0, isOnline: true) } ?? []
-                        }
-                    } else {
-                        // 失敗：保持原本登入回傳的資料，或視情況清空
-                        DispatchQueue.main.async {
-                            home_devices = []   // 失敗就清空裝置清單
-                        }
-                    }
-                }
-            }
-        }
+        .animation(.easeInOut(duration: 0.25), value: toast)
+    }
+}
+
+// MARK: - Toast
+
+private struct ToastPayload: Equatable {
+    enum Kind { case info }
+    let text: String
+    let kind: Kind
+}
+
+private struct ToastOverlay: View {
+    let payload: ToastPayload
+
+    var body: some View {
+        Text(payload.text)
+            .font(.subheadline.weight(.medium))
+            .foregroundColor(.primary)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(.thinMaterial, in: Capsule())
+            .shadow(color: Color.black.opacity(0.2), radius: 16, x: 0, y: 12)
     }
 }
 
 #Preview {
-    HomeView(
-        home_user_name: "Admin",
-        previewDevices: [
-            DeviceStatus(serial: "客廳1", isOnline: true),
-            DeviceStatus(serial: "客廳2", isOnline: true),
-            DeviceStatus(serial: "廚房", isOnline: true),
-            DeviceStatus(serial: "房間", isOnline: false)
-        ]
-    )
-}
-
-// MARK: - Disable Pop Gesture Helper
-struct DisablePopGestureDetector: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController {
-        let vc = UIViewController()
-        DispatchQueue.main.async {
-            vc.navigationController?.interactivePopGestureRecognizer?.isEnabled = false
-        }
-        return vc
-    }
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
-}
-
-struct DisablePopGestureModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content.background(DisablePopGestureDetector())
-    }
-}
-
-extension View {
-    /// 禁用互動式 Pop 手勢
-    func disablePopGesture() -> some View {
-        self.modifier(DisablePopGestureModifier())
-    }
+    HomeView()
 }

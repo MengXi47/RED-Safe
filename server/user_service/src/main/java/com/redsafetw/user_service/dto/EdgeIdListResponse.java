@@ -33,5 +33,8 @@ public class EdgeIdListResponse {
 
         @JsonProperty("display_name")
         private String displayName;
+
+        @JsonProperty("is_online")
+        private boolean isOnline;
     }
 }

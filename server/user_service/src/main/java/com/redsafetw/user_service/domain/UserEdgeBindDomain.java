@@ -31,6 +31,9 @@ public class UserEdgeBindDomain {
     @Column(name = "display_name")
     private String displayName;
 
+    @Column(name = "is_online")
+    private Boolean isOnline;
+
     // JPA 複合主鍵類別
     @Getter
     @Setter

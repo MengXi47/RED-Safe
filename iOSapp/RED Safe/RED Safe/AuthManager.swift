@@ -1,7 +1,10 @@
 import Foundation
 import Security
 
-class KeychainHelper {
+// MARK: - Keychain Utility
+
+/// KeychainHelper 專職封裝敏感資訊的讀寫，遵循單一職責原則確保安全性元件集中管理。
+enum KeychainHelper {
     @discardableResult
     static func save(key: String, data: Data) -> OSStatus {
         let query: [String: Any] = [
@@ -12,7 +15,7 @@ class KeychainHelper {
         SecItemDelete(query as CFDictionary)
         return SecItemAdd(query as CFDictionary, nil)
     }
-    
+
     static func load(key: String) -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -20,14 +23,23 @@ class KeychainHelper {
             kSecReturnData as String: kCFBooleanTrue as Any,
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
-        var dataTypeRef: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &dataTypeRef)
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
         if status == errSecSuccess {
-            return dataTypeRef as? Data
+            return result as? Data
         }
         return nil
     }
-    
+
+    static func loadString(key: String) -> String? {
+        guard let data = load(key: key) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    static func saveString(_ value: String, for key: String) {
+        save(key: key, data: Data(value.utf8))
+    }
+
     static func delete(key: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -37,127 +49,203 @@ class KeychainHelper {
     }
 }
 
-/// 單例模式管理身分驗證流程，包含登入、續期與登出
+// MARK: - Authentication Store
+
+/// AuthManager 作為認證領域的唯一協調者，負責狀態生命週期、Token 管理與使用者資訊同步 (符合 SRP/OCP)。
+@MainActor
 final class AuthManager: ObservableObject {
-    /// 全域唯一實例
+    enum Phase: Equatable {
+        case launching
+        case refreshing
+        case authenticated
+        case signedOut
+    }
+
+    struct UserProfile: Equatable {
+        var email: String
+        var displayName: String
+
+        func renamed(_ name: String) -> UserProfile {
+            var copy = self
+            copy.displayName = name
+            return copy
+        }
+    }
+
     static let shared = AuthManager()
-    private init() {}
-    
-    /// Keychain 中儲存的鍵名
+
+    @Published private(set) var phase: Phase = .launching
+    @Published private(set) var profile: UserProfile?
+    @Published private(set) var isWorking: Bool = false
+    @Published private(set) var lastErrorDescription: String?
+
+    var accessToken: String? { tokens?.accessToken }
+    var isLoggedIn: Bool { phase == .authenticated }
+    var userName: String? { profile?.displayName }
+
+    private struct SessionTokens {
+        var accessToken: String
+        var refreshToken: String
+    }
+
+    private var tokens: SessionTokens?
+
     private let refreshKey = "refreshtoken"
     private let usernameKey = "username"
-    
-    /// 追蹤登入狀態，供 UI 綁定
-    @Published private(set) var isLoggedIn: Bool = false
-    /// 載入狀態，供 Loading 視圖綁定
-    @Published var isLoading: Bool = false
-    /// 暫存的 Access Token，僅存於記憶體
-    private(set) var accessToken: String?
-    /// 登入使用者名稱
-    private(set) var userName: String?
-    
-    /// 手動更新登入狀態
-    /// - Parameter loggedIn: 是否已登入
-    func setLoggedIn(_ loggedIn: Bool) {
-        self.isLoggedIn = loggedIn
+    private let emailKey = "email"
+
+    private init() {}
+
+    // MARK: - Lifecycle
+
+    /// 初始化時觸發自動登入流程，確保 App 啟動體驗一致。
+    func bootstrap() {
+        guard phase == .launching else { return }
+        Task { await restoreSessionIfPossible() }
     }
-    
-    /// 嘗試從 Keychain 載入 Refresh Token，並續期取得新的 Access Token
-    func loadSavedSession(completion: ((Bool) -> Void)? = nil) {
-        guard let tokenData = KeychainHelper.load(key: refreshKey),
-              let refresh = String(data: tokenData, encoding: .utf8) else {
-            completion?(false)
-            return
+
+    @discardableResult
+    /// 嘗試透過 Refresh Token 還原會話；若失敗則回復到登出狀態。
+    func restoreSessionIfPossible() async -> Bool {
+        phase = .refreshing
+        guard let refresh = storedRefreshToken else {
+            tokens = nil
+            profile = nil
+            phase = .signedOut
+            return false
         }
-        refreshAccessToken(refreshToken: refresh, completion: completion)
-    }
-    
-    /// 執行登入，成功後儲存 Refresh Token 並更新狀態
-    /// - Parameters:
-    ///   - email: 使用者 Email
-    ///   - password: 使用者 密碼
-    ///   - completion: 回傳 SignInResponse 或 NetworkError
-    func signIn(email: String, password: String, completion: @escaping (Result<SignInResponse, NetworkError>) -> Void) {
-        Network.shared.signIn(email: email, password: password) { result in
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let response):
-                    if response.error_code == .success,
-                       let access = response.access_token,
-                       let refresh = response.refresh_token,
-                       let username = response.user_name {
-                        self.accessToken = access
-                        self.userName = username
-                        KeychainHelper.save(key: self.refreshKey, data: Data(refresh.utf8))
-                        KeychainHelper.save(key: self.usernameKey, data: Data(username.utf8))
-                    }
-                    completion(.success(response))
-                case .failure(let error):
-                    completion(.failure(error))
-                }
+
+        do {
+            let response = try await APIClient.shared.refreshAccessToken(refreshToken: refresh)
+            let access = response.accessToken
+            guard !access.isEmpty else {
+                clearPersistedSession()
+                phase = .signedOut
+                return false
             }
+
+            tokens = SessionTokens(accessToken: access, refreshToken: refresh)
+            hydrateProfileIfNeeded()
+            phase = .authenticated
+            return true
+        } catch {
+            clearPersistedSession()
+            phase = .signedOut
+            lastErrorDescription = error.localizedDescription
+            return false
         }
     }
-    
-    /// 使用 Refresh Token 續期 Access Token
-    /// - Parameters:
-    ///   - refreshToken: 可選的外部提供 Token，預設會從 Keychain 讀取
-    ///   - completion: 回傳是否續期成功
-    func refreshAccessToken(refreshToken: String? = nil, completion: ((Bool) -> Void)? = nil) {
-        // 開始 Token 續期，啟動 Loading
-        self.isLoading = true
-        print("🔄 refreshAccessToken 開始，isLoading = \(self.isLoading)")
-        // 從參數或 Keychain 嘗試取得 Refresh Token
-        guard let token = refreshToken ?? KeychainHelper.load(key: refreshKey).flatMap({ String(data: $0, encoding: .utf8) }) else {
-            // 續期失敗，停止 Loading
-            self.isLoading = false
-            self.isLoggedIn = false
-            completion?(false)
-            return
+
+    // MARK: - Auth Flows
+
+    @discardableResult
+    /// 驗證帳密並建立全新會話，成功後回傳使用者檔案。
+    func signIn(email: String, password: String) async throws -> UserProfile {
+        isWorking = true
+        defer { isWorking = false }
+
+        let response = try await APIClient.shared.signIn(email: email, password: password)
+#if DEBUG
+        print("🔐 SignInResponse debug userName=\(response.userName ?? "nil") access=\(response.accessToken) refresh=\(response.refreshToken)")
+#endif
+        let access = response.accessToken
+        guard !access.isEmpty else {
+            throw ApiError.invalidPayload(reason: "伺服器未回傳 access token")
         }
-        // 從 Keychain 嘗試取得使用者名稱
-        if let nameData = KeychainHelper.load(key: usernameKey),
-           let name = String(data: nameData, encoding: .utf8) {
-            self.userName = name
-            print("🔑 使用的 userName: \(name)")
+        let refresh = response.refreshToken
+        guard !refresh.isEmpty else {
+            throw ApiError.invalidPayload(reason: "伺服器未回傳 refresh token")
         }
-        print("🔑 使用的 refreshToken: \(token)")
-        print("📡 呼叫 Network.shared.refreshAccessToken")
-        // 向後端發送 refresh token 續期請求
-        Network.shared.refreshAccessToken(refreshToken: token) { result in
-            // 切回主執行緒更新狀態
-            DispatchQueue.main.async {
-                print("✅ 切回主線程，收到續期結果: \(result)")
-                // 處理成功回應，更新 Access Token
-                switch result {
-                case .success(let response):
-                    print("🎉 續期成功，error_code = \(response.error_code), access_token = \(response.access_token ?? "nil")")
-                    if response.error_code == .success, let token = response.access_token {
-                        self.accessToken = token
-                        self.isLoggedIn = true
-                        completion?(true)
-                    } else {
-                        self.isLoggedIn = false
-                        completion?(false)
-                    }
-                    // 處理失敗情況，標記為未登入
-                case .failure:
-                    print("❌ 續期請求失敗")
-                    self.isLoggedIn = false
-                    completion?(false)
-                }
-                // Token 續期結束，停止 Loading
-                self.isLoading = false
+
+        let resolvedName = response.normalizedUserName ?? email
+        let profile = UserProfile(email: email, displayName: resolvedName)
+
+        persistSession(refreshToken: refresh, displayName: resolvedName, email: email)
+        tokens = SessionTokens(accessToken: access, refreshToken: refresh)
+        self.profile = profile
+        phase = .authenticated
+        return profile
+    }
+
+    @discardableResult
+    /// 透過 Refresh Token 續期 Access Token，維持登入狀態。
+    func refreshAccessToken(refreshToken: String? = nil) async -> Bool {
+        let refresh = refreshToken ?? tokens?.refreshToken ?? storedRefreshToken
+        guard let refresh, !refresh.isEmpty else {
+            tokens = nil
+            profile = nil
+            phase = .signedOut
+            return false
+        }
+
+        do {
+            let response = try await APIClient.shared.refreshAccessToken(refreshToken: refresh)
+            let access = response.accessToken
+            guard !access.isEmpty else {
+                clearPersistedSession()
+                phase = .signedOut
+                return false
             }
+
+            if tokens != nil {
+                tokens?.accessToken = access
+                tokens?.refreshToken = refresh
+            } else {
+                tokens = SessionTokens(accessToken: access, refreshToken: refresh)
+            }
+
+            hydrateProfileIfNeeded()
+            phase = .authenticated
+            return true
+        } catch {
+            clearPersistedSession()
+            phase = .signedOut
+            lastErrorDescription = error.localizedDescription
+            return false
         }
     }
-    
-    /// 登出並清除所有 Token 與使用者資料
+
+    /// 手動登出並清除本地憑證。
     func signOut() {
-        accessToken = nil
-        userName = nil
+        tokens = nil
+        profile = nil
+        clearPersistedSession()
+        phase = .signedOut
+    }
+
+    @discardableResult
+    /// 更新顯示名稱並同步 Keychain 中的快取。
+    func updateUserName(to newName: String) async throws -> ApiErrorCode {
+        let result = try await APIClient.shared.updateUserName(newName)
+        KeychainHelper.saveString(newName, for: usernameKey)
+        if let current = profile {
+            profile = current.renamed(newName)
+        }
+        return result
+    }
+
+    // MARK: - Helpers
+
+    private var storedRefreshToken: String? {
+        KeychainHelper.loadString(key: refreshKey)
+    }
+
+    private func hydrateProfileIfNeeded() {
+        guard profile == nil else { return }
+        let displayName = KeychainHelper.loadString(key: usernameKey) ?? "使用者"
+        let email = KeychainHelper.loadString(key: emailKey) ?? ""
+        profile = UserProfile(email: email, displayName: displayName)
+    }
+
+    private func persistSession(refreshToken: String, displayName: String, email: String) {
+        KeychainHelper.saveString(refreshToken, for: refreshKey)
+        KeychainHelper.saveString(displayName, for: usernameKey)
+        KeychainHelper.saveString(email, for: emailKey)
+    }
+
+    private func clearPersistedSession() {
         KeychainHelper.delete(key: refreshKey)
         KeychainHelper.delete(key: usernameKey)
-        isLoggedIn = false
+        KeychainHelper.delete(key: emailKey)
     }
 }
