@@ -86,15 +86,19 @@
   "edges": [
     {
       "edge_id": "RED-AAAAAAAA",
-      "display_name": "客廳"
+      "display_name": "客廳",
+      "is_online": true
     },
     {
       "edge_id": "RED-BBBBBBBB",
-      "display_name": "廚房"
+      "display_name": "廚房",
+      "is_online": false
     }
   ]
 }
 ```
+
+- `is_online`：布林值，表示 Edge 裝置是否處於在線狀態。
 
 
 ### 失敗回應範例
