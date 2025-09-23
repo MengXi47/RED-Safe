@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DA5CAE3E2E82B13F00B33CD8 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = DA5CAE3D2E82B13F00B33CD8 /* AppIcon.icon */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		5654A5172DE2FA8200182AFC /* RED Safe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RED Safe.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA5CAE3D2E82B13F00B33CD8 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -34,6 +39,7 @@
 			children = (
 				561DC67C2DE2F43000BBF789 /* RED Safe */,
 				5654A5172DE2FA8200182AFC /* RED Safe.app */,
+				DA5CAE3D2E82B13F00B33CD8 /* AppIcon.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -101,6 +107,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DA5CAE3E2E82B13F00B33CD8 /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -248,7 +255,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 9642KFP3XM;
+				DEVELOPMENT_TEAM = RD23XZQUVN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "RED-Safe-Info.plist";
@@ -280,7 +287,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 9642KFP3XM;
+				DEVELOPMENT_TEAM = RD23XZQUVN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "RED-Safe-Info.plist";

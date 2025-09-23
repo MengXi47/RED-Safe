@@ -15,7 +15,7 @@ struct SignInView: View {
                     VStack(spacing: 36) {
                         heroSection
                         credentialCard
-                        featureHighlights
+                        //featureHighlights
                     }
                     .padding(.horizontal, 24)
                     .padding(.bottom, 48)
@@ -28,6 +28,11 @@ struct SignInView: View {
             .onChange(of: viewModel.banner) { banner in
                 guard banner != nil else { return }
                 UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            }
+            .onChange(of: focusedField) { oldValue, newValue in
+                if oldValue == .email, newValue != .email {
+                    viewModel.emailValidated = true
+                }
             }
             .toolbar(.hidden, for: .navigationBar)
             .overlay(alignment: .top) {
@@ -120,12 +125,14 @@ struct SignInView: View {
                     icon: "envelope.fill",
                     keyboard: .emailAddress,
                     isSecure: false,
-                    isValid: viewModel.shouldShowEmailError ? viewModel.isEmailValid : true,
+                    isValid: !viewModel.emailValidated || viewModel.isEmailValid,
                     errorText: viewModel.emailErrorMessage
                 )
                 .focused($focusedField, equals: .email)
                 .submitLabel(.next)
-                .onSubmit { focusedField = .password }
+                .onSubmit {
+                    focusedField = .password
+                }
 
                 CustomTextField(
                     title: "登入密碼",
@@ -197,21 +204,21 @@ struct SignInView: View {
         .glassCard(cornerRadius: 32)
     }
 
-    private var featureHighlights: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("RED Safe 優勢")
-                .font(.title3.weight(.semibold))
-                .foregroundColor(.primary)
-
-            VStack(alignment: .leading, spacing: 14) {
-                FeatureRow(icon: "bell.badge.fill", title: "即時警示", detail: "當 Edge 裝置偵測到異常情況時立即收到通知")
-                FeatureRow(icon: "lock.shield", title: "企業級安全", detail: "Refresh Token 自動續期，登入狀態無縫保持")
-                FeatureRow(icon: "rectangle.connected.to.line.below", title: "全方位裝置管理", detail: "綁定、重命名及管理多台 Edge 裝置更直覺")
-            }
-            .padding(24)
-            .glassCard(cornerRadius: 28)
-        }
-    }
+//    private var featureHighlights: some View {
+//        VStack(alignment: .leading, spacing: 18) {
+//            Text("RED Safe 優勢")
+//                .font(.title3.weight(.semibold))
+//                .foregroundColor(.primary)
+//
+//            VStack(alignment: .leading, spacing: 14) {
+//                FeatureRow(icon: "bell.badge.fill", title: "即時警示", detail: "當 Edge 裝置偵測到異常情況時立即收到通知")
+//                FeatureRow(icon: "lock.shield", title: "企業級安全", detail: "Refresh Token 自動續期，登入狀態無縫保持")
+//                FeatureRow(icon: "rectangle.connected.to.line.below", title: "全方位裝置管理", detail: "綁定、重命名及管理多台 Edge 裝置更直覺")
+//            }
+//            .padding(24)
+//            .glassCard(cornerRadius: 28)
+//        }
+//    }
 }
 
 // MARK: - Components
@@ -365,16 +372,14 @@ final class SignInViewModel: ObservableObject {
         !trimmedPassword.isEmpty
     }
 
-    var shouldShowEmailError: Bool {
-        !email.isEmpty && !isEmailValid
-    }
+    @Published var emailValidated: Bool = false
 
     var shouldShowPasswordError: Bool {
         !password.isEmpty && !isPasswordValid
     }
 
     var emailErrorMessage: String? {
-        shouldShowEmailError ? "請輸入有效的 Email 格式" : nil
+        (emailValidated && !isEmailValid) ? "請輸入有效的 Email 格式" : nil
     }
 
     var passwordErrorMessage: String? {
