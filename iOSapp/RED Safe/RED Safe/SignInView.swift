@@ -263,6 +263,7 @@ private struct CustomTextField: View {
             HStack(spacing: 14) {
                 Image(systemName: icon)
                     .foregroundStyle(Color.accentColor.opacity(0.8))
+                    .frame(width: 22, alignment: .center)
                 if isSecure {
                     SecureField(title, text: $text)
                         .keyboardType(keyboard)

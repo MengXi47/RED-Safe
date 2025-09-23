@@ -34,6 +34,11 @@ struct SignUpView: View {
                 dismiss()
             }
         }
+        .onChange(of: focusedField) { oldValue, newValue in
+            if oldValue == .email, newValue != .email {
+                viewModel.emailValidated = true
+            }
+        }
         .overlay(alignment: .top) {
             if let banner = viewModel.banner {
                 BannerView(banner: banner)
@@ -75,9 +80,9 @@ struct SignUpView: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color(red: 19/255, green: 39/255, blue: 79/255),
-                    Color(red: 55/255, green: 98/255, blue: 167/255),
-                    Color(red: 142/255, green: 197/255, blue: 252/255)
+                    Color(red: 230/255, green: 245/255, blue: 255/255),
+                    Color(red: 200/255, green: 230/255, blue: 255/255),
+                    Color(red: 255/255, green: 255/255, blue: 255/255)
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
@@ -131,7 +136,7 @@ struct SignUpView: View {
                     icon: "envelope.fill",
                     keyboard: .emailAddress,
                     isSecure: false,
-                    isValid: viewModel.shouldShowEmailError ? viewModel.isEmailValid : true,
+                    isValid: !viewModel.emailValidated || viewModel.isEmailValid,
                     errorText: viewModel.emailErrorMessage
                 )
                 .focused($focusedField, equals: .email)
@@ -295,6 +300,7 @@ private struct CustomTextField: View {
             HStack(spacing: 14) {
                 Image(systemName: icon)
                     .foregroundStyle(Color.accentColor.opacity(0.8))
+                    .frame(width: 22, alignment: .center)
                 if isSecure {
                     SecureField(title, text: $text)
                         .keyboardType(keyboard)
@@ -380,6 +386,7 @@ final class SignUpViewModel: ObservableObject {
     }
 
     @Published var email: String = ""
+    @Published var emailValidated: Bool = false
     @Published var userName: String = ""
     @Published var password: String = ""
     @Published var confirmPassword: String = ""
@@ -419,7 +426,7 @@ final class SignUpViewModel: ObservableObject {
     var shouldShowPasswordError: Bool { !password.isEmpty && !isPasswordValid }
     var shouldShowConfirmError: Bool { !confirmPassword.isEmpty && !isConfirmValid }
 
-    var emailErrorMessage: String? { shouldShowEmailError ? "請輸入有效的 Email 格式" : nil }
+    var emailErrorMessage: String? { (emailValidated && !isEmailValid) ? "請輸入有效的 Email 格式" : nil }
     var nameErrorMessage: String? { shouldShowNameError ? "顯示名稱需為 1-16 字元" : nil }
     var passwordErrorMessage: String? {
         shouldShowPasswordError ? "至少 8 碼並包含英文字與數字" : nil
