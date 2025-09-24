@@ -3,9 +3,10 @@ YOLO11 Pose + 追蹤 + 跌倒偵測（規則版基線，含視覺化與參數）
 需求：
   pip install ultralytics opencv-python numpy
 使用：
-  # 直接在程式內設定攝影機來源（只支援攝影機/RTSP，不支援本地影片檔）
-  # 1) 將 CAM_INDEX 設為 0 / 1 / 2 三者之一
-  # 2) 或將 USE_RTSP=True 並填入 RTSP_URL
+  # 直接在程式內設定來源（支援 攝影機/RTSP/本地影片檔）
+  # 1) 將 CAM_INDEX 設為 0 / 1 / 2 三者之一（使用實體攝影機）
+  # 2) 或將 USE_RTSP=True 並填入 RTSP_URL（使用網路串流）
+  # 3) 或將 USE_VIDEO=True 並填入 VIDEO_PATH（使用本地影片檔做 demo）
   python main.py --show                   # 顯示視窗（預設已開，可省略）
 
 備註：
@@ -25,19 +26,31 @@ import cv2
 import os
 import sys
 
-# ===== 在程式內指定攝影機來源（只允許實體攝影機或 RTSP） =====
-USE_RTSP: bool = True              # True 時使用 RTSP_URL；False 走 CAM_INDEX
-CAM_INDEX: int = 0                  # 只能為 0 / 1 / 2
-RTSP_URL: str | None = "rtsp://admin:@192.168.47.150:554/stream1"         # e.g. "rtsp://user:pass@ip:554/Streaming/Channels/101"
+# ===== 在程式內指定來源（攝影機 / RTSP / 影片檔） =====
+USE_RTSP: bool = False              # True 時使用 RTSP_URL；False 走 CAM_INDEX
+CAM_INDEX: int = 1                  # 只能為 0 / 1 / 2
+RTSP_URL: str | None = "rtsp://admin:@192.168.47.150:554/stream1"# e.g. "rtsp://user:pass@ip:554/Streaming/Channels/101"
+USE_VIDEO: bool = False             # True 時使用本地影片檔（demo 用）
+VIDEO_PATH: str | None = "fall.mp4"  # 影片檔路徑，例如 "/Users/dogmad/demo.mp4"
+
 
 def resolve_source():
-    """回傳 Ultralytics 的 source 參數：0/1/2 或 RTSP 字串。"""
+    """回傳 Ultralytics 的 source 參數：0/1/2、RTSP 字串，或本地影片路徑。"""
+    # 優先使用影片檔（demo）
+    if USE_VIDEO:
+        if VIDEO_PATH and isinstance(VIDEO_PATH, str) and os.path.exists(VIDEO_PATH):
+            return VIDEO_PATH
+        print(f"[ERROR] USE_VIDEO=True 但 VIDEO_PATH 無效或檔案不存在：{VIDEO_PATH}")
+        sys.exit(1)
+
+    # 其次使用 RTSP
     if USE_RTSP:
         if RTSP_URL and isinstance(RTSP_URL, str):
             return RTSP_URL
         print("[ERROR] USE_RTSP=True 但未設定 RTSP_URL")
         sys.exit(1)
-    # 僅允許 0/1/2
+
+    # 否則使用實體攝影機，僅允許 0/1/2
     if CAM_INDEX not in (0, 1, 2):
         print("[WARN] CAM_INDEX 僅允許 0/1/2，已改為 0")
         return 0
