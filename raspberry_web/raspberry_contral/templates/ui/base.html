@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}DevicePanel{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <h2>DevicePanel</h2>
+    <nav>
+      <a href="{% url 'dashboard' %}">儀表板</a>
+      <a href="{% url 'devices' %}">設備</a>
+      <a href="{% url 'logs' %}">日誌</a>
+      <a href="{% url 'settings' %}">系統設定</a>
+    </nav>
+  </aside>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
