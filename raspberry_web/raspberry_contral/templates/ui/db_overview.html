@@ -1,0 +1,30 @@
+<h1 style="text-align:center; margin-bottom:20px;">帳號管理</h1>
+
+<table style="width:100%; border-collapse:collapse; font-family:sans-serif; font-size:14px; box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+  <thead>
+    <tr style="background:#2563eb; color:#fff;">
+      <th style="text-align:center; padding:10px;">ID</th>
+      <th style="text-align:center; padding:10px;">Password</th>
+      <th style="text-align:center; padding:10px;">Created At</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+    <tr style="background:{% cycle '#f9fafb' 'white' %};">
+      <td style="text-align:center; padding:10px;">{{ r.id }}</td>
+      <td style="word-break:break-all; padding:10px; text-align:center; color:#1e3a8a; font-weight:600;">
+        {{ r.password_plain }}
+      </td>
+      <td style="text-align:center; padding:10px; color:#374151;">
+        {{ r.created_at }}
+      </td>
+    </tr>
+    {% empty %}
+    <tr>
+      <td colspan="3" style="text-align:center; padding:14px; color:#6b7280; font-style:italic; background:#f9fafb;">
+        目前沒有資料
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

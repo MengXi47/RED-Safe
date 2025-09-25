@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <title>初始設定 | DevicePanel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="/static/css/setup.css" rel="stylesheet">
+</head>
+<body>
+  <div class="center-wrap">
+    <div class="card">
+      <!-- Logo -->
+      <div class="logo">
+        <img src="/static/RED_Safe_icon1.png" alt="Logo">
+      </div>
+      <div class="title">首次使用：設定密碼</div>
+
+      {% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+      <form method="post" action="">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+        <div class="field">
+          <label for="pwd">設定密碼</label>
+          <input id="pwd" class="input" type="password" name="password"
+                 placeholder="至少 6 碼（僅限英文或數字）"
+                 required minlength="6"
+                 pattern="[A-Za-z0-9]{6,}"
+                 title="密碼需至少 6 碼，且僅能使用英文或數字">
+        </div>
+
+        <div class="field">
+          <label for="pwd2">再次輸入密碼</label>
+          <input id="pwd2" class="input" type="password" name="confirm"
+                 placeholder="再次輸入確認"
+                 required minlength="6"
+                 pattern="[A-Za-z0-9]{6,}"
+                 title="密碼需至少 6 碼，且僅能使用英文或數字">
+        </div>
+
+        <button class="btn" type="submit">繼續</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
