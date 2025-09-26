@@ -2,6 +2,7 @@ package com.redsafetw.user_service.controller;
 
 import com.redsafetw.user_service.dto.*;
 import com.redsafetw.user_service.service.BindService;
+import com.redsafetw.user_service.service.EdgeCommandService;
 import com.redsafetw.user_service.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -22,6 +23,7 @@ public class UserController {
 
     private final BindService bindService;
     private final UserService userService;
+    private final EdgeCommandService edgeCommandService;
 
     @PostMapping("/bind")
     public BindResponse bind(
@@ -76,5 +78,13 @@ public class UserController {
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
         String token = authorization.replace("Bearer ", "");
         return userService.updateEdgePassword(updateEdgePasswordRequest, token);
+    }
+
+    @PostMapping("/edge/command")
+    public ErrorCodeResponse sendEdgeCommand(
+            @Valid @RequestBody EdgeCommandRequest request,
+            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
+        String token = authorization.replace("Bearer ", "");
+        return edgeCommandService.sendCommand(request, token);
     }
 }

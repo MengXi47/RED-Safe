@@ -116,6 +116,17 @@ def do_register_edge():
         print("✅ Edge 註冊成功:", data)
 
 
+def do_send_edge_command():
+    edge_id = input("Edge ID: ")
+    code = input("Command Code: ")
+    token, _ = load_tokens()
+    if not token:
+        print("❌ 請先 signin 取得 access_token")
+        return
+    payload = {"edge_id": edge_id, "code": code}
+    api_post("/user/edge/command", payload, token=token)
+
+
 def do_bind_edge():
     edge_id = input("Edge ID to bind: ")
     edge_name = input("Edge Name: ")
@@ -231,6 +242,7 @@ def main():
         print("10) update user password")
         print("11) update edge password")
         print("12) register iOS device")
+        print("13) send edge command")
         choice = input("選擇操作: ").strip()
         if choice == "1":
             do_signup()
@@ -256,6 +268,8 @@ def main():
             do_update_edge_password()
         elif choice == "12":
             do_ios_register()
+        elif choice == "13":
+            do_send_edge_command()
         else:
             print("無效選項")
 
