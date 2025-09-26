@@ -6,7 +6,6 @@
 #include <string_view>
 
 namespace ipcscan {
-
 namespace {
 constexpr const char kMulticastAddress[] = "239.255.255.250";
 constexpr uint16_t kMulticastPort = 3702;
@@ -40,8 +39,7 @@ std::string GenerateUuid() {
   }
   return uuid;
 }
-
-}  // namespace
+} // namespace
 
 WsDiscoveryClient::WsDiscoveryClient(std::chrono::milliseconds timeout)
     : timeout_(timeout) {
@@ -94,5 +92,4 @@ std::string WsDiscoveryClient::BuildProbeMessage() const {
   return std::format(soap_template, GenerateUuid(), kWsDiscoveryUrn,
                      kActionProbe);
 }
-
-}  // namespace ipcscan
+} // namespace ipcscan

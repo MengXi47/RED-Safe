@@ -47,7 +47,6 @@ target_include_directories(ipcscan_proto
 )
 
 target_add_lib(IPCscan_lib
-    ${Boost_LIBRARIES}
     ipcscan_proto
     gRPC::grpc++
     gRPC::grpc++_reflection

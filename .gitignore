@@ -17,7 +17,7 @@ venv/
 
 data/
 
-.clang-format
+*.tar.gz
 
 # Xcode user data
 *.xcuserstate

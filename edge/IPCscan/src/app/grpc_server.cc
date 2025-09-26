@@ -103,7 +103,6 @@ class IpcScanServiceImpl final
                       const ::ipcscan::grpc::ScanRequest*,
                       ::ipcscan::grpc::ScanResponse* response) override {
     std::println("收到gRPC掃描請求");
-    std::fflush(stdout);
     std::lock_guard<std::mutex> lock(mutex_);
     try {
       WsDiscoveryClient transport(timeout_);

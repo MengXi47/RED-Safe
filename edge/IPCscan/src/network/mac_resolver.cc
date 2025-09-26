@@ -68,6 +68,7 @@ std::optional<std::string> MacResolver::QueryArpTable(
       }
 
       std::size_t sa_len = sa->sa_len;
+
       if (sa_len == 0) {
         sa_len = sizeof(sockaddr_in);
       }
