@@ -17,8 +17,10 @@
 
 namespace {
 
+// 說明: 控制主執行緒是否保持運作的原子旗標。
 std::atomic_bool keep_running{true};
 
+// 功能: 處理系統訊號並觸發安全關閉流程。
 void signal_handler(int signal) {
   std::cerr << "\n[INFO] Caught signal " << signal << ", shutting down..."
             << std::endl;
@@ -27,6 +29,7 @@ void signal_handler(int signal) {
 
 } // namespace
 
+// 功能: 初始化所需元件並維持 MQTT 訂閱服務的生命週期。
 int main() {
   std::signal(SIGINT, signal_handler);
 #ifdef SIGTERM

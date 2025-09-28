@@ -6,6 +6,7 @@
 
 namespace {
 
+// 功能: 從環境變數解析 QoS 整數值, 失敗時回傳預設數值。
 int read_qos_or_default(int fallback) {
   if (auto env = util::env::get_env("MQTT_QOS")) {
     try {
@@ -29,7 +30,7 @@ MqttConfig EnvConfigProvider::load() const {
   MqttConfig cfg;
   cfg.server_uri = util::env::get_env("MQTT_SERVER_URI")
                         .value_or("wss://mqtt.redsafe-tw.com:443/mqtt");
-  cfg.client_id = util::env::get_env("MQTT_CLIENT_ID").value_or("RED-AAAAAAAA");
+  cfg.client_id = util::env::get_env("MQTT_CLIENT_ID").value_or("TEST-MAC");
   cfg.topic = util::env::get_env("MQTT_SUB_TOPIC").value_or("RED-AAAAAAAA");
   cfg.username = util::env::get_env("MQTT_USERNAME").value_or("redsafemqtt");
   cfg.password = util::env::get_env("MQTT_PASSWORD").value_or("redsafemqtt");

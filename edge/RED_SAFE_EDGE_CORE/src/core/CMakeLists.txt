@@ -1,0 +1,13 @@
+target_add_lib(RED_SAFE_EDGE_core
+    RED_SAFE_EDGE_IPCSCAN
+    RED_SAFE_EDGE_common
+    gRPC::grpc++
+    protobuf::libprotobuf
+    Boost::system
+    Boost::thread
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    Threads::Threads
+    nlohmann_json::nlohmann_json
+    CURL::libcurl
+)

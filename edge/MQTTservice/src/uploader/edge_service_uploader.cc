@@ -10,11 +10,13 @@
 
 namespace {
 
+// 功能: 確保 CURL 全域初始化僅執行一次。
 void ensure_curl_global_init() {
   static std::once_flag flag;
   std::call_once(flag, []() { curl_global_init(CURL_GLOBAL_DEFAULT); });
 }
 
+// 功能: 將字串轉換為安全的 JSON 字面值。
 std::string escape_json(const std::string& input) {
   std::ostringstream oss;
   for (unsigned char ch : input) {
@@ -113,4 +115,3 @@ void EdgeServiceUploader::post_json(const std::string& path,
   curl_slist_free_all(headers);
   curl_easy_cleanup(curl);
 }
-

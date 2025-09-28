@@ -3,6 +3,7 @@
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 #include <thread>
 #include <utility>
 
@@ -33,16 +34,32 @@ void MqttSubscriber::start() {
     return;
   }
 
-  int rc = MQTTAsync_create(
-      &client_,
-      config_.server_uri.c_str(),
-      config_.client_id.c_str(),
-      MQTTCLIENT_PERSISTENCE_NONE,
-      nullptr);
-  if (rc != MQTTASYNC_SUCCESS) {
-    running_ = false;
-    throw std::runtime_error(
-        "建立 MQTT client 失敗, code=" + std::to_string(rc));
+  initialize_client();
+  configure_connection_options();
+  configure_ssl_options();
+  configure_disconnect_options();
+
+  std::cout << "[INFO] Connecting to MQTT broker at " << config_.server_uri
+            << '\n';
+  if (!connect_client()) {
+    std::cerr << "[WARN] 將持續重試 MQTT 連線" << std::endl;
+    schedule_reconnect();
+  }
+}
+
+void MqttSubscriber::initialize_client() {
+  if (client_ == nullptr) {
+    const int rc = MQTTAsync_create(
+        &client_,
+        config_.server_uri.c_str(),
+        config_.client_id.c_str(),
+        MQTTCLIENT_PERSISTENCE_NONE,
+        nullptr);
+    if (rc != MQTTASYNC_SUCCESS) {
+      running_ = false;
+      throw std::runtime_error(
+          "建立 MQTT client 失敗, code=" + std::to_string(rc));
+    }
   }
 
   MQTTAsync_setCallbacks(
@@ -52,7 +69,9 @@ void MqttSubscriber::start() {
       &MqttSubscriber::on_message_arrived,
       nullptr);
   MQTTAsync_setConnected(client_, this, &MqttSubscriber::on_connected);
+}
 
+void MqttSubscriber::configure_connection_options() {
   conn_opts_ = MQTTAsync_connectOptions_initializer;
   conn_opts_.automaticReconnect = 1;
   conn_opts_.minRetryInterval = static_cast<int>(config_.reconnect_min.count());
@@ -69,25 +88,30 @@ void MqttSubscriber::start() {
   if (!config_.password.empty()) {
     conn_opts_.password = config_.password.c_str();
   }
+}
 
+void MqttSubscriber::configure_ssl_options() {
   ssl_opts_ = MQTTAsync_SSLOptions_initializer;
   ssl_opts_.sslVersion = MQTT_SSL_VERSION_TLS_1_2;
   const bool trust_all = util::env::get_env_bool("MQTT_SSL_TRUST_ALL", true);
   ssl_opts_.enableServerCertAuth = trust_all ? 0 : 1;
   ssl_opts_.verify = trust_all ? 0 : 1;
   conn_opts_.ssl = &ssl_opts_;
+}
 
+void MqttSubscriber::configure_disconnect_options() {
   disc_opts_ = MQTTAsync_disconnectOptions_initializer;
   disc_opts_.timeout = 2000;
+}
 
-  std::cout << "[INFO] Connecting to MQTT broker at " << config_.server_uri
-            << '\n';
-  rc = MQTTAsync_connect(client_, &conn_opts_);
+bool MqttSubscriber::connect_client() {
+  post_connect_handled_.store(false);
+  const int rc = MQTTAsync_connect(client_, &conn_opts_);
   if (rc != MQTTASYNC_SUCCESS) {
-    std::cerr << "[WARN] 啟動連線失敗 (code=" << rc << ")，將持續重試"
-              << std::endl;
-    schedule_reconnect();
+    std::cerr << "[WARN] 啟動連線失敗 (code=" << rc << ")" << std::endl;
+    return false;
   }
+  return true;
 }
 
 void MqttSubscriber::stop() {
@@ -144,6 +168,7 @@ int MqttSubscriber::on_message_arrived(
         static_cast<const char*>(message->payload), message->payloadlen);
   }
 
+  // TODO: 如需對原始 MQTT 訊息進行額外驗證, 可於此處擴充。
   int processed = self->handle_message(topic, payload);
 
   MQTTAsync_freeMessage(&message);
@@ -187,6 +212,10 @@ void MqttSubscriber::on_subscribe_failure(
 }
 
 void MqttSubscriber::handle_connected(const char* cause) {
+  bool expected = false;
+  if (!post_connect_handled_.compare_exchange_strong(expected, true)) {
+    return;
+  }
   std::cout << "[INFO] Connected to MQTT broker";
   if (cause != nullptr) {
     std::cout << " (cause: " << cause << ')';
@@ -205,11 +234,13 @@ void MqttSubscriber::handle_connection_lost(const char* cause) {
     std::cerr << ": " << cause;
   }
   std::cerr << '\n';
+  post_connect_handled_.store(false);
   schedule_reconnect();
 }
 
 int MqttSubscriber::handle_message(
     const std::string& topic, const std::string& payload) {
+  // TODO: 根據未來業務需求補充 MQTT 訊息前置處理。
   handler_->on_message(topic, payload);
   return 1;
 }
