@@ -1,5 +1,5 @@
 // MQTT 指令流程與 Edge 端整合邏輯
-#include "core/mqtt_workflow.hpp"
+#include "mqtt/mqtt_workflow.hpp"
 
 #include "common/logging.hpp"
 #include "common/time.hpp"
@@ -14,6 +14,8 @@
 
 #include <future>
 #include <string_view>
+
+#include "grpc/grpc_client.hpp"
 
 using boost::asio::awaitable;
 namespace mqtt5 = boost::mqtt5;
@@ -90,7 +92,7 @@ awaitable<bool> MqttWorkflow::SubscribeCommands() {
 }
 
 // 透過 MQTT 定期發出 Edge 心跳訊息
-awaitable<void> MqttWorkflow::PublishHeartbeat() {
+awaitable<void> MqttWorkflow::PublishHeartbeat() const {
   boost::asio::steady_timer timer(co_await boost::asio::this_coro::executor);
   std::uint64_t sequence = 0;
 
@@ -158,7 +160,7 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
     std::string trace_value = (trace_it != json.end() && trace_it->is_string())
         ? trace_it->get<std::string>()
         : "";
-    std::string code_field_value = "";
+    std::string code_field_value;
     if (code_it != json.end()) {
       if (code_it->is_string()) {
         code_field_value = code_it->get<std::string>();
@@ -235,16 +237,18 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
     }
 
     if (code_str == "101") {
-      std::string result;
       std::string response;
       try {
+        std::string result;
         auto future = std::async(std::launch::async, [&]() {
           return executor_.RunScan();
         });
         result = future.get();
         response = BuildScanSuccess(trace_id, result);
-        LogInfoFormat("IPCscan 完成，trace_id={} 結果長度 {}", trace_id, result.size());
-        LogInfoFormat("IPCscan 結果內容 trace_id={} result={}", trace_id, result);
+        LogInfoFormat(
+            "IPCscan 完成，trace_id={} 結果長度 {}", trace_id, result.size());
+        LogInfoFormat(
+            "IPCscan 結果內容 trace_id={} result={}", trace_id, result);
       } catch (const std::exception& ex) {
         LogErrorFormat("IPCscan 執行失敗: {}", ex.what());
         response = BuildScanError(trace_id, ex.what());
@@ -267,6 +271,17 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
       } else {
         LogInfo("IPCscan 結果已送出");
       }
+      continue;
+    }
+
+    if (code_str == "102") {
+      std::string target_str = "localhost:20002"; // gRPC server 位址
+      std::string interface_name = "en9";        // 預設查詢介面
+      NetworkServiceClient client(
+        grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials())
+      );
+
+      client.GetNetworkConfig(interface_name);
       continue;
     }
 
@@ -332,7 +347,7 @@ std::string MqttWorkflow::BuildHeartbeatPayload(std::uint64_t sequence) const {
 
 // IPCscan 成功回報 JSON（包含 trace_id 與 result 資料）
 std::string MqttWorkflow::BuildScanSuccess(
-    const std::string& trace_id, const std::string& result_json) const {
+    const std::string& trace_id, const std::string& result_json) {
   nlohmann::json message{
       {"trace_id", trace_id}, {"code", 101}, {"status", "ok"}};
   nlohmann::json data = nlohmann::json::parse(result_json, nullptr, false);
@@ -345,7 +360,7 @@ std::string MqttWorkflow::BuildScanSuccess(
 
 // IPCscan 失敗回報 JSON（包含錯誤 detail）
 std::string MqttWorkflow::BuildScanError(
-    const std::string& trace_id, std::string_view error_message) const {
+    const std::string& trace_id, std::string_view error_message) {
   nlohmann::json message{
       {"trace_id", trace_id},
       {"code", 101},
@@ -356,7 +371,7 @@ std::string MqttWorkflow::BuildScanError(
 
 // 建構心跳確認的成功回應
 std::string MqttWorkflow::BuildAckMessage(
-    const std::string& trace_id, const std::string& code) const {
+    const std::string& trace_id, const std::string& code) {
   nlohmann::json message{
       {"trace_id", trace_id},
       {"code", code},
@@ -367,7 +382,7 @@ std::string MqttWorkflow::BuildAckMessage(
 
 // 建構未支援指令的錯誤回應（保留原始 code）
 std::string MqttWorkflow::BuildUnsupportedCommand(
-    const std::string& trace_id, const std::string& code) const {
+    const std::string& trace_id, const std::string& code) {
   nlohmann::json message{
       {"trace_id", trace_id},
       {"code", code},

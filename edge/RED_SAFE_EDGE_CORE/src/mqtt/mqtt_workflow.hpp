@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/config.hpp"
-#include "core/http_client.hpp"
-#include "core/mqtt_traits.hpp"
+#include "http/http_client.hpp"
+#include "mqtt/mqtt_traits.hpp"
 #include "ipcscan/app/scan_executor.hpp"
 
 #include <chrono>
@@ -41,7 +41,7 @@ class MqttWorkflow {
   // 訂閱 Edge 指令 Topic
   boost::asio::awaitable<bool> SubscribeCommands();
   // 定時發佈 Edge 心跳狀態
-  boost::asio::awaitable<void> PublishHeartbeat();
+  boost::asio::awaitable<void> PublishHeartbeat() const;
   // 持續處理指令 Topic 的訊息
   boost::asio::awaitable<void> ConsumeCommands();
   // 重新啟動指令心跳 watchdog
@@ -52,17 +52,17 @@ class MqttWorkflow {
   // 建構心跳發佈的 JSON payload
   std::string BuildHeartbeatPayload(std::uint64_t sequence) const;
   // 建構 IPCscan 成功回傳
-  std::string BuildScanSuccess(
-      const std::string& trace_id, const std::string& result_json) const;
+  static std::string BuildScanSuccess(
+      const std::string& trace_id, const std::string& result_json) ;
   // 建構 IPCscan 失敗回傳
-  std::string BuildScanError(
-      const std::string& trace_id, std::string_view error_message) const;
+  static std::string BuildScanError(
+      const std::string& trace_id, std::string_view error_message);
   // 建構指令成功 ACK
-  std::string BuildAckMessage(
-      const std::string& trace_id, const std::string& code) const;
+  static std::string BuildAckMessage(
+      const std::string& trace_id, const std::string& code) ;
   // 建構未支援指令的錯誤回應
-  std::string BuildUnsupportedCommand(
-      const std::string& trace_id, const std::string& code) const;
+  static std::string BuildUnsupportedCommand(
+      const std::string& trace_id, const std::string& code) ;
 
   boost::asio::io_context& io_context_;
   mqtt_client& client_;

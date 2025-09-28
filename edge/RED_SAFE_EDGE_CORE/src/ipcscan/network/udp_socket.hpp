@@ -26,13 +26,13 @@ class UdpSocket {
   UdpSocket& operator=(UdpSocket&&) noexcept;
 
   // 啟用位址重複使用
-  void EnableReuse();
+  void EnableReuse() const;
   // 設定多播封包的TTL
-  void SetMulticastTtl(unsigned char ttl);
+  void SetMulticastTtl(unsigned char ttl) const;
   // 設定接收超時
-  void SetReceiveTimeout(std::chrono::milliseconds timeout);
+  void SetReceiveTimeout(std::chrono::milliseconds timeout) const;
   // 綁定到任意本地位址與指定埠
-  void Bind(uint16_t port);
+  void Bind(uint16_t port) const;
 
   // 傳送資料到指定目標
   void SendTo(std::string_view data, const sockaddr_in& dest) const;

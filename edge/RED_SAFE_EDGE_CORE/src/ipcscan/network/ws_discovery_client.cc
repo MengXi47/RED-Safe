@@ -1,4 +1,4 @@
-#include "network/ws_discovery_client.hpp"
+#include "ws_discovery_client.hpp"
 
 #include <format>
 #include <random>

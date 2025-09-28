@@ -41,32 +41,20 @@ endforeach()
 
 set_source_files_properties(${GENERATED_SOURCES} ${GENERATED_HEADERS} PROPERTIES GENERATED TRUE)
 
-add_library(RSEC_protos STATIC ${GENERATED_SOURCES} ${GENERATED_HEADERS})
+add_library(iptool_protos STATIC ${GENERATED_SOURCES} ${GENERATED_HEADERS})
 
-target_include_directories(RSEC_protos
-    PUBLIC
+target_include_directories(iptool_protos
+  PUBLIC
     "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
-target_link_libraries(RSEC_protos
-    PUBLIC
+target_link_libraries(iptool_protos
+  PUBLIC
     protobuf::libprotobuf
     gRPC::grpc++
     gRPC::grpc
 )
 
-target_add_lib(RED_SAFE_EDGE_CORE_lib
-    RSEC_protos
-    gRPC::grpc++
-    gRPC::grpc++_reflection
-    protobuf::libprotobuf
-    Boost::system
-    Boost::thread
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    Threads::Threads
-    nlohmann_json::nlohmann_json
-    CURL::libcurl
-)
+target_add_lib(IPtool_lib iptool_protos)
 
-target_add_bin(RED_SAFE_EDGE_CORE_bin main.cc RED_SAFE_EDGE_CORE_lib)
+target_add_bin(IPtool_bin main.cc IPtool_lib)

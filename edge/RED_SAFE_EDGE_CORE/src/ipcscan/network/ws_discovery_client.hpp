@@ -1,7 +1,7 @@
 #pragma once
 
-#include "network/discovery_transport.hpp"
-#include "network/udp_socket.hpp"
+#include "discovery_transport.hpp"
+#include "udp_socket.hpp"
 
 #include <chrono>
 #include <string>

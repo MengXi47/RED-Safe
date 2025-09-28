@@ -1,10 +1,10 @@
 #pragma once
 
-#include "app/ipc_scanner.hpp"
-#include "core/device_info.hpp"
-#include "network/mac_resolver.hpp"
-#include "network/ws_discovery_client.hpp"
-#include "parser/onvif_response_parser.hpp"
+#include "ipc_scanner.hpp"
+#include "../core/device_info.hpp"
+#include "../network/mac_resolver.hpp"
+#include "../network/ws_discovery_client.hpp"
+#include "../parser/onvif_response_parser.hpp"
 
 #include <chrono>
 #include <mutex>

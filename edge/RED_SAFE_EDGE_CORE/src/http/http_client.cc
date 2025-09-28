@@ -1,4 +1,4 @@
-#include "core/http_client.hpp"
+#include "http/http_client.hpp"
 
 #include "common/logging.hpp"
 #include "common/time.hpp"

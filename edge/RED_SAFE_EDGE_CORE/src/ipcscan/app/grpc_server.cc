@@ -2,7 +2,6 @@
 
 #include "common/logging.hpp"
 #include "ipcscan/app/scan_executor.hpp"
-#include "network/network_service.hpp"
 #include "red_safe_edge_core.grpc.pb.h"
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
@@ -53,13 +52,11 @@ GrpcServerPtr StartGrpcServer(ScanExecutor& executor, int port) {
   ::grpc::reflection::InitProtoReflectionServerBuilderPlugin();
 
     auto service = std::make_shared<IpcScanServiceImpl>(executor);
-    auto network_service = network::MakeNetworkConfigService();
 
   ::grpc::ServerBuilder builder;
   const std::string address = std::format("0.0.0.0:{}", port);
   builder.AddListeningPort(address, ::grpc::InsecureServerCredentials());
     builder.RegisterService(service.get());
-    builder.RegisterService(network_service.get());
 
   auto server = builder.BuildAndStart();
   if (!server) {
@@ -69,7 +66,7 @@ GrpcServerPtr StartGrpcServer(ScanExecutor& executor, int port) {
   LogInfoFormat("IPCscan gRPC 伺服器已啟動，監聽 {}", address);
 
   auto* raw_server = server.release();
-    GrpcServerPtr guarded(raw_server, [service, network_service](::grpc::Server* s) {
+    GrpcServerPtr guarded(raw_server, [service](::grpc::Server* s) {
         if (s != nullptr) {
             s->Shutdown();
             s->Wait();
@@ -77,7 +74,6 @@ GrpcServerPtr StartGrpcServer(ScanExecutor& executor, int port) {
         }
         // service shared_ptr 會在此析構保持生命週期
         (void)service;
-        (void)network_service;
     });
   return guarded;
 }

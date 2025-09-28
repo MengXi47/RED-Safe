@@ -1,17 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "" FORCE)
-
-if(POLICY CMP0167)
-  cmake_policy(SET CMP0167 NEW)
-endif()
-
 if (NOT DEFINED CMAKE_BUILD_TYPE AND NOT DEFINED CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type")
 endif ()
 
-project(RED_SAFE_EDGE_CORE VERSION 1.0
-    DESCRIPTION "CORE"
+project(IPtool VERSION 1.0
+    DESCRIPTION "IPtool"
     LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -23,21 +17,9 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-if (WIN32)
-  add_compile_definitions(
-      _WIN32_WINNT=0x0601
-      WIN32_LEAN_AND_MEAN
-  )
-endif ()
-
 include(cmake/Target.cmake)
 
-find_package(Boost 1.82 REQUIRED COMPONENTS system thread)
-find_package(OpenSSL REQUIRED)
 find_package(Protobuf CONFIG REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
-find_package(Threads REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(CURL REQUIRED)
 
 add_subdirectory(src)

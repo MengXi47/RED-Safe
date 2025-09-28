@@ -1,4 +1,4 @@
-#include "app/ipc_scanner.hpp"
+#include "ipc_scanner.hpp"
 
 namespace ipcscan {
 

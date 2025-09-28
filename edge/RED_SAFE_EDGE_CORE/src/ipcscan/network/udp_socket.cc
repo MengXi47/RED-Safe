@@ -1,4 +1,4 @@
-#include "network/udp_socket.hpp"
+#include "udp_socket.hpp"
 
 #include <cerrno>
 #include <cstring>
@@ -39,16 +39,16 @@ UdpSocket& UdpSocket::operator=(UdpSocket&& other) noexcept {
   return *this;
 }
 
-void UdpSocket::EnableReuse() {
+void UdpSocket::EnableReuse() const {
   int reuse = 1;
   ::setsockopt(handle_, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 }
 
-void UdpSocket::SetMulticastTtl(unsigned char ttl) {
+void UdpSocket::SetMulticastTtl(unsigned char ttl) const {
   ::setsockopt(handle_, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, sizeof(ttl));
 }
 
-void UdpSocket::SetReceiveTimeout(std::chrono::milliseconds timeout) {
+void UdpSocket::SetReceiveTimeout(std::chrono::milliseconds timeout) const {
   timeval tv{
       .tv_sec = static_cast<time_t>(timeout.count() / 1000),
       .tv_usec = static_cast<suseconds_t>((timeout.count() % 1000) * 1000),
@@ -56,7 +56,7 @@ void UdpSocket::SetReceiveTimeout(std::chrono::milliseconds timeout) {
   ::setsockopt(handle_, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 }
 
-void UdpSocket::Bind(uint16_t port) {
+void UdpSocket::Bind(uint16_t port) const {
   sockaddr_in addr{};
   addr.sin_family = AF_INET;
   addr.sin_addr.s_addr = htonl(INADDR_ANY);

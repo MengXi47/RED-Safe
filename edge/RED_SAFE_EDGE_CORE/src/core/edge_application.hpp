@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/config.hpp"
-#include "core/http_client.hpp"
-#include "core/mqtt_workflow.hpp"
+#include "http/http_client.hpp"
+#include "mqtt/mqtt_workflow.hpp"
 #include "ipcscan/app/grpc_server.hpp"
 #include "ipcscan/app/scan_executor.hpp"
 
