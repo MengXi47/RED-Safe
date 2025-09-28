@@ -1,0 +1,34 @@
+#pragma once
+
+#include "core/device_info.hpp"
+#include "app/ipc_scanner.hpp"
+#include "parser/onvif_response_parser.hpp"
+#include "network/mac_resolver.hpp"
+#include "network/ws_discovery_client.hpp"
+
+#include <chrono>
+#include <mutex>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace ipcscan {
+
+class ScanExecutor {
+public:
+    explicit ScanExecutor(std::chrono::milliseconds timeout);
+
+    // 執行掃描並回傳 JSON 陣列字串（至少為 []）
+    std::string RunScan();
+
+private:
+    std::string BuildJson(const std::vector<DeviceInfo>& devices) const;
+
+    OnvifResponseParser parser_;
+    MacResolver mac_resolver_;
+    IpcScanner scanner_;
+    std::chrono::milliseconds timeout_;
+    std::mutex mutex_;
+};
+
+}  // namespace ipcscan

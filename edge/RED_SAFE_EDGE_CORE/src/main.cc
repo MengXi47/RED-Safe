@@ -1,65 +1,70 @@
-#include "app/edge_application.hpp"
-#include "config/env_config_provider.hpp"
-#include "ipcscan/executor.hpp"
-#include "util/locking_stream.hpp"
+#include "common/logging.hpp"
+#include "core/config.hpp"
+#include "core/edge_application.hpp"
+#include "core/http_client.hpp"
+#include "core/mqtt_traits.hpp"
+#include "core/mqtt_workflow.hpp"
+#include "ipcscan/app/scan_executor.hpp"
 
-#include <atomic>
-#include <csignal>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/mqtt5/logger.hpp>
+#include <boost/mqtt5/mqtt_client.hpp>
+#include <boost/mqtt5/websocket_ssl.hpp>
+
+#include <curl/curl.h>
+
 #include <exception>
-#include <iostream>
-#include <string_view>
+
+namespace asio = boost::asio;
+namespace mqtt5 = boost::mqtt5;
+
+using tcp = asio::ip::tcp;
+using ssl_stream = asio::ssl::stream<tcp::socket>;
+using websocket_stream = boost::beast::websocket::stream<ssl_stream>;
+using mqtt_client =
+    mqtt5::mqtt_client<websocket_stream, asio::ssl::context, mqtt5::logger>;
 
 namespace {
-std::atomic_bool keep_running{true};
-
-void signal_handler(int signal) {
-  cerr{} << "\n[INFO] Caught signal " << signal << ", shutting down..." << std::endl;
-  keep_running = false;
-}
-
-bool has_flag(int argc, char* argv[], std::string_view flag) {
-  for (int i = 1; i < argc; ++i) {
-    if (std::string_view{argv[i]} == flag) {
-      return true;
+// 管理 curl 全域初始化/釋放的 RAII 工具
+class CurlGlobalInit final {
+ public:
+  CurlGlobalInit() {
+    if (const auto code = curl_global_init(CURL_GLOBAL_DEFAULT); code != 0) {
+      throw std::runtime_error("curl_global_init failed");
     }
   }
-  return false;
-}
+  ~CurlGlobalInit() { curl_global_cleanup(); }
+};
+} // namespace
 
-void print_usage(const char* program) {
-  std::cout << "Usage: " << program << " [--ipcscan]" << std::endl;
-}
-
-}  // namespace
-
-int main(int argc, char* argv[]) {
+// 程式進入點：串接設定、MQTT 與 gRPC 工作流程
+int main() {
   try {
-    EnvConfigProvider provider;
-    auto config = provider.load();
+    CurlGlobalInit curl_guard;
 
-    if (has_flag(argc, argv, "--help")) {
-      print_usage(argv[0]);
-      return 0;
-    }
+    ConfigLoader loader;
+    EdgeConfig config = loader.Load();
 
-    if (has_flag(argc, argv, "--ipcscan")) {
-      IpcScanExecutor executor(config.ipcscan.discovery_timeout);
-      const auto json_result = executor.run_scan_json();
-      std::cout << json_result << std::endl;
-      return 0;
-    }
+    asio::io_context io_context;
+    asio::ssl::context tls_ctx(asio::ssl::context::tls_client);
+    tls_ctx.set_default_verify_paths();
+    tls_ctx.set_verify_mode(asio::ssl::verify_peer);
 
-    std::signal(SIGINT, signal_handler);
-#ifdef SIGTERM
-    std::signal(SIGTERM, signal_handler);
-#endif
+    mqtt_client client(
+        io_context, std::move(tls_ctx), mqtt5::logger{mqtt5::log_level::info});
 
-    EdgeApplication app(std::move(config));
-    return app.run(keep_running);
+    ipcscan::ScanExecutor scan_executor(config.ipcscan_timeout);
+    CurlEdgeOnlineService online_service;
+
+    EdgeApplication app(
+        io_context, client, scan_executor, std::move(config), online_service);
+    return app.Run();
   } catch (const std::exception& ex) {
-    cerr{} << "[ERROR] RED_SAFE_EDGE_CORE 發生錯誤: " << ex.what()
-           << std::endl;
-    return 1;
+    LogErrorFormat("未攔截的例外: {}", ex.what());
+    return EXIT_FAILURE;
+  } catch (...) {
+    LogError("未攔截的未知例外");
+    return EXIT_FAILURE;
   }
 }
-

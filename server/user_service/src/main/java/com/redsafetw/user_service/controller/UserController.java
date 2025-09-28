@@ -6,6 +6,7 @@ import com.redsafetw.user_service.service.EdgeCommandService;
 import com.redsafetw.user_service.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +37,7 @@ public class UserController {
     @PostMapping("/unbind/{edge_id}")
     public UnbindResponse unbind(
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization,
-            @PathVariable @NotBlank(message = "125") String edge_id) {
+            @PathVariable @NotBlank(message = "125") @Pattern(regexp = "^RED-[0-9A-F]{8}$", message = "120") String edge_id) {
         String token = authorization.replace("Bearer ", "");
         return bindService.unbind(token, edge_id);
     }
@@ -81,7 +82,7 @@ public class UserController {
     }
 
     @PostMapping("/edge/command")
-    public ErrorCodeResponse sendEdgeCommand(
+    public EdgeCommandResponse sendEdgeCommand(
             @Valid @RequestBody EdgeCommandRequest request,
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
         String token = authorization.replace("Bearer ", "");

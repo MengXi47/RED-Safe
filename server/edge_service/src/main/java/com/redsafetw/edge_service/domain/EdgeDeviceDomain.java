@@ -43,4 +43,10 @@ public class EdgeDeviceDomain {
     @Column(name = "registered_at", nullable = false, insertable = false, updatable = false,
             columnDefinition = "TIMESTAMPTZ DEFAULT NOW()")
     private OffsetDateTime registeredAt;
+
+    /**
+     * 邊緣裝置最後上線時間
+     */
+    @Column(name = "last_online_at")
+    private OffsetDateTime lastOnlineAt;
 }

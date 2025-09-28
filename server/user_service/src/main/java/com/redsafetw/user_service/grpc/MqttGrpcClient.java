@@ -11,11 +11,16 @@ public class MqttGrpcClient {
 
     private final MqttServiceGrpc.MqttServiceBlockingStub stub;
 
-    public String publishEdgeCommand(String edgeId, String code) {
-        PublishEdgeCommandRequest request = PublishEdgeCommandRequest.newBuilder()
+    public String publishEdgeCommand(String edgeId, String traceId, String code, String payloadJson) {
+        PublishEdgeCommandRequest.Builder builder = PublishEdgeCommandRequest.newBuilder()
                 .setEdgeId(edgeId)
                 .setCode(code)
-                .build();
-        return stub.publishEdgeCommand(request).getErrorCode();
+                .setTraceId(traceId);
+
+        if (payloadJson != null && !payloadJson.isBlank()) {
+            builder.setPayload(payloadJson);
+        }
+
+        return stub.publishEdgeCommand(builder.build()).getErrorCode();
     }
 }

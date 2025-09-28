@@ -39,7 +39,9 @@ public class EdgeRegisterService {
         device.setEdgeId(req.getEdgeId());
         device.setEdgePasswordHash(hashedPassword);
         device.setVersion(req.getVersion());
-        device.setRegisteredAt(OffsetDateTime.now());
+        OffsetDateTime now = OffsetDateTime.now();
+        device.setRegisteredAt(now);
+        device.setLastOnlineAt(now);
         edgeRepository.save(device);
 
         return EdgeRegisterResponse.builder()

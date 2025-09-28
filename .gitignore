@@ -19,6 +19,8 @@ data/
 
 *.tar.gz
 
+.vscode
+
 # Xcode user data
 *.xcuserstate
 *.xcworkspace/xcuserdata/
