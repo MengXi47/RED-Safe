@@ -1,5 +1,6 @@
 target_add_lib(RED_SAFE_EDGE_core
     RED_SAFE_EDGE_IPCSCAN
+    RED_SAFE_EDGE_network
     RED_SAFE_EDGE_common
     gRPC::grpc++
     protobuf::libprotobuf

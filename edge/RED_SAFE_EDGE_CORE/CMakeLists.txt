@@ -32,7 +32,7 @@ include(cmake/Target.cmake)
 
 find_package(Boost 1.82 REQUIRED COMPONENTS system thread)
 find_package(OpenSSL REQUIRED)
-find_package(Protobuf CONFIG REQUIRED)
+find_package(Protobuf REQUIRED)
 find_package(gRPC CONFIG REQUIRED)
 find_package(Threads REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)

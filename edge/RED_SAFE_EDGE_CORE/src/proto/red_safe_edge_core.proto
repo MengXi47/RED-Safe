@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package ipcscan.grpc;
+
+message ScanRequest {}
+
+message ScanResponse {
+  string result = 1;
+}
+
+message NetworkInterfaceRequest {
+  string interface = 1;
+}
+
+message NetworkConfig {
+  string interface = 1;
+  string ip = 2;
+  string mac = 3;
+  string netmask = 4;
+  string gateway = 5;
+  repeated string dns_servers = 6;
+}
+
+message NetworkConfigResponse {
+  NetworkConfig config = 1;
+}
+
+message SetNetworkConfigResponse {
+  bool success = 1;
+  string error_message = 2;
+}
+
+service IPCScanService {
+  rpc Scan(ScanRequest) returns (ScanResponse);
+}
+
+service NetworkConfigService {
+  rpc GetNetworkConfig(NetworkInterfaceRequest) returns (NetworkConfigResponse);
+  rpc SetNetworkConfig(NetworkConfig) returns (SetNetworkConfigResponse);
+}

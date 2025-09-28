@@ -37,10 +37,10 @@ EdgeConfig ConfigLoader::Load() const {
   cfg.edge_id = GetEnvOrDefault("RED_SAFE_EDGE_ID", "RED-AAAAAAAA");
   cfg.version = GetEnvOrDefault("RED_SAFE_EDGE_VERSION", "1.0.0");
   cfg.edge_ip = GetEnvOrDefault("RED_SAFE_EDGE_IP", "");
-  // cfg.server_base_url = GetEnvOrDefault("RED_SAFE_SERVER_URL",
-  // "https://api.redsafe-tw.com");
-  cfg.server_base_url =
-      GetEnvOrDefault("RED_SAFE_SERVER_URL", "https://127.0.0.1");
+  cfg.server_base_url = GetEnvOrDefault("RED_SAFE_SERVER_URL",
+  "https://api.redsafe-tw.com");
+  // cfg.server_base_url =
+  //     GetEnvOrDefault("RED_SAFE_SERVER_URL", "https://127.0.0.1");
   cfg.mqtt_broker =
       GetEnvOrDefault("RED_SAFE_MQTT_BROKER", "mqtt.redsafe-tw.com/mqtt");
   cfg.mqtt_port =
