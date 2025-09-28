@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * 實際執行 MQTT 發布的服務
+ * 發佈 Edge 指令的核心服務：會包裝 trace_id / code / payload 成 JSON 字串。
  */
 @Service
 @RequiredArgsConstructor

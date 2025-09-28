@@ -14,6 +14,9 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
+/**
+ * 全域過濾器：記錄所有 HTTP 請求與回應的內容，協助除錯與審查。
+ */
 @Slf4j
 @Component
 public class RequestLoggingFilter extends OncePerRequestFilter {

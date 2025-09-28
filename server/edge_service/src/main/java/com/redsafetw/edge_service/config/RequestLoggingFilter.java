@@ -15,7 +15,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Logs every incoming HTTP request along with its response status and duration.
+ * Logs every incoming HTTP request along with its response status, duration and bodies.
  */
 @Slf4j
 @Component

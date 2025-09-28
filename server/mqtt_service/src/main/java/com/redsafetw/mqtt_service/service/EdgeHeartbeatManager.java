@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.redsafetw.mqtt_service.config.MqttProperties;
-import com.redsafetw.mqtt_service.service.EdgeMqttPublisher;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +31,9 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
+/**
+ * 管理 Edge 心跳生命週期：維持 MQTT 訂閱、儲存最新心跳並定期向 Edge 發送 code=100 Ping。
+ */
 @Service
 @RequiredArgsConstructor
 public class EdgeHeartbeatManager {
@@ -154,6 +156,7 @@ public class EdgeHeartbeatManager {
                 String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
                 String edgeId = extractEdgeId(topic);
                 if (topic.endsWith("/status")) {
+                    // 正常心跳：更新 Redis 並重置 watchdog/ping
                     storeHeartbeat(edgeId, payload);
                     armHeartbeatWatchdog(edgeId);
                     ensurePingScheduled(edgeId);
@@ -273,6 +276,7 @@ public class EdgeHeartbeatManager {
     }
 
     private void ensurePingScheduled(String edgeId) {
+        // 確保每個 edge 只有一個固定頻率的 ping 任務
         pingTasks.computeIfAbsent(edgeId, id -> watchdogScheduler.scheduleAtFixedRate(
                 () -> sendPing(id),
                 COMMAND_PING_INTERVAL.getSeconds(),
