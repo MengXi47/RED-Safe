@@ -3,22 +3,67 @@
 <head>
   <meta charset="utf-8">
   <title>{% block title %}DevicePanel{% endblock %}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- 只載入獨立主題 CSS：會自動深/淺色 & 漸層背景 -->
+  <link href="/static/css/theme.css" rel="stylesheet">
 </head>
 <body>
   <aside class="sidebar">
-    <h2>DevicePanel</h2>
-    <nav>
-      <a href="{% url 'dashboard' %}">儀表板</a>
-      <a href="{% url 'devices' %}">設備</a>
-      <a href="{% url 'logs' %}">日誌</a>
-      <a href="{% url 'settings' %}">系統設定</a>
-      <!-- 👇 新增登出按鈕 -->
-      <a href="{% url 'logout' %}" style="color:red;">登出</a>
+<a href="{% url 'dashboard' %}" class="brand">Red Safe</a>
+    <nav class="nav">
+      <!-- Network -->
+      <div class="item {% if request.path|slice:':9' == '/network/' %}open{% endif %}">
+        <button type="button" data-target="netMenu">
+          <span>Network</span><span class="caret">▶</span>
+        </button>
+        <div id="netMenu" class="submenu">
+          <a class="link {% if request.path == '/network/ip/' %}active{% endif %}" href="{% url 'network_ip' %}">IP</a>
+          <a class="link {% if request.path == '/network/port/' %}active{% endif %}" href="{% url 'network_port' %}">Port</a>
+        </div>
+      </div>
+
+      <!-- User -->
+      <div class="item {% if request.path|slice:':6' == '/user/' %}open{% endif %}">
+        <button type="button" data-target="userMenu">
+          <span>User</span><span class="caret">▶</span>
+        </button>
+        <div id="userMenu" class="submenu">
+          <a class="link {% if request.path == '/user/bound/' %}active{% endif %}" href="{% url 'user_bound' %}">已綁定的使用者</a>
+        </div>
+      </div>
+
+      <!-- 裝置 -->
+      <div class="item {% if request.path|slice:':9' == '/device/' %}open{% endif %}">
+        <button type="button" data-target="devMenu">
+          <span>裝置</span><span class="caret">▶</span>
+        </button>
+        <div id="devMenu" class="submenu">
+          <a class="link {% if request.path == '/device/change-password/' %}active{% endif %}" href="{% url 'device_change_password' %}">改密碼</a>
+          <a class="link {% if request.path == '/device/info/' %}active{% endif %}" href="{% url 'device_info' %}">裝置資訊</a>
+        </div>
+      </div>
     </nav>
+
+    <div class="footer">
+      <a class="logout" href="{% url 'logout' %}">登出</a>
+    </div>
   </aside>
-  <main>
-    {% block content %}{% endblock %}
+
+  <main class="content">
+    <header class="topbar">
+      <div>{% block header %}{% endblock %}</div>
+      <div></div>
+    </header>
+    <section class="container">
+      {% block content %}{% endblock %}
+    </section>
   </main>
+
+  <script>
+    // 下拉開合：切換 .open
+    document.querySelectorAll('.item > button').forEach(btn=>{
+      btn.addEventListener('click', ()=> btn.parentElement.classList.toggle('open'));
+    });
+  </script>
 </body>
 </html>

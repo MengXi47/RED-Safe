@@ -2,15 +2,29 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path("setup/", views.setup_view, name="setup"),     # 首次設定
-    path("login/", views.login_view, name="login"),     # 後續登入
-    path("logout/", views.logout_view, name="logout"),  # 登出
-
+    # 既有
+    path("setup/", views.setup_view, name="setup"),
+    path("login/", views.login_view, name="login"),
+    path("logout/", views.logout_view, name="logout"),
     path("", views.dashboard, name="dashboard"),
-    path("devices/", views.devices, name="devices"),
     path("logs/", views.logs, name="logs"),
     path("settings/", views.settings_view, name="settings"),
-    path("healthz/", views.healthz, name="healthz"),
     path("db/", views.db_overview, name="db_overview"),
-    # path("api/setupconfig/", views.api_setupconfig_list, name="api_setupconfig_list"),
+    path("api/setupconfig/", views.api_setupconfig_list, name="api_setupconfig_list"),
+
+    # 新增：Network
+    path("network/ip/", views.network_ip, name="network_ip"),
+    path("network/port/", views.network_port, name="network_port"),
+
+    # 新增：User
+    path("user/bound/", views.user_bound, name="user_bound"),
+    path("api/user/bound/", views.api_user_bound, name="api_user_bound"),
+    path("api/user/remove/<int:user_id>/", views.api_user_remove, name="api_user_remove"),
+    path("device/device_change-password/", views.device_change_password, name="device_change_password"),
+
+    # 新增：裝置
+    path("device/info/", views.device_info, name="device_info"),
+    path("api/metrics/", views.api_metrics, name="api_metrics"),
+    path("network/ip/", views.network_ip, name="network_ip"),
+    path("api/network/port/", views.api_network_port, name="api_network_port"),
 ]

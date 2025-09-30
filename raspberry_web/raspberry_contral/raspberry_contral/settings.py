@@ -131,3 +131,4 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 
 # SESSION_COOKIE_AGE = 60 * 60 * 24  # 一天 (不再使用固定天數)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # 瀏覽器關閉後自動過期
+

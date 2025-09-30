@@ -1,0 +1,47 @@
+{% extends "ui/base.html" %}
+{% block title %}Port 設定{% endblock %}
+{% block header %}網路設定 - Port{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h3>服務連接埠狀態</h3>
+  <p>偵測主機：<code id="host">127.0.0.1</code></p>
+
+  <h4>HTTP</h4>
+  <p id="httpStatus">--</p>
+
+  <h4>HTTPS</h4>
+  <p id="httpsStatus">--</p>
+
+  <h4>SSH</h4>
+  <p id="sshStatus">--</p>
+</div>
+
+<script>
+(function(){
+  function fmt(group){
+    if(!group) return "--";
+    if(group.ports && group.ports.length){
+      return (group.listening ? "已開啟於：" : "發現連接埠：") + group.ports.join(", ");
+    }
+    return group.listening ? "已開啟" : "未開啟";
+  }
+
+  async function pull(){
+    try{
+      const res = await fetch("{% url 'api_network_port' %}", {cache: "no-store"});
+      if(!res.ok) throw new Error(res.status);
+      const d = await res.json();
+      document.getElementById("host").textContent        = d.host || "127.0.0.1";
+      document.getElementById("httpStatus").textContent  = fmt(d.http);
+      document.getElementById("httpsStatus").textContent = fmt(d.https);
+      document.getElementById("sshStatus").textContent   = fmt(d.ssh);
+    }catch(e){
+      console.warn("port fetch failed:", e);
+    }
+  }
+  pull();
+  setInterval(pull, 3000); // 每 3 秒更新
+})();
+</script>
+{% endblock %}

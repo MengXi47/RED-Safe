@@ -1,0 +1,73 @@
+{% extends "ui/base.html" %}
+{% block title %}已綁定使用者{% endblock %}
+{% block header %}已綁定的使用者{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h3>使用者列表</h3>
+  <table class="table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>User Name</th>
+          <th>綁定時間</th>
+          <th>上次上線</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="user-table-body">
+        {% for user in users %}
+        <tr id="user-{{ user.id }}">
+          <td>{{ user.email }}</td>
+          <td>{{ user.user_name }}</td>
+          <td>{{ user.created_at }}</td>
+          <td>{{ user.last_seen }}</td>
+          <td>
+            <button class="btn btn-danger" onclick="removeUser({{ user.id }})">刪除</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <script>
+    function removeUser(userId) {
+        if (!confirm("確定要刪除此使用者？")) return;
+
+        fetch(`/api/user/remove/${userId}/`, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCookie("csrftoken")
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                document.getElementById(`user-${userId}`).remove();
+            } else {
+                alert("刪除失敗: " + data.message);
+            }
+        })
+        .catch(error => {
+            alert("錯誤: " + error);
+        });
+    }
+
+    // Django 取得 CSRF Token 的方法
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    </script>
+</div>
+{% endblock %}

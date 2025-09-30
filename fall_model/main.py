@@ -28,9 +28,9 @@ import sys
 
 # ===== 在程式內指定來源（攝影機 / RTSP / 影片檔） =====
 USE_RTSP: bool = False              # True 時使用 RTSP_URL；False 走 CAM_INDEX
-CAM_INDEX: int = 1                  # 只能為 0 / 1 / 2
+CAM_INDEX: int = 0                  # 只能為 0 / 1 / 2
 RTSP_URL: str | None = "rtsp://admin:@192.168.47.150:554/stream1"# e.g. "rtsp://user:pass@ip:554/Streaming/Channels/101"
-USE_VIDEO: bool = False             # True 時使用本地影片檔（demo 用）
+USE_VIDEO: bool = True             # True 時使用本地影片檔（demo 用）
 VIDEO_PATH: str | None = "fall.mp4"  # 影片檔路徑，例如 "/Users/dogmad/demo.mp4"
 
 

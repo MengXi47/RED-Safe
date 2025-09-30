@@ -1,0 +1,22 @@
+{% extends "ui/base.html" %}
+{% block title %}裝置資訊{% endblock %}
+{% block header %}裝置資訊{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:500px;">
+  <div style="margin-bottom:12px;">
+    <strong>序號：</strong> {{ info.serial }}
+  </div>
+  <div style="margin-bottom:12px;">
+    <strong>版本：</strong> {{ info.version }}
+  </div>
+  <div style="margin-bottom:12px;">
+    <strong>連接狀態：</strong>
+    {% if info.status == 1 %}
+      <span style="color:green; font-weight:bold;">True</span>
+    {% else %}
+      <span style="color:red; font-weight:bold;">False</span>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
