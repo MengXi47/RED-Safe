@@ -25,7 +25,7 @@ class ScanExecutor {
 
  private:
   // 將掃描結果轉成 JSON 字串
-  std::string BuildJson(const std::vector<DeviceInfo>& devices) const;
+  static std::string BuildJson(const std::vector<DeviceInfo>& devices) ;
 
   OnvifResponseParser parser_;
   MacResolver mac_resolver_;

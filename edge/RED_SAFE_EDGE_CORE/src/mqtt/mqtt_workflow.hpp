@@ -3,7 +3,6 @@
 #include "../core/env_setting.hpp"
 #include "http/http_client.hpp"
 #include "ipcscan/app/scan_executor.hpp"
-#include "mqtt/mqtt_traits.hpp"
 
 #include <chrono>
 
@@ -14,7 +13,6 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/steady_timer.hpp>
-#include <boost/beast/websocket.hpp>
 #include <boost/mqtt5/logger.hpp>
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/websocket_ssl.hpp>

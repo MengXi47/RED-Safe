@@ -1,14 +1,13 @@
 #include "app/iptool_application.hpp"
 
 #include <stdexcept>
-
+#include <grpcpp/server.h>
 #include <grpcpp/server_builder.h>
 
 #include "common/logging.hpp"
 #include "grpc/network_service_impl.hpp"
 
 namespace iptool::app {
-
 IpToolApplication::IpToolApplication(
     std::shared_ptr<NetworkQueryService> query_service,
     std::shared_ptr<NetworkUpdateService> update_service,
@@ -34,5 +33,4 @@ int IpToolApplication::Run() {
   LogInfo("IPtool gRPC server stopped");
   return EXIT_SUCCESS;
 }
-
-}  // namespace iptool::app
+} // namespace iptool::app

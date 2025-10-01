@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <string>
 
 #include "domain/interface_detector.hpp"
 #include "domain/network_config.hpp"

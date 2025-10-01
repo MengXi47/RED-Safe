@@ -3,6 +3,7 @@
 
 #include "common/logging.hpp"
 #include "common/time.hpp"
+#include "mqtt/mqtt_traits.hpp"
 
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -276,10 +277,9 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
 
     if (code_str == "102") {
       std::string target_str = "localhost:20002"; // gRPC server 位址
-      std::string interface_name = "en9";        // 預設查詢介面
+      std::string interface_name = "en9"; // 預設查詢介面
       NetworkServiceClient client(
-        grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials())
-      );
+          grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials()));
 
       client.GetNetworkConfig(interface_name);
       continue;

@@ -1,4 +1,4 @@
-#include "ipcscan/app/grpc_server.hpp"
+#include "grpc_server.hpp"
 
 #include "common/logging.hpp"
 #include "ipcscan/app/scan_executor.hpp"
@@ -17,15 +17,14 @@ namespace ipcscan {
 namespace {
 
 // gRPC IPCscan 實作，接收請求時同步觸發掃描
-class IpcScanServiceImpl final
-    : public ::ipcscan::grpc::IPCScanService::Service {
+class IpcScanServiceImpl final : public grpc::IPCScanService::Service {
  public:
   explicit IpcScanServiceImpl(ScanExecutor& executor) : executor_(executor) {}
 
   ::grpc::Status Scan(
       ::grpc::ServerContext*,
-      const ::ipcscan::grpc::ScanRequest*,
-      ::ipcscan::grpc::ScanResponse* response) override {
+      const grpc::ScanRequest*,
+      grpc::ScanResponse* response) override {
     LogInfo("收到 IPCscan gRPC 請求");
     try {
       std::string result = executor_.RunScan();
@@ -33,10 +32,10 @@ class IpcScanServiceImpl final
       return ::grpc::Status::OK;
     } catch (const std::exception& ex) {
       LogErrorFormat("IPCscan gRPC 執行失敗: {}", ex.what());
-      return ::grpc::Status(::grpc::StatusCode::INTERNAL, ex.what());
+      return {::grpc::StatusCode::INTERNAL, ex.what()};
     } catch (...) {
       LogError("IPCscan gRPC 執行發生未知錯誤");
-      return ::grpc::Status(::grpc::StatusCode::INTERNAL, "unknown error");
+      return {::grpc::StatusCode::INTERNAL, "unknown error"};
     }
   }
 
@@ -51,12 +50,12 @@ GrpcServerPtr StartGrpcServer(ScanExecutor& executor, int port) {
   ::grpc::EnableDefaultHealthCheckService(true);
   ::grpc::reflection::InitProtoReflectionServerBuilderPlugin();
 
-    auto service = std::make_shared<IpcScanServiceImpl>(executor);
+  auto service = std::make_shared<IpcScanServiceImpl>(executor);
 
   ::grpc::ServerBuilder builder;
   const std::string address = std::format("0.0.0.0:{}", port);
   builder.AddListeningPort(address, ::grpc::InsecureServerCredentials());
-    builder.RegisterService(service.get());
+  builder.RegisterService(service.get());
 
   auto server = builder.BuildAndStart();
   if (!server) {
@@ -66,15 +65,15 @@ GrpcServerPtr StartGrpcServer(ScanExecutor& executor, int port) {
   LogInfoFormat("IPCscan gRPC 伺服器已啟動，監聽 {}", address);
 
   auto* raw_server = server.release();
-    GrpcServerPtr guarded(raw_server, [service](::grpc::Server* s) {
-        if (s != nullptr) {
-            s->Shutdown();
-            s->Wait();
-            delete s;
-        }
-        // service shared_ptr 會在此析構保持生命週期
-        (void)service;
-    });
+  GrpcServerPtr guarded(raw_server, [service](::grpc::Server* s) {
+    if (s != nullptr) {
+      s->Shutdown();
+      s->Wait();
+      delete s;
+    }
+    // service shared_ptr 會在此析構保持生命週期
+    (void)service;
+  });
   return guarded;
 }
 

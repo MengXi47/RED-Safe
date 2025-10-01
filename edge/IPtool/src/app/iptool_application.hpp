@@ -3,8 +3,6 @@
 #include <memory>
 #include <string>
 
-#include <grpcpp/server.h>
-
 #include "app/network_query_service.hpp"
 #include "app/network_update_service.hpp"
 

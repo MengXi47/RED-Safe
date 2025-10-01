@@ -6,14 +6,12 @@ namespace ipcscan {
 
 // 建構子：設定掃描逾時並初始化依賴
 ScanExecutor::ScanExecutor(std::chrono::milliseconds timeout)
-    : parser_(),
-      mac_resolver_(),
-      scanner_(parser_, mac_resolver_),
+    : scanner_(parser_, mac_resolver_),
       timeout_(timeout) {}
 
 // 執行一次 IPC 掃描並回傳 JSON 字串
 std::string ScanExecutor::RunScan() {
-  std::lock_guard<std::mutex> lock(mutex_);
+  std::lock_guard lock(mutex_);
   WsDiscoveryClient transport(timeout_);
   auto devices = scanner_.Scan(transport);
   return BuildJson(devices);
@@ -21,7 +19,7 @@ std::string ScanExecutor::RunScan() {
 
 // 將掃描結果轉成 JSON 陣列格式
 std::string ScanExecutor::BuildJson(
-    const std::vector<DeviceInfo>& devices) const {
+    const std::vector<DeviceInfo>& devices) {
   nlohmann::json array = nlohmann::json::array();
   for (const auto& device : devices) {
     nlohmann::json entry{

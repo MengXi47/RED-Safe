@@ -1,9 +1,8 @@
 #pragma once
 
+#include "../grpc/grpc_server.hpp"
 #include "env_setting.hpp"
 #include "http/http_client.hpp"
-#include "ipcscan/app/grpc_server.hpp"
-#include "ipcscan/app/scan_executor.hpp"
 #include "mqtt/mqtt_workflow.hpp"
 
 #include <boost/asio/signal_set.hpp>
