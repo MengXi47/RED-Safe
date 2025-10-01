@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/config.hpp"
+#include "../core/env_setting.hpp"
 
 class IEdgeOnlineService {
 public:

@@ -57,7 +57,7 @@ awaitable<void> MqttWorkflow::Run() {
     co_return;
   }
 
-  auto executor = co_await boost::asio::this_coro::executor;
+  const auto executor = co_await boost::asio::this_coro::executor;
   boost::asio::co_spawn(executor, PublishHeartbeat(), boost::asio::detached);
 
   co_await ConsumeCommands();

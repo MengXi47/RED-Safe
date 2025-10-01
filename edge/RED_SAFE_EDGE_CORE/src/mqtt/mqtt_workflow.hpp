@@ -1,9 +1,9 @@
 #pragma once
 
-#include "core/config.hpp"
+#include "../core/env_setting.hpp"
 #include "http/http_client.hpp"
-#include "mqtt/mqtt_traits.hpp"
 #include "ipcscan/app/scan_executor.hpp"
+#include "mqtt/mqtt_traits.hpp"
 
 #include <chrono>
 
@@ -41,7 +41,7 @@ class MqttWorkflow {
   // 訂閱 Edge 指令 Topic
   boost::asio::awaitable<bool> SubscribeCommands();
   // 定時發佈 Edge 心跳狀態
-  boost::asio::awaitable<void> PublishHeartbeat() const;
+  [[nodiscard]] boost::asio::awaitable<void> PublishHeartbeat() const;
   // 持續處理指令 Topic 的訊息
   boost::asio::awaitable<void> ConsumeCommands();
   // 重新啟動指令心跳 watchdog
@@ -50,7 +50,7 @@ class MqttWorkflow {
   void HandleCommandTimeout(const boost::system::error_code& ec);
 
   // 建構心跳發佈的 JSON payload
-  std::string BuildHeartbeatPayload(std::uint64_t sequence) const;
+  [[nodiscard]] std::string BuildHeartbeatPayload(std::uint64_t sequence) const;
   // 建構 IPCscan 成功回傳
   static std::string BuildScanSuccess(
       const std::string& trace_id, const std::string& result_json) ;

@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.redsafe-tw</groupId>
     <artifactId>mqtt_service</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.1</version>
     <name>mqtt_service</name>
     <description>mqtt_service</description>
     <url/>

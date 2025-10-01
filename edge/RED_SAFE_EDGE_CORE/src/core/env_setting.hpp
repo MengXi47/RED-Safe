@@ -21,7 +21,7 @@ struct EdgeConfig {
 
 class ConfigLoader {
  public:
-  EdgeConfig Load() const;
+  static EdgeConfig Load();
 
  private:
   static std::string GetEnvOrDefault(

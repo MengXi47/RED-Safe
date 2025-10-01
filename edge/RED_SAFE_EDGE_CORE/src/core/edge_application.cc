@@ -49,7 +49,7 @@ int EdgeApplication::Run() {
       [workflow]() -> boost::asio::awaitable<void> {
         co_await workflow->Run();
       },
-      [](std::exception_ptr ex) {
+      [](const std::exception_ptr& ex) {
         if (ex) {
           try {
             std::rethrow_exception(ex);
