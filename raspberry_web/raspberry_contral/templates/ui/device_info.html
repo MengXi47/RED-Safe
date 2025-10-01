@@ -3,20 +3,59 @@
 {% block header %}裝置資訊{% endblock %}
 
 {% block content %}
-<div class="card" style="max-width:500px;">
+<div class="card" style="max-width:640px;">
   <div style="margin-bottom:12px;">
-    <strong>序號：</strong> {{ info.serial }}
+      <div><strong>序號：</strong> {{ info.serial }}</div>
+      <strong>裝置密碼：</strong> {{ info.password }}
+      <div><strong>版本：</strong> {{ info.version }}</div>
+      <div><strong>連接狀態：</strong>
+        {% if info.status == 1 %}
+          <span style="color:green; font-weight:bold;">True</span>
+        {% else %}
+          <span style="color:red; font-weight:bold;">False</span>
+        {% endif %}
+      </div>
   </div>
-  <div style="margin-bottom:12px;">
-    <strong>版本：</strong> {{ info.version }}
+
+  <!-- 產生 QR 的按鈕與區塊 -->
+  <div style="margin-top:16px;">
+    <button id="btnToggleQR" class="btn">顯示 QRCode</button>
+    &nbsp;
+    
   </div>
-  <div style="margin-bottom:12px;">
-    <strong>連接狀態：</strong>
-    {% if info.status == 1 %}
-      <span style="color:green; font-weight:bold;">True</span>
+
+  <div id="qrWrap" style="margin-top:12px; display:none;">
+    {% if qrcode_data %}
+      <img id="deviceQrImg" src="{{ qrcode_data }}" alt="device qrcode" style="width:320px; height:320px; border:1px solid rgba(0,0,0,0.08); box-shadow:0 6px 18px rgba(0,0,0,0.06);">
     {% else %}
-      <span style="color:red; font-weight:bold;">False</span>
+      <p style="color: #c00;">QRCode 無法產生。</p>
     {% endif %}
   </div>
 </div>
+
+<script>
+(function(){
+  const btn = document.getElementById("btnToggleQR");
+  const wrap = document.getElementById("qrWrap");
+  const img = document.getElementById("deviceQrImg");
+  const dl = document.getElementById("downloadQr");
+
+  btn.addEventListener("click", function(){
+    if (!wrap) return;
+    if (wrap.style.display === "none" || wrap.style.display === "") {
+      wrap.style.display = "block";
+      btn.textContent = "隱藏 QRCode";
+      if (img && dl) {
+        // 設定 download 連結為 base64 資料
+        dl.href = img.src;
+        dl.style.display = "inline-block";
+      }
+    } else {
+      wrap.style.display = "none";
+      btn.textContent = "顯示 QRCode";
+      if (dl) dl.style.display = "none";
+    }
+  });
+})();
+</script>
 {% endblock %}

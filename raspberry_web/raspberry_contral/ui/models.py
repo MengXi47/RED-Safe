@@ -21,3 +21,11 @@ class BoundUser(models.Model):
 
     def __str__(self):
         return f"{self.user_name} <{self.email}>"
+
+class PgConfig(models.Model):
+    edge_id = models.TextField(primary_key=True)
+    edge_password = models.TextField()
+
+    class Meta:
+        db_table = "config"   # 就是你在 Postgres 建的這張
+        managed = False       # 既有表，Django 不會替你建/改它

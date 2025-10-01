@@ -4,13 +4,18 @@ import psutil
 import subprocess
 import netifaces
 import socket
+import uuid
+import qrcode
+import io
+import base64
 from django.shortcuts import render, redirect
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.middleware.csrf import get_token
-from .models import SetupConfig, BoundUser
+from .models import SetupConfig, BoundUser, PgConfig
 from django.shortcuts import get_object_or_404
+
 
 
 SESSION_KEY = "setup_authed"
@@ -18,7 +23,25 @@ SESSION_KEY = "setup_authed"
 # 密碼規則：僅英數、至少 6 碼
 PASSWORD_REGEX = re.compile(r'^[A-Za-z0-9]{6,}$')
 
+def _edge_id() -> str:
+    """產生當前設備的 edge_id（優先用 MAC，否則用 hostname）。"""
+    try:
+        mac = uuid.getnode()
+        # 若最高位不是本機隨機位，視為真實 MAC
+        if (mac >> 40) % 2 == 0:
+            return f"edge-{mac:012x}"
+    except Exception:
+        pass
+    return f"edge-{socket.gethostname()}"
+
 def _is_configured() -> bool:
+    """優先以 PostgreSQL 的 PgConfig 判斷是否已設定；若查詢失敗則回退到 SetupConfig。"""
+    try:
+        eid = _edge_id()
+        if PgConfig.objects.filter(edge_id=eid).exists():
+            return True
+    except Exception:
+        pass
     return SetupConfig.objects.exists()
 
 def _require_auth(view_func):
@@ -63,8 +86,13 @@ def setup_view(request: HttpRequest):
             ctx["error"] = "兩次輸入不一致。"
             return render(request, "ui/setup.html", ctx)
 
-        # 直接存明碼（注意：僅限受控內網環境）
-        SetupConfig.objects.create(password_plain=pwd)
+        # 寫入 PostgreSQL 的 config 表（若已存在該 edge，則更新密碼）
+        eid = _edge_id()
+        row = PgConfig.objects.filter(edge_id=eid).first()
+        if row:
+            PgConfig.objects.filter(edge_id=eid).update(edge_password=pwd)
+        else:
+            PgConfig.objects.create(edge_id=eid, edge_password=pwd)
         request.session[SESSION_KEY] = True
         return redirect("dashboard")
 
@@ -73,23 +101,30 @@ def setup_view(request: HttpRequest):
 # ====== 登入（之後每次都走這裡） ======
 @require_http_methods(["GET", "POST"])
 def login_view(request: HttpRequest):
-    if not _is_configured():
-        return redirect("setup")
-
+    # 若改成永遠走 PG，可把 _is_configured() 這段邏輯簡化/移除
     ctx = {"csrf_token": get_token(request), "error": None}
+
     if request.method == "POST":
         pwd = (request.POST.get("password") or "").strip()
 
+        # （沿用你之前的格式檢查）
         if not PASSWORD_REGEX.fullmatch(pwd):
             ctx["error"] = "密碼格式不正確：僅能使用英文或數字，且至少 6 碼。"
             return render(request, "ui/login.html", ctx)
 
-        conf = SetupConfig.objects.first()
-        if conf and pwd == conf.password_plain:
-            request.session[SESSION_KEY] = True
-            return redirect("dashboard")
+        # ---- 核心：改用 PostgreSQL 的 config 表 ----
+        try:
+            # 以本機 edge_id 取得這台設備的設定
+            eid = _edge_id()
+            row = PgConfig.objects.filter(edge_id=eid).first()
+            if row and pwd == (row.edge_password or ""):
+                request.session[SESSION_KEY] = True
+                return redirect("dashboard")
+            else:
+                ctx["error"] = "密碼錯誤。"
+        except Exception as e:
+            ctx["error"] = f"資料庫連線/查詢失敗：{e}"
 
-        ctx["error"] = "密碼錯誤。"
     return render(request, "ui/login.html", ctx)
 
 def logout_view(request: HttpRequest):
@@ -168,6 +203,9 @@ def api_user_bound(request: HttpRequest):
     )
     items = list(qs)
     return JsonResponse({"items": items, "count": len(items)})
+
+@_require_auth
+@require_http_methods(["GET"])
 def api_network_ip(request: HttpRequest):
     """Return current network info for IP page polling."""
     ip_address = "N/A"
@@ -218,26 +256,10 @@ def network_port(request):
     # TODO: 這裡之後接埠號設定
     return render(request, "ui/network_port.html", {"port": 8000})
 
-# --- User ---
-@_require_auth
-def user_bound(request):
-    # TODO: 這裡之後接資料庫查詢已綁定使用者
-    bound_users = [
-        {"id": 1, "name": "Alice", "created_at": "2025-09-20"},
-        {"id": 2, "name": "Bob", "created_at": "2025-09-22"},
-    ]
-    return render(request, "ui/user_bound.html", {"users": bound_users})
-
 # --- 裝置 ---
 @_require_auth
 def device_change_password(request):
     return render(request, "ui/device_change_password.html")
-
-@_require_auth
-def device_info(request):
-    # TODO: 讀取你的裝置資訊（型號/序號/版本…）
-    info = {"model": "Raspberry Pi", "version": "v1.0.0", "serial": "RPi-XXXX"}
-    return render(request, "ui/device_info.html", {"info": info})
 
 @_require_auth
 @require_http_methods(["GET"])
@@ -303,19 +325,20 @@ def device_change_password(request):
         new1 = (request.POST.get("new_password1") or "").strip()
         new2 = (request.POST.get("new_password2") or "").strip()
 
-        cfg = SetupConfig.objects.first()
+        # 以本機 edge_id 定位這台設備的設定
+        eid = _edge_id()
+        row = PgConfig.objects.filter(edge_id=eid).first()
 
-        # 後端驗證（與前端規則一致，且檢查舊密碼正確性）
-        if not cfg:
-            errors["old_password"] = "尚未設定初始密碼"
-        elif old != cfg.password_plain:
+        if not row:
+            errors["old_password"] = "尚未於資料庫建立此設備的 config 記錄"
+        elif old != (row.edge_password or ""):
             errors["old_password"] = "舊密碼錯誤"
 
         if not new1:
             errors["new_password1"] = "新密碼不可為空"
         elif len(new1) < 6:
             errors["new_password1"] = "新密碼至少 6 碼"
-        elif not new1.isalnum():  # 僅英數
+        elif not new1.isalnum():
             errors["new_password1"] = "僅限英數（不可空白、符號、中文）"
 
         if not new2:
@@ -324,26 +347,82 @@ def device_change_password(request):
             errors["new_password2"] = "兩次輸入的新密碼不一致"
 
         if not errors:
-            # 1) 更新密碼
-            cfg.password_plain = new1
-            cfg.save(update_fields=["password_plain"])
-            # 2) 強制登出（清 session）
+            # 寫回 PG（這台設備）
+            PgConfig.objects.filter(edge_id=eid).update(edge_password=new1)
+
+            # 強制登出，安全起見
             request.session.flush()
-            # 3) 導回登入頁
             return redirect("login")
 
-    # GET 或驗證失敗
     return render(request, "ui/device_change_password.html", {"errors": errors})
 
+# 替換現有 device_info view 為下面版本
 @_require_auth
 def device_info(request):
-    # TODO: 之後接實際的裝置資訊（序號/版本/狀態）
+    # 若未接實際裝置資料，先使用預設（題主要求）
+    serial = "12345678"    # 預留：序號（目前固定為 12345678）
+    version = "v1.0.0"     # 預留：版本
+    status = 1             # 1 = 已連線, 0 = 未連線
+    password = "12345678"  # 預留密碼（題主要求預設為 12345678）
+
+    # QR code 內容格式（你可以按需要改格式）
+    # 我用簡單 key=value;key=value 讓掃描端能解析
+    payload = f"serial={serial};password={password}"
+
+    # 產生 QR image 至 memory buffer，轉成 base64 data URI
+    try:
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=8,
+            border=2,
+        )
+        qr.add_data(payload)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        b64 = base64.b64encode(buf.read()).decode("ascii")
+        qrcode_data = f"data:image/png;base64,{b64}"
+    except Exception as e:
+        # 如果 QR 生成失敗，避免整個頁面掛掉，回傳 None
+        qrcode_data = None
+        print("QR generation error:", e)
+
     info = {
-        "serial": "預留",       # 序號
-        "version": "預留",      # 版本
-        "status": 1,           # 1=已連線, 0=未連線
+        "serial": serial,
+        "version": version,
+        "status": status,
+        "password": password,
     }
-    return render(request, "ui/device_info.html", {"info": info})
+    return render(request, "ui/device_info.html", {"info": info, "qrcode_data": qrcode_data})
+
+
+# ====== QR Image Endpoint ======
+@_require_auth
+@require_http_methods(["GET"])
+def device_qr(request: HttpRequest):
+    serial = "12345678"
+    password = "12345678"
+    payload = f"serial={serial};password={password}"
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=8,
+        border=2,
+    )
+    qr.add_data(payload)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return HttpResponse(buf.getvalue(), content_type="image/png")
+
 # ====== API（啟用；登入保護） ======
 @_require_auth
 @require_http_methods(["GET"])
