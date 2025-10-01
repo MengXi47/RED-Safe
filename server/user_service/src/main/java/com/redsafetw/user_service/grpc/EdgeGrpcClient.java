@@ -16,6 +16,7 @@ public class EdgeGrpcClient {
      * @param edge_id edge_id
      * @return True -> 存在
      */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public boolean CheckEdgeIdExists(String edge_id) {
         CheckEdgeIdExistsRequest req = CheckEdgeIdExistsRequest.newBuilder()
                 .setEdgeId(edge_id)

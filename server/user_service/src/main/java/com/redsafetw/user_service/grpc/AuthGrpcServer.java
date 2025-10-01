@@ -3,7 +3,7 @@ package com.redsafetw.user_service.grpc;
 import com.redsafetw.user_service.service.JwtService;
 import io.grpc.stub.StreamObserver;
 import org.springframework.grpc.server.service.GrpcService;
-import com.grpc.jwt.*;
+import com.grpc.auth.*;
 
 import java.util.UUID;
 
@@ -14,7 +14,7 @@ import java.util.UUID;
  * @create 2025-09-13
  */
 @GrpcService
-public class AuthGrpcServer extends JwtServiceGrpc.JwtServiceImplBase {
+public class AuthGrpcServer extends AuthServiceGrpc.AuthServiceImplBase {
 
     /**
      * gRPC 方法實作：Check
@@ -24,9 +24,9 @@ public class AuthGrpcServer extends JwtServiceGrpc.JwtServiceImplBase {
      * @param responseObserver 用來回傳結果的 gRPC 回呼物件
      */
     @Override
-    public void check(jwtchkRequset request, StreamObserver<jwtchkResponse> responseObserver) {
+    public void checkAccessToken(accesstokenchkRequset request, StreamObserver<accesstokenchkResponse> responseObserver) {
         // 從請求中取得 JWT token
-        String token = request.getJwt();
+        String token = request.getAccesstoken();
 
         // 驗證 JWT 並取得對應的使用者 UUID
         UUID userId = JwtService.verifyAndGetUserId(token);
@@ -35,7 +35,7 @@ public class AuthGrpcServer extends JwtServiceGrpc.JwtServiceImplBase {
         boolean ok = !userId.equals(new UUID(0L, 0L));
 
         // 建立回應物件，包含驗證結果與使用者 ID
-        jwtchkResponse reply = jwtchkResponse.newBuilder()
+        accesstokenchkResponse reply = accesstokenchkResponse.newBuilder()
                 .setChk(ok)
                 .setUserId(ok ? userId.toString() : ".")
                 .build();

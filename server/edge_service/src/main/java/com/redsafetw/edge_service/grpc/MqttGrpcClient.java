@@ -2,7 +2,6 @@ package com.redsafetw.edge_service.grpc;
 
 import com.grpc.mqtt.MqttServiceGrpc;
 import com.grpc.mqtt.RegisterEdgeStatusRequest;
-import com.google.protobuf.Empty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

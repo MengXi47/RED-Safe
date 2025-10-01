@@ -16,6 +16,5 @@ import com.redsafetw.edge_service.domain.EdgeDeviceDomain;
 @Repository
 public interface EdgeRepository extends JpaRepository<EdgeDeviceDomain, String> {
     Optional<EdgeDeviceDomain> findByEdgeId(String edgeId);
-
     boolean existsByEdgeId(String edgeId);
 }

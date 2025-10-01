@@ -26,7 +26,7 @@ public class EdgeController {
     private final EdgeOnlineService edgeOnlineService;
 
     @PostMapping("/reg")
-    public EdgeRegisterResponse registerEdge(@Valid @RequestBody EdgeRegisterRequest edgeRegisterRequest) {
+    public ErrorCodeResponse registerEdge(@Valid @RequestBody EdgeRegisterRequest edgeRegisterRequest) {
         return edgeRegisterService.registerEdge(edgeRegisterRequest);
     }
 

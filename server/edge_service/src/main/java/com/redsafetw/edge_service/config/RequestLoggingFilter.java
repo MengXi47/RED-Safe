@@ -5,6 +5,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
@@ -22,9 +23,9 @@ import java.nio.charset.StandardCharsets;
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NotNull HttpServletRequest request,
+                                    @NotNull HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
         long start = System.currentTimeMillis();
         ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper(request);
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
@@ -37,8 +38,10 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             if (query != null && !query.isBlank()) {
                 path = path + '?' + query;
             }
-            String requestBody = bodyAsString(requestWrapper.getContentAsByteArray(), requestWrapper.getCharacterEncoding());
-            String responseBody = bodyAsString(responseWrapper.getContentAsByteArray(), responseWrapper.getCharacterEncoding());
+            String requestBody = bodyAsString(
+                    requestWrapper.getContentAsByteArray(), requestWrapper.getCharacterEncoding());
+            String responseBody = bodyAsString(
+                    responseWrapper.getContentAsByteArray(), responseWrapper.getCharacterEncoding());
             log.info("HTTP {} {} status={} duration={}ms request_body={} response_body={}",
                     request.getMethod(), path, responseWrapper.getStatus(), duration, requestBody, responseBody);
             responseWrapper.copyBodyToResponse();

@@ -10,11 +10,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 
+/**
+ * 邊緣裝置上線處理器
+ *
+ * @create 2025-10-01 by brian
+ */
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -28,11 +32,7 @@ public class EdgeOnlineService {
         var device = edgeRepository.findByEdgeId(request.getEdgeId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "123"));
 
-        OffsetDateTime onlineAt = request.getStartedAt() != null ? request.getStartedAt() : OffsetDateTime.now();
-        device.setLastOnlineAt(onlineAt);
-        if (StringUtils.hasText(request.getVersion())) {
-            device.setVersion(request.getVersion());
-        }
+        device.setLastOnlineAt(OffsetDateTime.now());
         edgeRepository.save(device);
 
         try {

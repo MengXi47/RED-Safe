@@ -17,13 +17,6 @@ public class EdgeOnlineRequest {
     @Pattern(regexp = "^RED-[0-9A-F]{8}$", message = "120")
     private String edgeId;
 
-    @JsonProperty("version")
-    @NotBlank(message = "145")
-    private String version;
-
-    @JsonProperty("ip")
-    private String ip;
-
     @JsonProperty("started_at")
     private OffsetDateTime startedAt;
 }

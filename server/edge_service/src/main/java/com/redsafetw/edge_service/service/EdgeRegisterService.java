@@ -1,8 +1,8 @@
 package com.redsafetw.edge_service.service;
 
 import com.redsafetw.edge_service.dto.EdgeRegisterRequest;
+import com.redsafetw.edge_service.dto.ErrorCodeResponse;
 import com.redsafetw.edge_service.repository.EdgeRepository;
-import com.redsafetw.edge_service.dto.EdgeRegisterResponse;
 import com.redsafetw.edge_service.domain.EdgeDeviceDomain;
 import com.redsafetw.edge_service.util.Argon2id;
 import jakarta.transaction.Transactional;
@@ -27,7 +27,7 @@ public class EdgeRegisterService {
     private final EdgeRepository edgeRepository;
     private static final Logger log = LoggerFactory.getLogger(EdgeRegisterService.class);
 
-    public EdgeRegisterResponse registerEdge(EdgeRegisterRequest req) {
+    public ErrorCodeResponse registerEdge(EdgeRegisterRequest req) {
         if (edgeRepository.existsByEdgeId(req.getEdgeId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "146");
         }
@@ -44,8 +44,8 @@ public class EdgeRegisterService {
         device.setLastOnlineAt(now);
         edgeRepository.save(device);
 
-        return EdgeRegisterResponse.builder()
-                .edgeId(req.getEdgeId())
+        return ErrorCodeResponse.builder()
+                .errorCode("0")
                 .build();
     }
 }

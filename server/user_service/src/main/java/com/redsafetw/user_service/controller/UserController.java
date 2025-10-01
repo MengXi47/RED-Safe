@@ -1,8 +1,10 @@
 package com.redsafetw.user_service.controller;
 
 import com.redsafetw.user_service.dto.*;
+import com.redsafetw.user_service.repository.UserEdgeBindRepository;
 import com.redsafetw.user_service.service.BindService;
 import com.redsafetw.user_service.service.EdgeCommandService;
+import com.redsafetw.user_service.service.EdgeListService;
 import com.redsafetw.user_service.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -25,6 +27,7 @@ public class UserController {
     private final BindService bindService;
     private final UserService userService;
     private final EdgeCommandService edgeCommandService;
+    private final EdgeListService edgeListService;
 
     @PostMapping("/bind")
     public BindResponse bind(
@@ -46,7 +49,7 @@ public class UserController {
     public EdgeIdListResponse  getEdgeIdList(
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
         String token = authorization.replace("Bearer ", "");
-        return userService.getEdgeIdList(token);
+        return edgeListService.getEdgeIdList(token);
     }
 
     @PostMapping("/update/edge_name")

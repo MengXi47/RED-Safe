@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
 import java.util.UUID;
 
 
@@ -29,36 +28,9 @@ import java.util.UUID;
 public class UserService {
     private final UserRepository userRepository;
     private final UserEdgeBindRepository userEdgeBindRepository;
-    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private final AuthService authService;
     private final EdgeGrpcClient edgeGrpcClient;
-
-    public EdgeIdListResponse getEdgeIdList(String accessToken) {
-
-        UUID userId = JwtService.verifyAndGetUserId(accessToken);
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("getEdgeIdList: {\"access_token\":\"{}\"} access_token 失效", accessToken);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
-
-        List<UserEdgeBindDomain> edgeBindings = userEdgeBindRepository.findByUserId(userId);
-        if (edgeBindings.isEmpty()) {
-            logger.info("getEdgeIdList: {\"user_id\":\"{}\"} edge_id 數量為 0", userId);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "136");
-        }
-
-        List<EdgeIdListResponse.EdgeItem> edges = edgeBindings.stream()
-                .map(bind -> EdgeIdListResponse.EdgeItem.builder()
-                        .edgeId(bind.getEdgeId())
-                        .displayName(bind.getDisplayName())
-                        .isOnline(bind.getIsOnline())
-                        .build())
-                .toList();
-
-        return EdgeIdListResponse.builder()
-                .edges(edges)
-                .build();
-    }
+    private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     public ErrorCodeResponse updataEdgeName(
             UpdateEdgeNameRequest updateEdgeNameRequest,
@@ -90,7 +62,6 @@ public class UserService {
         userEdgeBind.setDisplayName(updateEdgeNameRequest.getEdgeName());
         userEdgeBindRepository.save(userEdgeBind);
 
-        
 
         return ErrorCodeResponse.builder()
                 .errorCode("0")

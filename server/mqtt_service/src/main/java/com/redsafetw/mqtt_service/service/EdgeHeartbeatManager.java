@@ -58,11 +58,17 @@ public class EdgeHeartbeatManager {
     });
     private MqttAsyncClient client;
 
+    /**
+     * 啟動時呼叫，確保 MQTT client 已連線。
+     */
     @PostConstruct
     public void start() throws MqttException {
         connectIfNecessary();
     }
 
+    /**
+     * 關閉時呼叫，斷開 MQTT 連線並停止相關排程。
+     */
     @PreDestroy
     public void shutdown() {
         if (client != null) {
@@ -78,6 +84,11 @@ public class EdgeHeartbeatManager {
         watchdogScheduler.shutdownNow();
     }
 
+    /**
+     * 註冊一個 Edge，訂閱其心跳與資料主題，並啟動心跳監控與定期 Ping。
+     * @param edgeId Edge 的 ID
+     * @throws MqttException MQTT 相關異常
+     */
     public void registerEdge(String edgeId) throws MqttException {
         connectIfNecessary();
         validateEdgeId(edgeId);
@@ -96,12 +107,20 @@ public class EdgeHeartbeatManager {
         ensurePingScheduled(edgeId);
     }
 
+    /**
+     * 驗證 Edge ID 格式是否符合 RED-[0-9A-F]{8}。
+     * @param edgeId Edge 的 ID
+     */
     private void validateEdgeId(String edgeId) {
         if (!EDGE_ID_PATTERN.matcher(edgeId).matches()) {
             throw new IllegalArgumentException("edge_id must match pattern RED-[0-9A-F]{8}");
         }
     }
 
+    /**
+     * 若尚未連線，建立並連線 MQTT client。
+     * @throws MqttException MQTT 相關異常
+     */
     private synchronized void connectIfNecessary() throws MqttException {
         if (client != null && client.isConnected()) {
             return;
@@ -117,6 +136,10 @@ public class EdgeHeartbeatManager {
         }
     }
 
+    /**
+     * 建立 MQTT 連線選項。
+     * @return MQTT 連線選項物件
+     */
     private MqttConnectionOptions buildOptions() {
         MqttConnectionOptions options = new MqttConnectionOptions();
         options.setServerURIs(new String[]{mqttProperties.getUri()});
@@ -131,25 +154,44 @@ public class EdgeHeartbeatManager {
         return options;
     }
 
+    /**
+     * 取得 Edge 狀態主題名稱。
+     * @param edgeId Edge 的 ID
+     * @return 狀態主題字串
+     */
     private String statusTopic(String edgeId) {
         return edgeId + "/status";
     }
 
+    /**
+     * 取得 Edge 資料主題名稱。
+     * @param edgeId Edge 的 ID
+     * @return 資料主題字串
+     */
     private String dataTopic(String edgeId) {
         return edgeId + "/data";
     }
 
     private final class HeartbeatCallback implements MqttCallback {
+        /**
+         * 當 MQTT 連線斷開時呼叫，紀錄斷線原因。
+         */
         @Override
         public void disconnected(MqttDisconnectResponse disconnectResponse) {
             log.warn("Heartbeat MQTT client disconnected: {}", disconnectResponse.getReasonString());
         }
 
+        /**
+         * 當 MQTT 發生錯誤時呼叫，紀錄錯誤資訊。
+         */
         @Override
         public void mqttErrorOccurred(MqttException exception) {
             log.error("Heartbeat MQTT client error", exception);
         }
 
+        /**
+         * 當接收到 MQTT 訊息時呼叫，處理心跳與資料訊息。
+         */
         @Override
         public void messageArrived(String topic, MqttMessage message) {
             try {
@@ -161,8 +203,12 @@ public class EdgeHeartbeatManager {
                     armHeartbeatWatchdog(edgeId);
                     ensurePingScheduled(edgeId);
                 } else if (topic.endsWith("/data")) {
+
+
                     // TODO: Persist edge data payload once downstream pipeline is ready.
                     log.info("Edge data received. edge_id={} payload={}", edgeId, payload);
+
+
                 } else {
                     log.debug("Received message on unexpected topic {} payload={}", topic, payload);
                 }
@@ -171,11 +217,17 @@ public class EdgeHeartbeatManager {
             }
         }
 
+        /**
+         * 當訊息發佈完成時呼叫，本實作不使用此方法。
+         */
         @Override
         public void deliveryComplete(org.eclipse.paho.mqttv5.client.IMqttToken token) {
             // No-op, we do not publish via this client.
         }
 
+        /**
+         * 當 MQTT 連線成功建立或重新連線時呼叫，重新訂閱已訂閱主題並重置監控。
+         */
         @Override
         public void connectComplete(boolean reconnect, String serverURI) {
             log.info("Heartbeat MQTT connection {} to {}", reconnect ? "reconnected" : "connected", serverURI);
@@ -195,12 +247,20 @@ public class EdgeHeartbeatManager {
             }
         }
 
+        /**
+         * 當認證封包抵達時呼叫，本實作不使用此方法。
+         */
         @Override
         public void authPacketArrived(int reasonCode, org.eclipse.paho.mqttv5.common.packet.MqttProperties properties) {
             // No-op
         }
     }
 
+    /**
+     * 將接收到的心跳訊息存入 Redis，並加入接收時間。
+     * @param edgeId Edge 的 ID
+     * @param payload 心跳訊息內容
+     */
     private void storeHeartbeat(String edgeId, String payload) {
         try {
             JsonNode node = objectMapper.readTree(payload);
@@ -212,7 +272,7 @@ public class EdgeHeartbeatManager {
                 objectNode.put("raw", payload);
             }
             objectNode.put("edge_id", edgeId);
-            objectNode.with("meta").put("received_at", OffsetDateTime.now().toString());
+            objectNode.putObject("meta").put("received_at", OffsetDateTime.now().toString());
             redisTemplate.opsForValue().set(redisKey(edgeId), objectNode.toString(), HEARTBEAT_TTL);
         } catch (Exception ex) {
             log.warn("Invalid heartbeat payload for edge {}: {}", edgeId, payload, ex);
@@ -224,10 +284,20 @@ public class EdgeHeartbeatManager {
         }
     }
 
+    /**
+     * 取得 Redis 中存放心跳資料的 key。
+     * @param edgeId Edge 的 ID
+     * @return Redis key 字串
+     */
     private String redisKey(String edgeId) {
         return "edge:heartbeat:" + edgeId;
     }
 
+    /**
+     * 從 MQTT 主題字串中擷取 Edge ID。
+     * @param topic MQTT 主題字串
+     * @return Edge ID
+     */
     private String extractEdgeId(String topic) {
         int slashIndex = topic.indexOf('/');
         if (slashIndex > 0) {
@@ -236,6 +306,10 @@ public class EdgeHeartbeatManager {
         return topic;
     }
 
+    /**
+     * 啟動或重置 Edge 心跳逾時的 watchdog 計時器。
+     * @param edgeId Edge 的 ID
+     */
     private void armHeartbeatWatchdog(String edgeId) {
         ScheduledFuture<?> existing = heartbeatWatchdogs.remove(edgeId);
         if (existing != null) {
@@ -247,6 +321,10 @@ public class EdgeHeartbeatManager {
         heartbeatWatchdogs.put(edgeId, future);
     }
 
+    /**
+     * 處理 Edge 心跳逾時，取消訂閱並停止 ping 任務。
+     * @param edgeId Edge 的 ID
+     */
     private void handleHeartbeatTimeout(String edgeId) {
         String statusTopic = statusTopic(edgeId);
         heartbeatWatchdogs.remove(edgeId);
@@ -275,6 +353,10 @@ public class EdgeHeartbeatManager {
         cancelPing(edgeId);
     }
 
+    /**
+     * 確保對指定 Edge 有定期執行的 ping 任務。
+     * @param edgeId Edge 的 ID
+     */
     private void ensurePingScheduled(String edgeId) {
         // 確保每個 edge 只有一個固定頻率的 ping 任務
         pingTasks.computeIfAbsent(edgeId, id -> watchdogScheduler.scheduleAtFixedRate(
@@ -285,6 +367,10 @@ public class EdgeHeartbeatManager {
         ));
     }
 
+    /**
+     * 取消指定 Edge 的定期 ping 任務。
+     * @param edgeId Edge 的 ID
+     */
     private void cancelPing(String edgeId) {
         ScheduledFuture<?> existing = pingTasks.remove(edgeId);
         if (existing != null) {
@@ -292,6 +378,10 @@ public class EdgeHeartbeatManager {
         }
     }
 
+    /**
+     * 發送心跳 Ping 指令 (code=100) 到指定 Edge。
+     * @param edgeId Edge 的 ID
+     */
     private void sendPing(String edgeId) {
         try {
             String traceId = UUID.randomUUID().toString();
