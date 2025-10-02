@@ -1,27 +1,28 @@
-# ui/views.py
-import re
-import psutil
-import subprocess
-import netifaces
-import socket
-import uuid
-import qrcode
-import io
+"""UI 應用的主要視圖與 API。"""
+
 import base64
-import json
+import io
+import re
+import subprocess
+
+import netifaces
+import psutil
+import qrcode
 import requests
 from django.conf import settings
-from django.shortcuts import render, redirect
 from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.middleware.csrf import get_token
+from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.middleware.csrf import get_token
-from .models import SetupConfig, BoundUser, PgConfig
-from django.shortcuts import get_object_or_404
+
+from .models import EdgeConfig
 
 
 def show_users(request):
-    rows = PgConfig.objects.all()
+    """顯示 config 表中的所有資料列供前端檢視。"""
+
+    rows = EdgeConfig.objects.all()
     return render(request, "ui/users.html", {"rows": rows})
 
 
@@ -30,49 +31,43 @@ SESSION_KEY = "setup_authed"
 # 密碼規則：僅英數、至少 6 碼
 PASSWORD_REGEX = re.compile(r'^[A-Za-z0-9]{6,}$')
 
-def _edge_id() -> str:
-    """產生當前設備的 edge_id（優先用 MAC，否則用 hostname）。"""
-    try:
-        mac = uuid.getnode()
-        # 若最高位不是本機隨機位，視為真實 MAC
-        if (mac >> 40) % 2 == 0:
-            return f"edge-{mac:012x}"
-    except Exception:
-        pass
-    return f"edge-{socket.gethostname()}"
+DEFAULT_EDGE_VERSION = getattr(settings, "EDGE_VERSION", "1.0.0")
 
-def _edge_id_remote() -> str:
-    """將本機識別轉為遠端 API 期望的 RED-XXXXXXXX 格式（8位十六進位大寫）。"""
-    try:
-        mac = uuid.getnode()
-        if (mac >> 40) % 2 == 0:
-            return f"^RED-[0-9A-F]{8}$"
-    except Exception:
-        pass
-    return f"RED-{socket.gethostname().replace('-', '').upper()}"
+def _get_edge_config() -> EdgeConfig | None:
+    """取得唯一一筆 edge 設定資料。"""
+
+    return EdgeConfig.objects.first()
+
+
+def _edge_id() -> str:
+    """從 config 表讀出 edge_id，若不存在則回傳預設值。"""
+
+    config = _get_edge_config()
+    return config.edge_id if config else "RED-UNKNOWN"
+
 
 def _is_configured() -> bool:
-    """優先以 PostgreSQL 的 PgConfig 判斷是否已設定；若查詢失敗則回退到 SetupConfig。"""
-    try:
-        eid = _edge_id()
-        if PgConfig.objects.filter(edge_id=eid).exists():
-            return True
-    except Exception:
-        pass
-    return SetupConfig.objects.exists()
+    """檢查 config 表中的密碼是否已設定完成。"""
+
+    config = _get_edge_config()
+    return bool(config and config.edge_password)
 
 def _require_auth(view_func):
-    """尚未設定 → /setup/；未登入 → /login/"""
+    """登入保護裝飾器：未設定導向 setup，未登入導向 login。"""
+
     def wrapper(request: HttpRequest, *args, **kwargs):
         if not _is_configured():
             return redirect("setup")
         if not request.session.get(SESSION_KEY):
             return redirect("login")
         return view_func(request, *args, **kwargs)
+
     return wrapper
 
+
 def _pi_temperature() -> str:
-    """Read Raspberry Pi CPU temperature as a string like '52.1°C', or 'N/A'."""
+    """讀取樹莓派 CPU 溫度；失敗時回傳 N/A。"""
+
     try:
         out = subprocess.check_output(["vcgencmd", "measure_temp"]).decode()
         return out.replace("temp=", "").replace("'C", "°C").strip()
@@ -83,18 +78,23 @@ def _pi_temperature() -> str:
         except Exception:
             return "N/A"
 
-# ====== 首次設定（只在未設定時可用） ======
 @require_http_methods(["GET", "POST"])
 def setup_view(request: HttpRequest):
+    """首次設定裝置密碼並向遠端註冊裝置。"""
+
     if _is_configured():
         return redirect("login")
 
     ctx = {"csrf_token": get_token(request), "error": None}
+    config = _get_edge_config()
+    if not config:
+        ctx["error"] = "資料庫缺少 config 設定，請聯絡管理員。"
+        return render(request, "ui/setup.html", ctx)
+
     if request.method == "POST":
         pwd = (request.POST.get("password") or "").strip()
         confirm = (request.POST.get("confirm") or "").strip()
 
-        # 後端驗證（防繞過前端）
         if not PASSWORD_REGEX.fullmatch(pwd):
             ctx["error"] = "密碼需至少 6 碼，且僅能使用英文或數字（不可空白、中文或符號）。"
             return render(request, "ui/setup.html", ctx)
@@ -103,81 +103,109 @@ def setup_view(request: HttpRequest):
             ctx["error"] = "兩次輸入不一致。"
             return render(request, "ui/setup.html", ctx)
 
-        # 寫入 PostgreSQL 的 config 表（若已存在該 edge，則更新密碼）
-        eid = _edge_id()
-        row = PgConfig.objects.filter(edge_id=eid).first()
-        if row:
-            PgConfig.objects.filter(edge_id=eid).update(edge_password=pwd)
-        else:
-            PgConfig.objects.create(edge_id=eid, edge_password=pwd)
-        request.session[SESSION_KEY] = True
-        return redirect("dashboard")
+        config.edge_password = pwd
+        config.save(update_fields=["edge_password"])
+
+        base = getattr(settings, "REMOTE_API_BASE", "https://api.redsafe-tw.com").rstrip("/")
+        url = base + "/edge/reg"
+        timeout = getattr(settings, "REMOTE_API_TIMEOUT", 5)
+        payload = {
+            "edge_id": config.edge_id,
+            "edge_password": pwd,
+            "version": DEFAULT_EDGE_VERSION,
+        }
+        try:
+            resp = requests.post(url, json=payload, timeout=timeout)
+            data = {}
+            try:
+                data = resp.json()
+            except Exception:
+                pass
+            if resp.status_code == 200 and data.get("edge_id") == config.edge_id:
+                request.session[SESSION_KEY] = True
+                return redirect("dashboard")
+            ctx["error"] = f"遠端註冊失敗：HTTP {resp.status_code} 回應 {data}"
+        except requests.RequestException as exc:
+            ctx["error"] = f"遠端註冊連線失敗：{exc}"
 
     return render(request, "ui/setup.html", ctx)
 
-# ====== 登入（之後每次都走這裡） ======
+
 @require_http_methods(["GET", "POST"])
 def login_view(request: HttpRequest):
-    # 若改成永遠走 PG，可把 _is_configured() 這段邏輯簡化/移除
+    """驗證輸入密碼是否與 config 表一致後登入。"""
+
     ctx = {"csrf_token": get_token(request), "error": None}
+    config = _get_edge_config()
+    if not config:
+        ctx["error"] = "資料庫缺少 config 設定，請聯絡管理員。"
+        return render(request, "ui/login.html", ctx)
 
     if request.method == "POST":
         pwd = (request.POST.get("password") or "").strip()
 
-        # （沿用你之前的格式檢查）
         if not PASSWORD_REGEX.fullmatch(pwd):
             ctx["error"] = "密碼格式不正確：僅能使用英文或數字，且至少 6 碼。"
             return render(request, "ui/login.html", ctx)
 
-        # ---- 核心：改用 PostgreSQL 的 config 表 ----
-        try:
-            # 以本機 edge_id 取得這台設備的設定
-            eid = _edge_id()
-            row = PgConfig.objects.filter(edge_id=eid).first()
-            if row and pwd == (row.edge_password or ""):
-                request.session[SESSION_KEY] = True
-                return redirect("dashboard")
-            else:
-                ctx["error"] = "密碼錯誤。"
-        except Exception as e:
-            ctx["error"] = f"資料庫連線/查詢失敗：{e}"
+        if pwd == (config.edge_password or ""):
+            request.session[SESSION_KEY] = True
+            return redirect("dashboard")
+
+        ctx["error"] = "密碼錯誤。"
 
     return render(request, "ui/login.html", ctx)
 
+
 def logout_view(request: HttpRequest):
-    """登出並回到 /login/"""
+    """登出並回到登入頁面。"""
+
     request.session.pop(SESSION_KEY, None)
     return redirect("login")
 
 # ====== 受保護頁面 ======
 @_require_auth
 def dashboard(request: HttpRequest):
+    """顯示儀表板頁面。"""
+
     return render(request, "ui/dashboard.html")
 
 @_require_auth
 def devices(request: HttpRequest):
+    """顯示裝置資訊頁面。"""
+
     return render(request, "ui/devices.html")
 
 @_require_auth
 def logs(request: HttpRequest):
+    """顯示日誌頁面。"""
+
     return render(request, "ui/logs.html")
 
 @_require_auth
 def settings_view(request: HttpRequest):
+    """顯示設定頁面。"""
+
     return render(request, "ui/settings.html")
 
 def healthz(request: HttpRequest):
+    """供健康檢查使用的簡單回應。"""
+
     return HttpResponse("ok")
 
 # ====== 資料庫概覽頁（含表頭） ======
 @_require_auth
 def db_overview(request: HttpRequest):
-    rows = SetupConfig.objects.all().order_by("-id")
+    """展示 config 表中的資料內容。"""
+
+    rows = EdgeConfig.objects.all()
     return render(request, "ui/db_overview.html", {"rows": rows})
 
 # --- Network ---
 @_require_auth
 def network_ip(request):
+    """顯示目前的網路介面與 IP 資訊。"""
+
     ip_address = "N/A"
     netmask = "N/A"
     gateway = "N/A"
@@ -186,7 +214,11 @@ def network_ip(request):
     try:
         # 取預設網路介面（通常是 eth0 或 wlan0）
         gws = netifaces.gateways()
-        default_iface = gws['default'][netifaces.AF_INET][1] if 'default' in gws and netifaces.AF_INET in gws['default'] else None
+        default_iface = (
+            gws['default'][netifaces.AF_INET][1]
+            if 'default' in gws and netifaces.AF_INET in gws['default']
+            else None
+        )
 
         if default_iface:
             addrs = netifaces.ifaddresses(default_iface)
@@ -214,17 +246,14 @@ def network_ip(request):
 @_require_auth
 @require_http_methods(["GET"])
 def api_user_bound(request: HttpRequest):
-    """回傳已綁定使用者清單，給前端表格輪詢用。"""
-    qs = BoundUser.objects.all().order_by("-created_at").values(
-        "id", "email", "user_name", "created_at", "last_seen"
-    )
-    items = list(qs)
-    return JsonResponse({"items": items, "count": len(items)})
+    """回傳綁定使用者清單，目前未提供資料則回傳空集合。"""
+
+    return JsonResponse({"items": [], "count": 0})
 
 @_require_auth
 @require_http_methods(["GET"])
 def api_network_ip(request: HttpRequest):
-    """Return current network info for IP page polling."""
+    """提供 IP 頁面輪詢用的即時網路資訊。"""
     ip_address = "N/A"
     netmask = "N/A"
     gateway = "N/A"
@@ -260,17 +289,17 @@ def api_network_ip(request: HttpRequest):
 @_require_auth
 @require_http_methods(["POST"])
 def api_user_remove(request, user_id):
-    """刪除已綁定的使用者"""
-    try:
-        user = get_object_or_404(BoundUser, id=user_id)
-        user.delete()
-        return JsonResponse({"status": "success"})
-    except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    """目前未支援刪除綁定使用者，統一回傳錯誤。"""
+
+    return JsonResponse(
+        {"status": "error", "message": "目前未支援綁定使用者管理"},
+        status=400,
+    )
 
 @_require_auth
 def network_port(request):
-    # TODO: 這裡之後接埠號設定
+    """顯示埠號資訊頁面，預留未來擴充。"""
+
     return render(request, "ui/network_port.html", {"port": 8000})
 
 # --- 裝置 ---
@@ -279,19 +308,19 @@ def network_port(request):
 @_require_auth
 @require_http_methods(["GET", "POST"])
 def device_change_password(request):
-    errors = {}
-    if request.method == "POST":
+    """變更裝置密碼並同步更新遠端伺服器。"""
+
+    errors: dict[str, str] = {}
+    config = _get_edge_config()
+
+    if not config:
+        errors["old_password"] = "資料庫缺少 config 設定，請聯絡管理員。"
+    elif request.method == "POST":
         old = (request.POST.get("old_password") or "").strip()
         new1 = (request.POST.get("new_password1") or "").strip()
         new2 = (request.POST.get("new_password2") or "").strip()
 
-        # 以本機 edge_id 定位這台設備的設定
-        eid = "RED-AAAAAAAA"
-        row = PgConfig.objects.filter(edge_id=eid).first()
-
-        if not row:
-            errors["old_password"] = "尚未於資料庫建立此設備的 config 記錄"
-        elif old != (row.edge_password or ""):
+        if old != (config.edge_password or ""):
             errors["old_password"] = "舊密碼錯誤"
 
         if not new1:
@@ -307,42 +336,38 @@ def device_change_password(request):
             errors["new_password2"] = "兩次輸入的新密碼不一致"
 
         if not errors:
-            # 直接呼叫遠端 API：POST /edge/update/edge_password
             base = getattr(settings, "REMOTE_API_BASE", "https://api.redsafe-tw.com").rstrip("/")
             url = base + "/edge/update/edge_password"
             timeout = getattr(settings, "REMOTE_API_TIMEOUT", 5)
             payload = {
-                "edge_id": "RED-AAAAAAAA",
+                "edge_id": config.edge_id,
                 "edge_password": old,
                 "new_edge_password": new1,
             }
             try:
-                resp = requests.post(
-                    url,
-                    json=payload,
-                    headers={"Content-Type": "application/json"},
-                    timeout=timeout,
-                )
+                resp = requests.post(url, json=payload, timeout=timeout)
                 data = {}
                 try:
                     data = resp.json()
                 except Exception:
                     pass
                 if resp.status_code == 200 and str(data.get("error_code")) == "0":
-                    # 成功 → 強制登出，回登入頁
+                    config.edge_password = new1
+                    config.save(update_fields=["edge_password"])
                     request.session.flush()
                     return redirect("login")
-                else:
-                    errors["new_password2"] = f"遠端更新失敗：HTTP {resp.status_code} code={data.get('error_code')}"
-            except requests.RequestException as e:
-                errors["new_password2"] = f"遠端連線失敗：{e}"
+                errors["new_password2"] = (
+                    f"遠端更新失敗：HTTP {resp.status_code} code={data.get('error_code')}"
+                )
+            except requests.RequestException as exc:
+                errors["new_password2"] = f"遠端連線失敗：{exc}"
 
     return render(request, "ui/device_change_password.html", {"errors": errors})
 
 @_require_auth
 @require_http_methods(["GET"])
 def api_metrics(request: HttpRequest):
-    """Return live system metrics for the dashboard (polled by front-end)."""
+    """提供儀表板輪詢用的即時系統資源資訊。"""
     cpu_percent = psutil.cpu_percent(interval=0.3)
 
     mem = psutil.virtual_memory()
@@ -390,13 +415,16 @@ def api_network_port(request: HttpRequest):
 
 @_require_auth
 def user_bound(request):
-    users = BoundUser.objects.all().order_by("-created_at")
-    return render(request, "ui/user_bound.html", {"users": users})
+    """顯示綁定使用者頁面，目前以空清單呈現。"""
+
+    return render(request, "ui/user_bound.html", {"users": []})
 
 
 # 替換現有 device_info view 為下面版本
 @_require_auth
 def device_info(request):
+    """顯示裝置基本資訊與預設 QR Code。"""
+
     # 若未接實際裝置資料，先使用預設（題主要求）
     serial = "12345678"    # 預留：序號（目前固定為 12345678）
     version = "v1.0.0"     # 預留：版本
@@ -442,6 +470,8 @@ def device_info(request):
 @_require_auth
 @require_http_methods(["GET"])
 def device_qr(request: HttpRequest):
+    """產生裝置資訊的 QR Code 影像。"""
+
     serial = "12345678"
     password = "12345678"
     payload = f"serial={serial};password={password}"
@@ -465,13 +495,7 @@ def device_qr(request: HttpRequest):
 @_require_auth
 @require_http_methods(["GET"])
 def api_setupconfig_list(request: HttpRequest):
-    """
-    回傳 SetupConfig 清單（示範用）
-    正式上線請視需要再加白名單 / Token。
-    """
-    data = list(
-        SetupConfig.objects.all()
-        .order_by("-id")
-        .values("id", "password_plain", "created_at")
-    )
+    """示範回傳 config 表資料內容供前端檢視。"""
+
+    data = list(EdgeConfig.objects.all().values("edge_id", "edge_password"))
     return JsonResponse({"items": data, "count": len(data)})
