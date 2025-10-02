@@ -8,6 +8,9 @@ import uuid
 import qrcode
 import io
 import base64
+import json
+import requests
+from django.conf import settings
 from django.shortcuts import render, redirect
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -16,6 +19,10 @@ from django.middleware.csrf import get_token
 from .models import SetupConfig, BoundUser, PgConfig
 from django.shortcuts import get_object_or_404
 
+
+def show_users(request):
+    rows = PgConfig.objects.all()
+    return render(request, "ui/users.html", {"rows": rows})
 
 
 SESSION_KEY = "setup_authed"
@@ -33,6 +40,16 @@ def _edge_id() -> str:
     except Exception:
         pass
     return f"edge-{socket.gethostname()}"
+
+def _edge_id_remote() -> str:
+    """將本機識別轉為遠端 API 期望的 RED-XXXXXXXX 格式（8位十六進位大寫）。"""
+    try:
+        mac = uuid.getnode()
+        if (mac >> 40) % 2 == 0:
+            return f"^RED-[0-9A-F]{8}$"
+    except Exception:
+        pass
+    return f"RED-{socket.gethostname().replace('-', '').upper()}"
 
 def _is_configured() -> bool:
     """優先以 PostgreSQL 的 PgConfig 判斷是否已設定；若查詢失敗則回退到 SetupConfig。"""
@@ -257,9 +274,70 @@ def network_port(request):
     return render(request, "ui/network_port.html", {"port": 8000})
 
 # --- 裝置 ---
+
+
 @_require_auth
+@require_http_methods(["GET", "POST"])
 def device_change_password(request):
-    return render(request, "ui/device_change_password.html")
+    errors = {}
+    if request.method == "POST":
+        old = (request.POST.get("old_password") or "").strip()
+        new1 = (request.POST.get("new_password1") or "").strip()
+        new2 = (request.POST.get("new_password2") or "").strip()
+
+        # 以本機 edge_id 定位這台設備的設定
+        eid = "RED-AAAAAAAA"
+        row = PgConfig.objects.filter(edge_id=eid).first()
+
+        if not row:
+            errors["old_password"] = "尚未於資料庫建立此設備的 config 記錄"
+        elif old != (row.edge_password or ""):
+            errors["old_password"] = "舊密碼錯誤"
+
+        if not new1:
+            errors["new_password1"] = "新密碼不可為空"
+        elif len(new1) < 6:
+            errors["new_password1"] = "新密碼至少 6 碼"
+        elif not new1.isalnum():
+            errors["new_password1"] = "僅限英數（不可空白、符號、中文）"
+
+        if not new2:
+            errors["new_password2"] = "請再次輸入新密碼"
+        elif new1 and new1 != new2:
+            errors["new_password2"] = "兩次輸入的新密碼不一致"
+
+        if not errors:
+            # 直接呼叫遠端 API：POST /edge/update/edge_password
+            base = getattr(settings, "REMOTE_API_BASE", "https://api.redsafe-tw.com").rstrip("/")
+            url = base + "/edge/update/edge_password"
+            timeout = getattr(settings, "REMOTE_API_TIMEOUT", 5)
+            payload = {
+                "edge_id": "RED-AAAAAAAA",
+                "edge_password": old,
+                "new_edge_password": new1,
+            }
+            try:
+                resp = requests.post(
+                    url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=timeout,
+                )
+                data = {}
+                try:
+                    data = resp.json()
+                except Exception:
+                    pass
+                if resp.status_code == 200 and str(data.get("error_code")) == "0":
+                    # 成功 → 強制登出，回登入頁
+                    request.session.flush()
+                    return redirect("login")
+                else:
+                    errors["new_password2"] = f"遠端更新失敗：HTTP {resp.status_code} code={data.get('error_code')}"
+            except requests.RequestException as e:
+                errors["new_password2"] = f"遠端連線失敗：{e}"
+
+    return render(request, "ui/device_change_password.html", {"errors": errors})
 
 @_require_auth
 @require_http_methods(["GET"])
@@ -315,46 +393,6 @@ def user_bound(request):
     users = BoundUser.objects.all().order_by("-created_at")
     return render(request, "ui/user_bound.html", {"users": users})
 
-
-@_require_auth
-@require_http_methods(["GET", "POST"])
-def device_change_password(request):
-    errors = {}
-    if request.method == "POST":
-        old = (request.POST.get("old_password") or "").strip()
-        new1 = (request.POST.get("new_password1") or "").strip()
-        new2 = (request.POST.get("new_password2") or "").strip()
-
-        # 以本機 edge_id 定位這台設備的設定
-        eid = _edge_id()
-        row = PgConfig.objects.filter(edge_id=eid).first()
-
-        if not row:
-            errors["old_password"] = "尚未於資料庫建立此設備的 config 記錄"
-        elif old != (row.edge_password or ""):
-            errors["old_password"] = "舊密碼錯誤"
-
-        if not new1:
-            errors["new_password1"] = "新密碼不可為空"
-        elif len(new1) < 6:
-            errors["new_password1"] = "新密碼至少 6 碼"
-        elif not new1.isalnum():
-            errors["new_password1"] = "僅限英數（不可空白、符號、中文）"
-
-        if not new2:
-            errors["new_password2"] = "請再次輸入新密碼"
-        elif new1 and new1 != new2:
-            errors["new_password2"] = "兩次輸入的新密碼不一致"
-
-        if not errors:
-            # 寫回 PG（這台設備）
-            PgConfig.objects.filter(edge_id=eid).update(edge_password=new1)
-
-            # 強制登出，安全起見
-            request.session.flush()
-            return redirect("login")
-
-    return render(request, "ui/device_change_password.html", {"errors": errors})
 
 # 替換現有 device_info view 為下面版本
 @_require_auth

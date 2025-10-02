@@ -73,7 +73,6 @@ WSGI_APPLICATION = "raspberry_contral.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# settings.py
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -85,6 +84,8 @@ DATABASES = {
     }
 }
 
+REMOTE_API_BASE = "https://api.redsafe-tw.com"
+REMOTE_API_TIMEOUT = 5
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
