@@ -373,6 +373,16 @@ private struct BindEdgeSheet: View {
     @State private var displayName = ""
     @State private var edgePassword = ""
 
+    @State private var showScanner = false
+    @State private var showPhotoPicker = false
+    @State private var torchOn = false
+    @State private var showPermissionAlert = false
+    @State private var permissionAlertMessage = ""
+
+    // 正規表達式：擷取 Edge ID 與密碼
+    private let edgeIdRegex = try! NSRegularExpression(pattern: "RED-[A-F0-9]{8}")
+    private let passwordRegex = try! NSRegularExpression(pattern: "(?:(?:PWD|PASS|PASSWORD)[:=]\\s*)([^\\n\\r\\t ]{1,64})", options: [.caseInsensitive])
+
     var onSubmit: (String, String, String) -> Void
 
     private var normalizedEdgeId: String { edgeId.trimmed.uppercased() }
@@ -383,10 +393,82 @@ private struct BindEdgeSheet: View {
     private var isNameValid: Bool { !displayName.trimmed.isEmpty && displayName.trimmed.count <= 16 }
     private var isFormValid: Bool { isEdgeIdValid && isNameValid && !edgePassword.trimmed.isEmpty }
 
+    // 從QR字串自動帶入欄位
+    private func autofill(from payload: String) {
+        let fullRange = NSRange(location: 0, length: (payload as NSString).length)
+        if let idMatch = edgeIdRegex.firstMatch(in: payload, options: [], range: fullRange) {
+            if let range = Range(idMatch.range, in: payload) {
+                edgeId = String(payload[range])
+            }
+        }
+        if let passMatch = passwordRegex.firstMatch(in: payload, options: [], range: fullRange) {
+            if passMatch.numberOfRanges > 1, let range = Range(passMatch.range(at: 1), in: payload) {
+                edgePassword = String(payload[range])
+            }
+        }
+        // 若字串只包含 Edge ID (無密碼)，也盡量抓出
+        if edgePassword.isEmpty {
+            // 嘗試用逗號或換行分割並找像密碼的片段
+            let parts = payload.replacingOccurrences(of: "\r", with: "").components(separatedBy: CharacterSet(charactersIn: ",\n\t "))
+            if let candidate = parts.first(where: { !$0.isEmpty && !$0.uppercased().hasPrefix("RED-") }) {
+                edgePassword = candidate
+            }
+        }
+    }
+
+    // 要求相機權限後再開啟掃描
+    private func ensureCameraAuthorized(then action: @escaping () -> Void) {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            action()
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                DispatchQueue.main.async {
+                    if granted { action() }
+                    else {
+                        permissionAlertMessage = "沒有相機權限，無法進行掃描。請到「設定 > 隱私權 > 相機」開啟。"
+                        showPermissionAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            permissionAlertMessage = "沒有相機權限，無法進行掃描。請到「設定 > 隱私權 > 相機」開啟。"
+            showPermissionAlert = true
+        @unknown default:
+            permissionAlertMessage = "相機權限狀態未知，請稍後再試。"
+            showPermissionAlert = true
+        }
+    }
+
+    // （可選）檢查相簿權限；使用 PHPicker 一般不需權限，但有些機型/配置可能要求
+    private func ensurePhotoAuthorized(then action: @escaping () -> Void) {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        switch status {
+        case .authorized, .limited:
+            action()
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                DispatchQueue.main.async {
+                    if newStatus == .authorized || newStatus == .limited { action() }
+                    else {
+                        permissionAlertMessage = "沒有相簿權限，無法開啟照片庫。請到「設定 > 隱私權 > 照片」開啟。"
+                        showPermissionAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            permissionAlertMessage = "沒有相簿權限，無法開啟照片庫。請到「設定 > 隱私權 > 照片」開啟。"
+            showPermissionAlert = true
+        @unknown default:
+            permissionAlertMessage = "相簿權限狀態未知，請稍後再試。"
+            showPermissionAlert = true
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
-                Section("Edge 資訊") {
+                Section {
                     TextField("Edge ID (RED-XXXXXXXX)", text: $edgeId)
                         .textInputAutocapitalization(.characters)
                         .autocorrectionDisabled()
@@ -402,6 +484,20 @@ private struct BindEdgeSheet: View {
                             }
                         }
                     SecureField("Edge 密碼", text: $edgePassword)
+                } header: {
+                    HStack {
+                        Text("Edge 資訊")
+                        Spacer()
+                        // 右上角小相機按鈕（僅圖示，點擊開啟掃描）
+                        Button {
+                            ensureCameraAuthorized { showScanner = true }
+                        } label: {
+                            Image(systemName: "qrcode.viewfinder")
+                                .font(.title3)
+                                .imageScale(.large)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 if !isEdgeIdValid {
                     Text("Edge ID 必須為 RED- 開頭的 8 碼十六進位字元")
@@ -426,6 +522,273 @@ private struct BindEdgeSheet: View {
                     }
                     .disabled(!isFormValid)
                 }
+            }
+        }
+        .sheet(isPresented: $showScanner) {
+            QRScannerSheet(torchOn: $torchOn) { payload in
+                autofill(from: payload)
+            }
+        }
+        .alert("權限需要", isPresented: $showPermissionAlert) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(permissionAlertMessage)
+        }
+    }
+}
+
+// MARK: - QR 掃描 Sheet（含相機預覽、動畫、手電筒、圖庫）
+import AVFoundation
+import PhotosUI
+import Vision
+
+private struct QRScannerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var torchOn: Bool
+    var onFound: (String) -> Void
+
+    @State private var lastPayload: String = ""
+    @State private var showPhotoPicker = false
+    @State private var showPermissionAlert = false
+    @State private var permissionAlertMessage = ""
+
+    private func ensurePhotoAuthorized(then action: @escaping () -> Void) {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        switch status {
+        case .authorized, .limited:
+            action()
+        case .notDetermined:
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                DispatchQueue.main.async {
+                    if newStatus == .authorized || newStatus == .limited { action() }
+                    else {
+                        permissionAlertMessage = "沒有相簿權限，無法開啟照片庫。請到「設定 > 隱私權 > 照片」開啟。"
+                        showPermissionAlert = true
+                    }
+                }
+            }
+        case .denied, .restricted:
+            permissionAlertMessage = "沒有相簿權限，無法開啟照片庫。請到「設定 > 隱私權 > 照片」開啟。"
+            showPermissionAlert = true
+        @unknown default:
+            permissionAlertMessage = "相簿權限狀態未知，請稍後再試。"
+            showPermissionAlert = true
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            CameraPreview(torchOn: $torchOn) { value in
+                guard value != lastPayload else { return }
+                lastPayload = value
+                onFound(value)
+                // 自動關閉掃描畫面
+                dismiss()
+            }
+            .ignoresSafeArea()
+
+            // 掃描框與動畫（置中）
+            ScannerOverlay()
+                .allowsHitTesting(false)
+
+            // 底部控制列
+            VStack {
+                Spacer()
+                HStack {
+                    // 手電筒：點一下就開（若已開則維持開啟；再次點擊可關閉）
+                    Button {
+                        torchOn = !torchOn ? true : false
+                    } label: {
+                        Image(systemName: torchOn ? "flashlight.on.fill" : "flashlight.off.fill")
+                            .font(.title2)
+                            .padding(12)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+
+                    Spacer()
+
+                    // 圖庫：開啟相簿挑選 QR 照片
+                    Button {
+                        ensurePhotoAuthorized { showPhotoPicker = true }
+                    } label: {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.title2)
+                            .padding(12)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+            }
+        }
+        .sheet(isPresented: $showPhotoPicker) {
+            QRPhotoPicker { payload in
+                onFound(payload)
+                dismiss()
+            }
+        }
+        .alert("權限需要", isPresented: $showPermissionAlert) {
+            Button("知道了", role: .cancel) {}
+        } message: {
+            Text(permissionAlertMessage)
+        }
+    }
+}
+
+private struct ScannerOverlay: View {
+    @State private var animate = false
+    var body: some View {
+        GeometryReader { geo in
+            let width = min(geo.size.width * 0.8, 320)
+            let height = width
+            let top = (geo.size.height - height) / 3
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(.white.opacity(0.9), lineWidth: 2)
+                    .frame(width: width, height: height)
+                    .shadow(radius: 5)
+
+                // 移動掃描線
+                Rectangle()
+                    .fill(.white.opacity(0.85))
+                    .frame(width: width * 0.9, height: 2)
+                    .offset(y: animate ? top + height/2 : top - height/2)
+                    .onAppear {
+                        withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
+                            animate = true
+                        }
+                    }
+            }
+            .position(x: geo.size.width/2, y: top + height/2)
+        }
+        .ignoresSafeArea()
+    }
+}
+
+private struct CameraPreview: UIViewRepresentable {
+    @Binding var torchOn: Bool
+    var onFound: (String) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onFound: onFound) }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+
+        let session = context.coordinator.session
+        let layer = AVCaptureVideoPreviewLayer(session: session)
+        layer.videoGravity = .resizeAspectFill
+        view.layer.addSublayer(layer)
+        context.coordinator.previewLayer = layer
+
+        context.coordinator.configureSession()
+        session.startRunning()
+
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.setTorch(enabled: torchOn)
+        context.coordinator.previewLayer?.frame = uiView.bounds
+    }
+
+    class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
+        let session = AVCaptureSession()
+        var previewLayer: AVCaptureVideoPreviewLayer?
+        private let onFound: (String) -> Void
+
+        init(onFound: @escaping (String) -> Void) {
+            self.onFound = onFound
+        }
+
+        func configureSession() {
+            session.beginConfiguration()
+            session.sessionPreset = .high
+
+            guard let device = AVCaptureDevice.default(for: .video),
+                  let input = try? AVCaptureDeviceInput(device: device),
+                  session.canAddInput(input) else {
+                session.commitConfiguration()
+                return
+            }
+            session.addInput(input)
+
+            let output = AVCaptureMetadataOutput()
+            guard session.canAddOutput(output) else {
+                session.commitConfiguration()
+                return
+            }
+            session.addOutput(output)
+            output.setMetadataObjectsDelegate(self, queue: .main)
+            output.metadataObjectTypes = [.qr]
+
+            session.commitConfiguration()
+        }
+
+        func setTorch(enabled: Bool) {
+            guard let device = AVCaptureDevice.default(for: .video), device.hasTorch else { return }
+            do {
+                try device.lockForConfiguration()
+                device.torchMode = enabled ? .on : .off
+                device.unlockForConfiguration()
+            } catch { }
+        }
+
+        func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
+            guard let obj = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
+                  obj.type == .qr,
+                  let value = obj.stringValue, !value.isEmpty else { return }
+            // 偵測到即回傳
+            onFound(value)
+        }
+    }
+}
+
+// MARK: - 從相簿擷取 QR 內容
+private struct QRPhotoPicker: UIViewControllerRepresentable {
+    var onFound: (String) -> Void
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration(photoLibrary: .shared())
+        config.filter = .images
+        config.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onFound: onFound) }
+
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let onFound: (String) -> Void
+        init(onFound: @escaping (String) -> Void) { self.onFound = onFound }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            guard let provider = results.first?.itemProvider else {
+                picker.dismiss(animated: true)
+                return
+            }
+            if provider.canLoadObject(ofClass: UIImage.self) {
+                provider.loadObject(ofClass: UIImage.self) { object, _ in
+                    DispatchQueue.main.async {
+                        picker.dismiss(animated: true)
+                    }
+                    guard let image = object as? UIImage, let cg = image.cgImage else { return }
+                    // 使用 Vision 偵測 QR
+                    let request = VNDetectBarcodesRequest { req, _ in
+                        if let obs = req.results?.compactMap({ $0 as? VNBarcodeObservation }).first,
+                           let payload = obs.payloadStringValue, !payload.isEmpty {
+                            DispatchQueue.main.async { self.onFound(payload) }
+                        }
+                    }
+                    request.symbologies = [.QR]
+                    let handler = VNImageRequestHandler(cgImage: cg, options: [:])
+                    try? handler.perform([request])
+                }
+            } else {
+                picker.dismiss(animated: true)
             }
         }
     }
