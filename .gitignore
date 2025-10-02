@@ -26,3 +26,8 @@ data/
 *.xcuserstate
 *.xcworkspace/xcuserdata/
 xcschemamanagement.plist
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
