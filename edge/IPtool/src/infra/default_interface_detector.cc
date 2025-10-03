@@ -76,7 +76,7 @@ std::string DefaultInterfaceDetector::DetectFromLinuxRoutes() {
   return {};
 }
 
-std::string DefaultInterfaceDetector::DetectFromMacRoutes() {
+std::string DefaultInterfaceDetector::DetectFromMacRoutes() const {
   if (!executor_) {
     LogWarn("No command executor available for macOS route detection");
     return {};

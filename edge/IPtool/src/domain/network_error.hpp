@@ -7,8 +7,8 @@ namespace iptool::domain {
 
 class NetworkError : public std::runtime_error {
  public:
-  explicit NetworkError(std::string message)
-      : std::runtime_error(std::move(message)) {}
+  explicit NetworkError(const std::string& message)
+      : std::runtime_error(message) {}
 };
 
 class NetworkInterfaceNotFoundError : public NetworkError {
@@ -19,9 +19,11 @@ class NetworkInterfaceNotFoundError : public NetworkError {
 
 class NetworkCommandError : public NetworkError {
  public:
-  NetworkCommandError(const std::string& command, int exit_code, std::string output)
-      : NetworkError("Command failed: " + command + " (exit code " +
-                     std::to_string(exit_code) + ")\n" + output),
+  NetworkCommandError(
+      const std::string& command, int exit_code, const std::string& output)
+      : NetworkError(
+            "Command failed: " + command + " (exit code " +
+            std::to_string(exit_code) + ")\n" + output),
         exit_code_(exit_code),
         command_(command) {}
 
@@ -38,4 +40,4 @@ class UnsupportedPlatformError : public NetworkError {
   UnsupportedPlatformError() : NetworkError("Unsupported platform") {}
 };
 
-}  // namespace iptool::domain
+} // namespace iptool::domain

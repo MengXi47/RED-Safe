@@ -33,6 +33,7 @@ PASSWORD_REGEX = re.compile(r'^[A-Za-z0-9]{6,}$')
 
 DEFAULT_EDGE_VERSION = getattr(settings, "EDGE_VERSION", "1.0.0")
 
+
 def _get_edge_config() -> EdgeConfig | None:
     """取得唯一一筆 edge 設定資料。"""
 
@@ -51,6 +52,7 @@ def _is_configured() -> bool:
 
     config = _get_edge_config()
     return bool(config and config.edge_password)
+
 
 def _require_auth(view_func):
     """登入保護裝飾器：未設定導向 setup，未登入導向 login。"""
@@ -74,9 +76,10 @@ def _pi_temperature() -> str:
     except Exception:
         try:
             with open("/sys/class/thermal/thermal_zone0/temp") as f:
-                return f"{int(f.read())/1000:.1f}°C"
+                return f"{int(f.read()) / 1000:.1f}°C"
         except Exception:
             return "N/A"
+
 
 @require_http_methods(["GET", "POST"])
 def setup_view(request: HttpRequest):
@@ -163,6 +166,7 @@ def logout_view(request: HttpRequest):
     request.session.pop(SESSION_KEY, None)
     return redirect("login")
 
+
 # ====== 受保護頁面 ======
 @_require_auth
 def dashboard(request: HttpRequest):
@@ -170,11 +174,13 @@ def dashboard(request: HttpRequest):
 
     return render(request, "ui/dashboard.html")
 
+
 @_require_auth
 def devices(request: HttpRequest):
     """顯示裝置資訊頁面。"""
 
     return render(request, "ui/devices.html")
+
 
 @_require_auth
 def logs(request: HttpRequest):
@@ -182,16 +188,19 @@ def logs(request: HttpRequest):
 
     return render(request, "ui/logs.html")
 
+
 @_require_auth
 def settings_view(request: HttpRequest):
     """顯示設定頁面。"""
 
     return render(request, "ui/settings.html")
 
+
 def healthz(request: HttpRequest):
     """供健康檢查使用的簡單回應。"""
 
     return HttpResponse("ok")
+
 
 # ====== 資料庫概覽頁（含表頭） ======
 @_require_auth
@@ -200,6 +209,7 @@ def db_overview(request: HttpRequest):
 
     rows = EdgeConfig.objects.all()
     return render(request, "ui/db_overview.html", {"rows": rows})
+
 
 # --- Network ---
 @_require_auth
@@ -243,12 +253,14 @@ def network_ip(request):
     }
     return render(request, "ui/network_ip.html", context)
 
+
 @_require_auth
 @require_http_methods(["GET"])
 def api_user_bound(request: HttpRequest):
     """回傳綁定使用者清單，目前未提供資料則回傳空集合。"""
 
     return JsonResponse({"items": [], "count": 0})
+
 
 @_require_auth
 @require_http_methods(["GET"])
@@ -285,6 +297,7 @@ def api_network_ip(request: HttpRequest):
         "dns": dns,
     })
 
+
 @csrf_exempt
 @_require_auth
 @require_http_methods(["POST"])
@@ -296,11 +309,13 @@ def api_user_remove(request, user_id):
         status=400,
     )
 
+
 @_require_auth
 def network_port(request):
     """顯示埠號資訊頁面，預留未來擴充。"""
 
     return render(request, "ui/network_port.html", {"port": 8000})
+
 
 # --- 裝置 ---
 
@@ -364,6 +379,7 @@ def device_change_password(request):
 
     return render(request, "ui/device_change_password.html", {"errors": errors})
 
+
 @_require_auth
 @require_http_methods(["GET"])
 def api_metrics(request: HttpRequest):
@@ -371,14 +387,14 @@ def api_metrics(request: HttpRequest):
     cpu_percent = psutil.cpu_percent(interval=0.3)
 
     mem = psutil.virtual_memory()
-    ram_used_mb  = round(mem.used / (1024**2))
-    ram_total_mb = round(mem.total / (1024**2))
-    ram_percent  = mem.percent
+    ram_used_mb = round(mem.used / (1024 ** 2))
+    ram_total_mb = round(mem.total / (1024 ** 2))
+    ram_percent = mem.percent
 
     disk = psutil.disk_usage("/")
-    disk_used_gb  = round(disk.used / (1024**3), 1)
-    disk_total_gb = round(disk.total / (1024**3), 1)
-    disk_percent  = disk.percent
+    disk_used_gb = round(disk.used / (1024 ** 3), 1)
+    disk_total_gb = round(disk.total / (1024 ** 3), 1)
+    disk_percent = disk.percent
 
     return JsonResponse({
         "cpu": {"percent": cpu_percent},
@@ -386,6 +402,7 @@ def api_metrics(request: HttpRequest):
         "disk": {"used_gb": disk_used_gb, "total_gb": disk_total_gb, "percent": disk_percent},
         "temperature": _pi_temperature(),
     })
+
 
 @_require_auth
 @require_http_methods(["GET"])
@@ -408,10 +425,11 @@ def api_network_port(request: HttpRequest):
     data = {
         "host": host,
         "http": group({80, 8000, 8080, 8888}),  # 常見 HTTP 埠
-        "https": group({443, 8443}),            # 常見 HTTPS 埠
-        "ssh": group({22}),                     # SSH
+        "https": group({443, 8443}),  # 常見 HTTPS 埠
+        "ssh": group({22}),  # SSH
     }
     return JsonResponse(data)
+
 
 @_require_auth
 def user_bound(request):
@@ -426,9 +444,9 @@ def device_info(request):
     """顯示裝置基本資訊與預設 QR Code。"""
 
     # 若未接實際裝置資料，先使用預設（題主要求）
-    serial = "12345678"    # 預留：序號（目前固定為 12345678）
-    version = "v1.0.0"     # 預留：版本
-    status = 1             # 1 = 已連線, 0 = 未連線
+    serial = "12345678"  # 預留：序號（目前固定為 12345678）
+    version = "v1.0.0"  # 預留：版本
+    status = 1  # 1 = 已連線, 0 = 未連線
     password = "12345678"  # 預留密碼（題主要求預設為 12345678）
 
     # QR code 內容格式（你可以按需要改格式）
@@ -490,6 +508,7 @@ def device_qr(request: HttpRequest):
     img.save(buf, format="PNG")
     buf.seek(0)
     return HttpResponse(buf.getvalue(), content_type="image/png")
+
 
 # ====== API（啟用；登入保護） ======
 @_require_auth

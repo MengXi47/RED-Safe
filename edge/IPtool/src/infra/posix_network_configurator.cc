@@ -23,7 +23,8 @@ void PosixNetworkConfigurator::Apply(const domain::NetworkConfig& config) {
     throw domain::NetworkError("Interface is required for configuration");
   }
 
-  LogInfoFormat("Applying configuration to interface '{}'", config.interface_name);
+  LogInfoFormat(
+      "Applying configuration to interface '{}'", config.interface_name);
 
 #if defined(__linux__)
   ApplyLinux(config);
@@ -37,14 +38,14 @@ void PosixNetworkConfigurator::Apply(const domain::NetworkConfig& config) {
 }
 
 void PosixNetworkConfigurator::ApplyLinux(
-    const domain::NetworkConfig& config) {
+    const domain::NetworkConfig& config) const {
   const auto& iface = config.interface_name;
 
   if (config.HasMac()) {
-    ExecuteAndCheck(Command{"ip",
-                             {"link", "set", "dev", iface, "address",
-                              config.mac_address}},
-                    "set mac address");
+    ExecuteAndCheck(
+        Command{
+            "ip", {"link", "set", "dev", iface, "address", config.mac_address}},
+        "set mac address");
   }
 
   if (config.HasIp()) {
@@ -58,51 +59,61 @@ void PosixNetworkConfigurator::ApplyLinux(
       }
     }
 
-    ExecuteAndCheck(Command{"ip",
-                             {"addr", "replace", ip_assignment, "dev", iface}},
-                    "configure ip address");
-    ExecuteAndCheck(Command{"ip", {"link", "set", "dev", iface, "up"}},
-                    "bring interface up");
+    ExecuteAndCheck(
+        Command{"ip", {"addr", "replace", ip_assignment, "dev", iface}},
+        "configure ip address");
+    ExecuteAndCheck(
+        Command{"ip", {"link", "set", "dev", iface, "up"}},
+        "bring interface up");
   }
 
   if (config.HasGateway()) {
-    ExecuteAndCheck(Command{"ip",
-                             {"route", "replace", "default", "via",
-                              config.gateway, "dev", iface}},
-                    "configure gateway");
+    ExecuteAndCheck(
+        Command{
+            "ip",
+            {"route",
+             "replace",
+             "default",
+             "via",
+             config.gateway,
+             "dev",
+             iface}},
+        "configure gateway");
   }
 }
 
 void PosixNetworkConfigurator::ApplyMac(
-    const domain::NetworkConfig& config) {
+    const domain::NetworkConfig& config) const {
   const auto& iface = config.interface_name;
 
   if (config.HasMac()) {
-    ExecuteAndCheck(Command{"/sbin/ifconfig",
-                             {iface, "ether", config.mac_address}},
-                    "set mac address");
+    ExecuteAndCheck(
+        Command{"/sbin/ifconfig", {iface, "ether", config.mac_address}},
+        "set mac address");
   }
 
   if (config.HasIp() && config.HasSubnetMask()) {
-    ExecuteAndCheck(Command{"/sbin/ifconfig",
-                             {iface, "inet", config.ip_address, "netmask",
-                              config.subnet_mask}},
-                    "configure ip address");
+    ExecuteAndCheck(
+        Command{
+            "/sbin/ifconfig",
+            {iface, "inet", config.ip_address, "netmask", config.subnet_mask}},
+        "configure ip address");
   } else if (config.HasIp()) {
-    ExecuteAndCheck(Command{"/sbin/ifconfig",
-                             {iface, "inet", config.ip_address}},
-                    "configure ip address");
+    ExecuteAndCheck(
+        Command{"/sbin/ifconfig", {iface, "inet", config.ip_address}},
+        "configure ip address");
   }
 
   if (config.HasGateway()) {
-    const auto change_result = executor_->Execute(Command{
-        .executable = "/sbin/route",
-        .arguments = {"-n", "change", "default", config.gateway}});
+    const auto change_result = executor_->Execute(
+        Command{
+            .executable = "/sbin/route",
+            .arguments = {"-n", "change", "default", config.gateway}});
     if (change_result.exit_code != 0) {
       LogWarnFormat("route change default failed: {}", change_result.output);
-      ExecuteAndCheck(Command{"/sbin/route", {"-n", "add", "default",
-                                               config.gateway}},
-                      "add default route");
+      ExecuteAndCheck(
+          Command{"/sbin/route", {"-n", "add", "default", config.gateway}},
+          "add default route");
     }
   }
 }
@@ -125,13 +136,13 @@ void PosixNetworkConfigurator::ConfigureDns(
   LogInfo("Updated DNS configuration in /etc/resolv.conf");
 }
 
-void PosixNetworkConfigurator::ExecuteAndCheck(const Command& command,
-                                               const std::string& description) {
-  const auto result = executor_->Execute(command);
-  if (result.exit_code != 0) {
-    throw domain::NetworkCommandError(command.executable + " " + description,
-                                      result.exit_code, result.output);
+void PosixNetworkConfigurator::ExecuteAndCheck(
+    const Command& command, const std::string& description) const {
+  if (const auto [exit_code, output] = executor_->Execute(command);
+      exit_code != 0) {
+    throw domain::NetworkCommandError(
+        command.executable + " " + description, exit_code, output);
   }
 }
 
-}  // namespace iptool::infra
+} // namespace iptool::infra

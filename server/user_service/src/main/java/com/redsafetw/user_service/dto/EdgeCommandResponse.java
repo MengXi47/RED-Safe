@@ -1,10 +1,12 @@
 package com.redsafetw.user_service.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Builder;
-import lombok.Value;
+import lombok.*;
 
-@Value
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
 public class EdgeCommandResponse {
 

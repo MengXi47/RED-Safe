@@ -19,7 +19,7 @@ std::string EscapeArgument(std::string_view arg) {
   std::string escaped;
   escaped.reserve(arg.size() + 2);
   escaped.push_back('\'');
-  for (char ch : arg) {
+  for (const char ch : arg) {
     if (ch == '\'') {
       escaped.append("'\\''");
     } else {

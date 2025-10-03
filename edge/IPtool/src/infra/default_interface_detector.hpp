@@ -17,8 +17,8 @@ class DefaultInterfaceDetector final : public domain::InterfaceDetector {
 
  private:
   std::string DetectDefaultInterface();
-  std::string DetectFromLinuxRoutes();
-  std::string DetectFromMacRoutes();
+  static std::string DetectFromLinuxRoutes();
+  [[nodiscard]] std::string DetectFromMacRoutes() const;
 
   std::shared_ptr<CommandExecutor> executor_;
 };
