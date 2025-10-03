@@ -585,6 +585,7 @@ private struct QRScannerSheet: View {
                 // 自動關閉掃描畫面
                 dismiss()
             }
+            .background(Color.clear)
             .ignoresSafeArea()
 
             // 掃描框與動畫（置中）
@@ -597,13 +598,11 @@ private struct QRScannerSheet: View {
                 HStack {
                     // 手電筒：點一下就開（若已開則維持開啟；再次點擊可關閉）
                     Button {
-                        torchOn = !torchOn ? true : false
+                        torchOn.toggle()
                     } label: {
-                        Image(systemName: torchOn ? "flashlight.on.fill" : "flashlight.off.fill")
-                            .font(.title2)
-                            .padding(12)
-                            .background(.ultraThinMaterial, in: Circle())
+                        EmptyView()
                     }
+                    .buttonStyle(LiquidIconButtonStyle(systemName: torchOn ? "flashlight.on.fill" : "flashlight.off.fill", isActive: torchOn))
 
                     Spacer()
 
@@ -611,11 +610,9 @@ private struct QRScannerSheet: View {
                     Button {
                         ensurePhotoAuthorized { showPhotoPicker = true }
                     } label: {
-                        Image(systemName: "photo.on.rectangle")
-                            .font(.title2)
-                            .padding(12)
-                            .background(.ultraThinMaterial, in: Circle())
+                        EmptyView()
                     }
+                    .buttonStyle(LiquidIconButtonStyle(systemName: "photo.on.rectangle", isActive: false))
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 24)
@@ -632,16 +629,23 @@ private struct QRScannerSheet: View {
         } message: {
             Text(permissionAlertMessage)
         }
+        .onDisappear {
+            // Stop the capture session when leaving
+            torchOn = false
+            // Access coordinator and stop session
+            // Using NotificationCenter to broadcast stop
+            NotificationCenter.default.post(name: .stopCameraSession, object: nil)
+        }
     }
 }
 
 private struct ScannerOverlay: View {
-    @State private var animate = false
+    @State private var progress: CGFloat = 0
     var body: some View {
         GeometryReader { geo in
             let width = min(geo.size.width * 0.8, 320)
             let height = width
-            let top = (geo.size.height - height) / 3
+            let top = (geo.size.height - height) / 2.8
 
             ZStack {
                 RoundedRectangle(cornerRadius: 16)
@@ -649,14 +653,19 @@ private struct ScannerOverlay: View {
                     .frame(width: width, height: height)
                     .shadow(radius: 5)
 
-                // 移動掃描線
+                // 移動掃描線（自上而下）
                 Rectangle()
-                    .fill(.white.opacity(0.85))
+                    .fill(.white.opacity(0.9))
                     .frame(width: width * 0.9, height: 2)
-                    .offset(y: animate ? top + height/2 : top - height/2)
+                    // 以 ZStack 中心為原點：從 -height/2（上緣）到 +height/2（下緣）
+                    .offset(y: (-height/2 + 1) + progress * (height - 2))
                     .onAppear {
-                        withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
-                            animate = true
+                        progress = 0
+                        // 確保第一幀先繪製在最上緣，再開始動畫
+                        DispatchQueue.main.async {
+                            withAnimation(.linear(duration: 1.2).repeatForever(autoreverses: false)) {
+                                progress = 1
+                            }
                         }
                     }
             }
@@ -670,26 +679,43 @@ private struct CameraPreview: UIViewRepresentable {
     @Binding var torchOn: Bool
     var onFound: (String) -> Void
 
+    // Container view to manage preview layer layout
+    final class CameraContainerView: UIView {
+        var previewLayer: AVCaptureVideoPreviewLayer?
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            previewLayer?.frame = bounds
+        }
+    }
+
     func makeCoordinator() -> Coordinator { Coordinator(onFound: onFound) }
 
     func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
+        let container = CameraContainerView(frame: .zero)
 
         let session = context.coordinator.session
         let layer = AVCaptureVideoPreviewLayer(session: session)
         layer.videoGravity = .resizeAspectFill
-        view.layer.addSublayer(layer)
+        // 先給一個初始 frame，避免初次為 0 導致全白
+        layer.frame = UIScreen.main.bounds
+        // 設定為直向（避免有時為未知導致不顯示）
+        layer.connection?.videoOrientation = .portrait
+
+        container.layer.addSublayer(layer)
+        container.previewLayer = layer
         context.coordinator.previewLayer = layer
 
         context.coordinator.configureSession()
-        session.startRunning()
 
-        return view
+        if !session.isRunning {
+            session.startRunning()
+        }
+
+        return container
     }
 
     func updateUIView(_ uiView: UIView, context: Context) {
         context.coordinator.setTorch(enabled: torchOn)
-        context.coordinator.previewLayer?.frame = uiView.bounds
     }
 
     class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
@@ -697,8 +723,20 @@ private struct CameraPreview: UIViewRepresentable {
         var previewLayer: AVCaptureVideoPreviewLayer?
         private let onFound: (String) -> Void
 
+        override init() {
+            self.onFound = { _ in }
+            super.init()
+            NotificationCenter.default.addObserver(self, selector: #selector(handleStop), name: .stopCameraSession, object: nil)
+        }
+
         init(onFound: @escaping (String) -> Void) {
             self.onFound = onFound
+            super.init()
+            NotificationCenter.default.addObserver(self, selector: #selector(handleStop), name: .stopCameraSession, object: nil)
+        }
+
+        deinit {
+            NotificationCenter.default.removeObserver(self)
         }
 
         func configureSession() {
@@ -723,6 +761,10 @@ private struct CameraPreview: UIViewRepresentable {
             output.metadataObjectTypes = [.qr]
 
             session.commitConfiguration()
+
+            if !self.session.isRunning {
+                self.session.startRunning()
+            }
         }
 
         func setTorch(enabled: Bool) {
@@ -740,6 +782,16 @@ private struct CameraPreview: UIViewRepresentable {
                   let value = obj.stringValue, !value.isEmpty else { return }
             // 偵測到即回傳
             onFound(value)
+        }
+
+        func stopRunning() {
+            if session.isRunning {
+                session.stopRunning()
+            }
+        }
+
+        @objc private func handleStop() {
+            stopRunning()
         }
     }
 }
@@ -907,5 +959,120 @@ private extension View {
                 action(newValue, newValue)
             }
         }
+    }
+}
+
+
+// Notification extension for stopCameraSession
+extension Notification.Name {
+    static let stopCameraSession = Notification.Name("stopCameraSession")
+}
+
+// MARK: - Liquid Button (iOS 26-style) using ButtonStyle for reliable taps
+private struct LiquidIconButtonStyle: ButtonStyle {
+    let systemName: String
+    var isActive: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        LiquidIconVisual(systemName: systemName, isActive: isActive, isPressed: configuration.isPressed)
+            .contentShape(Circle())
+            .accessibilityLabel(Text(systemName))
+    }
+}
+
+private struct LiquidIconVisual: View {
+    let systemName: String
+    var isActive: Bool
+    var isPressed: Bool
+
+    var body: some View {
+        let baseSize: CGFloat = 68
+        ZStack {
+            // 背板：厚實液態玻璃 + 主題色輕染
+            Circle()
+                .fill(.ultraThinMaterial)
+                .frame(width: baseSize, height: baseSize)
+                .overlay(
+                    Circle()
+                        .fill(Color.accentColor.opacity(isActive ? 0.16 : 0.12))
+                        .blur(radius: 12)
+                )
+                // 靜態高光（更穩定，不干擾點擊）
+                .overlay(
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [Color.white.opacity(0.85), Color.white.opacity(0.0)],
+                                center: .topLeading,
+                                startRadius: 6,
+                                endRadius: baseSize
+                            )
+                        )
+                        .blur(radius: 1.0)
+                )
+                .overlay(
+                    // 邊緣高光 + 內陰影
+                    Circle().strokeBorder(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.9), Color.white.opacity(0.28)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ), lineWidth: 1.2
+                    )
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color.black.opacity(0.10), lineWidth: 0.6)
+                        .blur(radius: 1.2)
+                        .mask(
+                            Circle().fill(
+                                LinearGradient(colors: [.black, .clear], startPoint: .top, endPoint: .bottom)
+                            )
+                        )
+                )
+                .shadow(color: Color.black.opacity(0.18), radius: 10, x: 0, y: 6)
+                .shadow(color: Color.white.opacity(0.25), radius: 1, x: 0, y: 1)
+                .overlay(
+                    // 細緻雜訊，讓材質更像玻璃
+                    Circle()
+                        .fill(
+                            LinearGradient(colors: [Color.white.opacity(0.04), Color.black.opacity(0.03)], startPoint: .top, endPoint: .bottom)
+                        )
+                        .blendMode(.softLight)
+                )
+
+            // Icon
+            Image(systemName: systemName)
+                .font(.system(size: 26, weight: .semibold))
+                .foregroundStyle(isActive ? Color.white : Color.primary)
+                .shadow(color: isActive ? Color.accentColor.opacity(0.6) : .clear, radius: 8)
+
+            // 主題色 Glow（啟用時）
+            Circle()
+                .stroke(isActive ? Color.accentColor : Color.clear, lineWidth: 3)
+                .opacity(isActive ? 0.7 : 0.0)
+                .blur(radius: 3)
+                .frame(width: baseSize, height: baseSize)
+
+            // 高光掃掠：用 isPressed 切換角度即可（不需自訂手勢）
+            Circle()
+                .stroke(
+                    AngularGradient(
+                        gradient: Gradient(colors: [
+                            Color.white.opacity(0.0),
+                            Color.white.opacity(0.35),
+                            Color.white.opacity(0.0)
+                        ]),
+                        center: .center
+                    ), lineWidth: 2
+                )
+                .rotationEffect(.degrees(isPressed ? 18 : -18))
+                .opacity(0.9)
+                .frame(width: baseSize - 2, height: baseSize - 2)
+        }
+        .frame(width: baseSize, height: baseSize)
+        .scaleEffect(isPressed ? 0.92 : (isActive ? 1.05 : 1.0))
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isPressed)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: isActive)
     }
 }
