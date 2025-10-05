@@ -19,7 +19,12 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 include(cmake/Target.cmake)
 
-find_package(Protobuf CONFIG REQUIRED)
+if (APPLE)
+  find_package(Protobuf CONFIG REQUIRED)
+else ()
+  find_package(Protobuf REQUIRED)
+endif ()
+
 find_package(gRPC CONFIG REQUIRED)
 
 add_subdirectory(src)

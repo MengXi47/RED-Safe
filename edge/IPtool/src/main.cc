@@ -1,44 +1,28 @@
-#include <cstdlib>
-#include <exception>
 #include <memory>
+#include <print>
+#include <string>
 
-#include "app/iptool_application.hpp"
-#include "app/network_query_service.hpp"
-#include "app/network_update_service.hpp"
-#include "common/logging.hpp"
-#include "infra/command_executor.hpp"
-#include "infra/default_interface_detector.hpp"
-#include "infra/dns_resolver.hpp"
-#include "infra/posix_network_configurator.hpp"
-#include "infra/posix_network_info_provider.hpp"
+#include <grpcpp/grpcpp.h>
 
-#if !defined(__APPLE__) && !defined(__linux__)
-#error "IPtool only supports macOS and Linux"
-#endif
+#include "grpc/network_service_impl.hpp"
+#include "util/logging.hpp"
 
-int main() {
-  try {
-    auto executor = std::make_shared<iptool::infra::PosixCommandExecutor>();
-    auto dns_resolver = std::make_shared<iptool::infra::ResolvConfDnsResolver>();
-    auto detector =
-        std::make_shared<iptool::infra::DefaultInterfaceDetector>(executor);
-    auto info_provider = std::make_shared<iptool::infra::PosixNetworkInfoProvider>(
-        dns_resolver, executor);
+int main(int argc, char* argv[]) {
+  std::string server_address = "0.0.0.0:20002";
 
-    auto query_service = std::make_shared<iptool::app::NetworkQueryService>(
-        info_provider, detector);
-    auto configurator =
-        std::make_shared<iptool::infra::PosixNetworkConfigurator>(executor);
-    auto update_service = std::make_shared<iptool::app::NetworkUpdateService>(
-        configurator, detector);
+  iptool::grpcservice::NetworkServiceGrpc service{};
+  grpc::ServerBuilder builder;
+  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  builder.RegisterService(&service);
 
-    iptool::app::IpToolApplication application(query_service, update_service);
-    return application.Run();
-  } catch (const std::exception& ex) {
-    LogErrorFormat("Unhandled exception: {}", ex.what());
-    return EXIT_FAILURE;
-  } catch (...) {
-    LogError("Unhandled unknown exception");
-    return EXIT_FAILURE;
+  const auto server = builder.BuildAndStart();
+  if (!server) {
+    LogError("無法啟動 gRPC 伺服器");
+    return 1;
   }
+
+  LogInfoFormat("gRPC 伺服器啟動於 {}", server_address);
+  LogInfo("等待客戶端請求中...");
+  server->Wait();
+  return 0;
 }

@@ -1,103 +1,70 @@
 #include "grpc/network_service_impl.hpp"
 
-#include <string>
-
-#include "common/logging.hpp"
+#include "util/logging.hpp"
 
 namespace iptool::grpcservice {
 
-namespace {
-::grpc::Status NetworkErrorStatus(const domain::NetworkError& error) {
-  if (dynamic_cast<const domain::NetworkInterfaceNotFoundError*>(&error) !=
-      nullptr) {
-    return {::grpc::StatusCode::NOT_FOUND, error.what()};
-  }
-  if (dynamic_cast<const domain::UnsupportedPlatformError*>(&error) !=
-      nullptr) {
-    return {::grpc::StatusCode::UNIMPLEMENTED, error.what()};
-  }
-  if (dynamic_cast<const domain::NetworkCommandError*>(&error) != nullptr) {
-    return {::grpc::StatusCode::INTERNAL, error.what()};
-  }
-  return {::grpc::StatusCode::UNKNOWN, error.what()};
-}
-}  // namespace
-
-NetworkServiceImpl::NetworkServiceImpl(
-    std::shared_ptr<app::NetworkQueryService> query_service,
-    std::shared_ptr<app::NetworkUpdateService> update_service)
-    : query_service_(std::move(query_service)),
-      update_service_(std::move(update_service)) {}
-
-::grpc::Status NetworkServiceImpl::GetNetworkConfig(
-    ::grpc::ServerContext* /*context*/,
-    const ::iptool::GetNetworkConfigRequest* request,
-    ::iptool::GetNetworkConfigResponse* response) {
-  const std::string interface_name = request->interface_name();
-  LogInfoFormat("GetNetworkConfig request interface='{}'", interface_name);
-  try {
-    const auto config = query_service_->Fetch(interface_name);
-    ToProto(config, response->mutable_config());
-    LogInfoFormat("GetNetworkConfig success interface='{}'", config.interface_name);
-    return ::grpc::Status::OK;
-  } catch (const domain::NetworkError& error) {
-    LogErrorFormat("GetNetworkConfig failed: {}", error.what());
-    return NetworkErrorStatus(error);
-  } catch (const std::exception& ex) {
-    LogErrorFormat("GetNetworkConfig unexpected failure: {}", ex.what());
-    return {::grpc::StatusCode::UNKNOWN, ex.what()};
-  }
+void NetworkServiceGrpc::FillProtoConfig(
+    const NetworkConfigData& data, iptool::NetworkConfig* proto_config) {
+  proto_config->set_interface_name(data.interface_name);
+  proto_config->set_ip_address(data.ip_address);
+  proto_config->set_subnet_mask(data.subnet_mask);
+  proto_config->set_gateway(data.gateway);
+  proto_config->set_dns(data.dns);
+  proto_config->set_mode(data.mode);
 }
 
-::grpc::Status NetworkServiceImpl::UpdateNetworkConfig(
-    ::grpc::ServerContext* /*context*/,
-    const ::iptool::UpdateNetworkConfigRequest* request,
-    ::iptool::UpdateNetworkConfigResponse* response) {
-  const auto& incoming = request->config();
-  LogInfoFormat("UpdateNetworkConfig request interface='{}'", incoming.interface_name());
-  try {
-    update_service_->Apply(FromProto(incoming));
-    response->set_success(true);
-    response->set_message("Configuration updated");
-    LogInfo("UpdateNetworkConfig success");
-    return ::grpc::Status::OK;
-  } catch (const domain::NetworkError& error) {
-    LogErrorFormat("UpdateNetworkConfig failed: {}", error.what());
+NetworkServiceGrpc::NetworkServiceGrpc() = default;
+
+grpc::Status NetworkServiceGrpc::GetNetworkConfig(
+    grpc::ServerContext* /*context*/,
+    const iptool::GetNetworkConfigRequest* request,
+    iptool::GetNetworkConfigResponse* response) {
+  LogInfoFormat("收到 GetNetworkConfig 請求: {}", request->interface_name());
+  auto config = ::NetworkService::GetNetworkConfig(request->interface_name());
+  if (!config) {
+    return {grpc::StatusCode::NOT_FOUND, "無法取得指定介面的設定"};
+  }
+  FillProtoConfig(*config, response->mutable_config());
+  return grpc::Status::OK;
+}
+
+grpc::Status NetworkServiceGrpc::UpdateNetworkConfig(
+    grpc::ServerContext* /*context*/,
+    const iptool::UpdateNetworkConfigRequest* request,
+    iptool::UpdateNetworkConfigResponse* response) {
+  const auto& input = request->config();
+  LogInfoFormat("收到 UpdateNetworkConfig 請求: {}", input.interface_name());
+
+  if (input.mode() != iptool::NETWORK_MODE_MANUAL) {
     response->set_success(false);
-    response->set_message(error.what());
-    return NetworkErrorStatus(error);
-  } catch (const std::exception& ex) {
-    LogErrorFormat("UpdateNetworkConfig unexpected failure: {}", ex.what());
-    response->set_success(false);
-    response->set_message(ex.what());
-    return {::grpc::StatusCode::UNKNOWN, ex.what()};
+    response->set_message("請指定 NETWORK_MODE_MANUAL");
+    return grpc::Status::OK;
   }
+
+  NetworkConfigData config;
+  config.interface_name = input.interface_name();
+  config.ip_address = input.ip_address();
+  config.subnet_mask = input.subnet_mask();
+  config.gateway = input.gateway();
+  config.dns = input.dns();
+  config.mode = input.mode();
+
+  auto result = ::NetworkService::SetManualConfig(config);
+  response->set_success(result.success);
+  response->set_message(result.message);
+  return grpc::Status::OK;
 }
 
-domain::NetworkConfig NetworkServiceImpl::FromProto(
-    const ::iptool::NetworkConfig& proto) {
-  domain::NetworkConfig config;
-  config.interface_name = proto.interface_name();
-  config.ip_address = proto.ip_address();
-  config.mac_address = proto.mac_address();
-  config.gateway = proto.gateway();
-  config.subnet_mask = proto.subnet_mask();
-  config.dns_servers.assign(proto.dns_servers().begin(),
-                            proto.dns_servers().end());
-  return config;
+grpc::Status NetworkServiceGrpc::SwitchToDhcp(
+    grpc::ServerContext* /*context*/,
+    const iptool::SwitchToDhcpRequest* request,
+    iptool::SwitchToDhcpResponse* response) {
+  LogInfoFormat("收到 SwitchToDhcp 請求: {}", request->interface_name());
+  auto result = ::NetworkService::SwitchToDhcp(request->interface_name());
+  response->set_success(result.success);
+  response->set_message(result.message);
+  return grpc::Status::OK;
 }
 
-void NetworkServiceImpl::ToProto(const domain::NetworkConfig& config,
-                                 ::iptool::NetworkConfig* proto) {
-  proto->set_interface_name(config.interface_name);
-  proto->set_ip_address(config.ip_address);
-  proto->set_mac_address(config.mac_address);
-  proto->set_gateway(config.gateway);
-  proto->set_subnet_mask(config.subnet_mask);
-  proto->clear_dns_servers();
-  for (const auto& dns : config.dns_servers) {
-    proto->add_dns_servers(dns);
-  }
-}
-
-}  // namespace iptool::grpcservice
+} // namespace iptool::grpcservice

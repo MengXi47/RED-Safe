@@ -2,7 +2,12 @@ syntax = "proto3";
 
 package iptool;
 
-option csharp_namespace = "IpTool";
+// 描述網路模式；MANUAL 代表手動設定，DHCP 代表自動取得 IP
+enum NetworkMode {
+  NETWORK_MODE_UNSPECIFIED = 0;
+  NETWORK_MODE_MANUAL = 1;
+  NETWORK_MODE_DHCP = 2;
+}
 
 message GetNetworkConfigRequest {
   string interface_name = 1;
@@ -11,10 +16,10 @@ message GetNetworkConfigRequest {
 message NetworkConfig {
   string interface_name = 1;
   string ip_address = 2;
-  string mac_address = 3;
+  string subnet_mask = 3;
   string gateway = 4;
-  string subnet_mask = 5;
-  repeated string dns_servers = 6;
+  string dns = 5;
+  NetworkMode mode = 6;
 }
 
 message GetNetworkConfigResponse {
@@ -30,7 +35,17 @@ message UpdateNetworkConfigResponse {
   string message = 2;
 }
 
+message SwitchToDhcpRequest {
+  string interface_name = 1;
+}
+
+message SwitchToDhcpResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 service NetworkService {
   rpc GetNetworkConfig(GetNetworkConfigRequest) returns (GetNetworkConfigResponse);
   rpc UpdateNetworkConfig(UpdateNetworkConfigRequest) returns (UpdateNetworkConfigResponse);
+  rpc SwitchToDhcp(SwitchToDhcpRequest) returns (SwitchToDhcpResponse);
 }

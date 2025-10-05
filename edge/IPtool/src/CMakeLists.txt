@@ -2,13 +2,13 @@ set(PROTO_DIR "${CMAKE_SOURCE_DIR}/proto")
 
 file(GLOB PROTO_FILES "${PROTO_DIR}/*.proto")
 
-foreach(PROTO_FILE ${PROTO_FILES})
+foreach (PROTO_FILE ${PROTO_FILES})
   get_filename_component(PROTO_NAME ${PROTO_FILE} NAME_WE)
 
-  set(PB_CC   "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.pb.cc")
-  set(PB_H    "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.pb.h")
+  set(PB_CC "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.pb.cc")
+  set(PB_H "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.pb.h")
   set(GRPC_CC "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.grpc.pb.cc")
-  set(GRPC_H  "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.grpc.pb.h")
+  set(GRPC_H "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.grpc.pb.h")
 
   add_custom_command(
       OUTPUT ${PB_CC} ${PB_H}
@@ -37,19 +37,19 @@ foreach(PROTO_FILE ${PROTO_FILES})
 
   list(APPEND GENERATED_SOURCES ${PB_CC} ${GRPC_CC})
   list(APPEND GENERATED_HEADERS ${PB_H} ${GRPC_H})
-endforeach()
+endforeach ()
 
 set_source_files_properties(${GENERATED_SOURCES} ${GENERATED_HEADERS} PROPERTIES GENERATED TRUE)
 
 add_library(iptool_protos STATIC ${GENERATED_SOURCES} ${GENERATED_HEADERS})
 
 target_include_directories(iptool_protos
-  PUBLIC
+    PUBLIC
     "${CMAKE_CURRENT_BINARY_DIR}"
 )
 
 target_link_libraries(iptool_protos
-  PUBLIC
+    PUBLIC
     protobuf::libprotobuf
     gRPC::grpc++
     gRPC::grpc
