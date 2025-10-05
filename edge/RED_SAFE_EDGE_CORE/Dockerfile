@@ -24,6 +24,8 @@ RUN apt-get update \
        libboost-all-dev \
        nlohmann-json3-dev \
        libcurl4-openssl-dev \
+       libpq-dev \
+       libpqxx-dev \
        gcc-14 \
        g++-14 \
     && rm -rf /var/lib/apt/lists/*
@@ -44,10 +46,10 @@ RUN set -eux; \
     rm -rf /tmp/mqtt5
 
 # 建置與安裝到臨時目的地
-RUN cmake -S . -B build -GNinja -DCMAKE_BUILD_TYPE=Release \
-    && cmake --build build --target RED_SAFE_EDGE_CORE \
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build -j \
     && mkdir -p /opt/RED_SAFE_EDGE_CORE/bin \
-    && cp build/bin/RED_SAFE_EDGE_CORE /opt/RED_SAFE_EDGE_CORE/bin/ 
+    && cp build/bin/RED_SAFE_EDGE_CORE /opt/RED_SAFE_EDGE_CORE/bin/
 
 ########################
 # Runtime stage
@@ -63,6 +65,8 @@ RUN apt-get update \
        libboost-system1.83.0 \
        libboost-thread1.83.0 \
        libcurl4 \
+       libpq-dev \
+       libpqxx-dev \
        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 

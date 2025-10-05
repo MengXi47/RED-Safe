@@ -2,6 +2,7 @@
 
 #include "common/logging.hpp"
 #include "common/time.hpp"
+#include "grpc/ip_resolver.hpp"
 
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
@@ -36,12 +37,19 @@ std::string CurlEdgeOnlineService::BuildUrl(
 bool CurlEdgeOnlineService::ReportOnline(const EdgeConfig& config) {
   const std::string url = BuildUrl(config.server_base_url, "/edge/online");
 
+  std::string edge_ip = config.edge_ip;
+  if (edge_ip.empty()) {
+    if (auto fetched_ip = FetchEdgeIpFromIptool(config)) {
+      edge_ip = *fetched_ip;
+    }
+  }
+
   nlohmann::json body{
       {"edge_id", config.edge_id},
       {"version", config.version},
       {"started_at", CurrentIsoTimestamp()}};
-  if (!config.edge_ip.empty()) {
-    body["ip"] = config.edge_ip;
+  if (!edge_ip.empty()) {
+    body["ip"] = edge_ip;
   }
   const std::string payload = body.dump();
 

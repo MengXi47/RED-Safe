@@ -67,6 +67,7 @@ target_add_lib(RED_SAFE_EDGE_CORE_lib
     Threads::Threads
     nlohmann_json::nlohmann_json
     CURL::libcurl
+    PkgConfig::LIBPQXX
 )
 
-target_add_bin(RED_SAFE_EDGE_CORE_bin main.cc RED_SAFE_EDGE_CORE_lib)
+target_add_bin(RED_SAFE_EDGE_CORE main.cc RED_SAFE_EDGE_CORE_lib)

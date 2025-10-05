@@ -13,7 +13,7 @@ ScanExecutor::ScanExecutor(std::chrono::milliseconds timeout)
 std::string ScanExecutor::RunScan() {
   std::lock_guard lock(mutex_);
   WsDiscoveryClient transport(timeout_);
-  auto devices = scanner_.Scan(transport);
+  const auto devices = scanner_.Scan(transport);
   return BuildJson(devices);
 }
 

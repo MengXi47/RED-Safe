@@ -1,9 +1,12 @@
-#include <iostream>
+#include "grpc_client.hpp"
+
+#include "common/logging.hpp"
+
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <grpcpp/grpcpp.h>
-#include "grpc_client.hpp"
 #include "iptool.grpc.pb.h"
 
 using grpc::Channel;
@@ -11,40 +14,37 @@ using grpc::ClientContext;
 using grpc::Status;
 using iptool::GetNetworkConfigRequest;
 using iptool::GetNetworkConfigResponse;
+using iptool::NetworkConfig;
 using iptool::NetworkService;
 
 NetworkServiceClient::NetworkServiceClient(std::shared_ptr<Channel> channel)
     : stub_(NetworkService::NewStub(channel)) {}
 
-void NetworkServiceClient::GetNetworkConfig(
+std::optional<NetworkConfig> NetworkServiceClient::GetNetworkConfig(
     const std::string& interface_name) const {
-  // 建立請求
   GetNetworkConfigRequest request;
   request.set_interface_name(interface_name);
 
-  // 回應物件
   GetNetworkConfigResponse response;
-
-  // Context
   ClientContext context;
 
-  // 呼叫 RPC
   const Status status = stub_->GetNetworkConfig(&context, request, &response);
-
-  if (status.ok()) {
-    const auto& config = response.config();
-    std::cout << "Interface: " << config.interface_name() << std::endl;
-    std::cout << "IP Address: " << config.ip_address() << std::endl;
-    std::cout << "MAC Address: " << config.mac_address() << std::endl;
-    std::cout << "Gateway: " << config.gateway() << std::endl;
-    std::cout << "Subnet Mask: " << config.subnet_mask() << std::endl;
-
-    std::cout << "DNS Servers:" << std::endl;
-    for (const auto& dns : config.dns_servers()) {
-      std::cout << "  - " << dns << std::endl;
-    }
-  } else {
-    std::cerr << "RPC failed: " << status.error_code() << " - "
-              << status.error_message() << std::endl;
+  if (!status.ok()) {
+    LogErrorFormat(
+        "GetNetworkConfig RPC 失敗，interface={} code={} message={}",
+        interface_name,
+        static_cast<int>(status.error_code()),
+        status.error_message());
+    return std::nullopt;
   }
+
+  if (!response.has_config()) {
+    LogWarnFormat(
+        "GetNetworkConfig 回應未包含設定，interface={}", interface_name);
+    return std::nullopt;
+  }
+
+  NetworkConfig config;
+  config.CopyFrom(response.config());
+  return config;
 }

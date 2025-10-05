@@ -3,6 +3,7 @@
 
 #include "common/logging.hpp"
 #include "common/time.hpp"
+#include "grpc/ip_resolver.hpp"
 #include "mqtt/mqtt_traits.hpp"
 
 #include <boost/asio/co_spawn.hpp>
@@ -93,11 +94,12 @@ awaitable<bool> MqttWorkflow::SubscribeCommands() {
 }
 
 // 透過 MQTT 定期發出 Edge 心跳訊息
-awaitable<void> MqttWorkflow::PublishHeartbeat() const {
+awaitable<void> MqttWorkflow::PublishHeartbeat() {
   boost::asio::steady_timer timer(co_await boost::asio::this_coro::executor);
   std::uint64_t sequence = 0;
 
   for (;;) {
+    RefreshEdgeIp();
     const std::string payload = BuildHeartbeatPayload(sequence++);
     auto [publish_ec, puback_code, puback_props] =
         co_await client_.async_publish<mqtt5::qos_e::at_least_once>(
@@ -217,7 +219,11 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
       continue;
     }
 
-    LogInfoFormat("收到指令 code={} trace_id={}", code_str, trace_id);
+    if (code_str != "100") {
+      LogInfoFormat("收到指令 code={} trace_id={}", code_str, trace_id);
+    } else {
+      LogDebugFormat("收到指令 code={} trace_id={}", code_str, trace_id);
+    }
 
     if (code_str == "100") {
       ResetCommandKeepalive();
@@ -276,12 +282,32 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
     }
 
     if (code_str == "102") {
-      std::string target_str = "localhost:20002"; // gRPC server 位址
-      std::string interface_name = "en9"; // 預設查詢介面
-      NetworkServiceClient client(
-          grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials()));
+      const std::string interface_name = config_.network_interface.empty()
+          ? "eth0"
+          : config_.network_interface;
 
-      client.GetNetworkConfig(interface_name);
+      NetworkServiceClient client(
+          grpc::CreateChannel(
+              config_.iptool_target, grpc::InsecureChannelCredentials()));
+
+      if (auto network_config = client.GetNetworkConfig(interface_name);
+          !network_config) {
+        LogErrorFormat(
+            "查詢網路設定失敗，target={} interface={}",
+            config_.iptool_target,
+            interface_name);
+      } else {
+        const auto& net = *network_config;
+        LogInfoFormat(
+            "介面 {} IP {} Gateway {} Subnet {}",
+            net.interface_name(),
+            net.ip_address(),
+            net.gateway(),
+            net.subnet_mask());
+        for (const auto& dns : net.dns()) {
+          LogInfoFormat("DNS: {}", dns);
+        }
+      }
       continue;
     }
 
@@ -341,8 +367,22 @@ std::string MqttWorkflow::BuildHeartbeatPayload(std::uint64_t sequence) const {
       {"version", config_.version},
       {"heartbeat_at", CurrentIsoTimestamp()},
       {"status", "online"},
-      {"sequence", sequence}};
+      {"sequence", sequence},
+      {"ip", config_.edge_ip}};
   return payload.dump();
+}
+
+void MqttWorkflow::RefreshEdgeIp() {
+  if (!config_.edge_ip.empty()) {
+    return;
+  }
+
+  if (auto ip = FetchEdgeIpFromIptool(config_)) {
+    config_.edge_ip = *ip;
+    LogInfoFormat("取得 Edge IP: {}", config_.edge_ip);
+  } else {
+    LogDebug("暫時無法從 IPtool 取得 Edge IP");
+  }
 }
 
 // IPCscan 成功回報 JSON（包含 trace_id 與 result 資料）

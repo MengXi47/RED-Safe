@@ -1,6 +1,7 @@
 #include "core/edge_application.hpp"
 
 #include "common/logging.hpp"
+#include "grpc/ip_resolver.hpp"
 
 #include <csignal>
 #include <memory>
@@ -27,6 +28,15 @@ int EdgeApplication::Run() {
       config_.version,
       config_.mqtt_broker,
       config_.grpc_port);
+
+  if (config_.edge_ip.empty()) {
+    if (auto ip = FetchEdgeIpFromIptool(config_)) {
+      config_.edge_ip = *ip;
+      LogInfoFormat("開機時取得 Edge IP: {}", config_.edge_ip);
+    } else {
+      LogWarn("開機時未能取得 Edge IP，將嘗試以預設設定上線");
+    }
+  }
 
   if (!online_service_.ReportOnline(config_)) {
     LogError("Edge 上線流程失敗，結束程式");

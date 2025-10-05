@@ -39,13 +39,16 @@ class MqttWorkflow {
   // 訂閱 Edge 指令 Topic
   boost::asio::awaitable<bool> SubscribeCommands();
   // 定時發佈 Edge 心跳狀態
-  [[nodiscard]] boost::asio::awaitable<void> PublishHeartbeat() const;
+  [[nodiscard]] boost::asio::awaitable<void> PublishHeartbeat();
   // 持續處理指令 Topic 的訊息
   boost::asio::awaitable<void> ConsumeCommands();
   // 重新啟動指令心跳 watchdog
   void ResetCommandKeepalive();
   // 指令心跳逾時的處理流程
   void HandleCommandTimeout(const boost::system::error_code& ec);
+
+  // 確保 config_ 具備最新的 Edge IP
+  void RefreshEdgeIp();
 
   // 建構心跳發佈的 JSON payload
   [[nodiscard]] std::string BuildHeartbeatPayload(std::uint64_t sequence) const;

@@ -8,6 +8,8 @@ struct EdgeConfig {
   std::string edge_id;
   std::string version;
   std::string edge_ip;
+  std::string network_interface;
+  std::string iptool_target;
   std::string server_base_url;
   std::string mqtt_broker;
   std::uint16_t mqtt_port;
