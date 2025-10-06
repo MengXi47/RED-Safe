@@ -1,38 +1,39 @@
 #include "scan_handler.hpp"
 
+#include "../../ipcscan/app/scan_executor.hpp"
 #include "util/logging.hpp"
+
+#include <boost/asio.hpp>
 
 #include <nlohmann/json.hpp>
 
-#include <future>
+#include <algorithm>
+#include <thread>
 #include <utility>
 
 using boost::asio::awaitable;
 
 ScanCommandHandler::ScanCommandHandler(
-    ipcscan::ScanExecutor& executor, CommandPublishFn publish_response)
-    : executor_(executor), publish_response_(std::move(publish_response)) {}
+    std::chrono::milliseconds scan_timeout, CommandPublishFn publish_response)
+    : publish_response_(std::move(publish_response)),
+      scan_timeout_(scan_timeout),
+      scan_pool_(std::max(1u, std::thread::hardware_concurrency())) {}
 
 awaitable<void> ScanCommandHandler::Handle(const CommandMessage& command) {
   std::string response;
-  try {
-    auto future = std::async(std::launch::async, [&]() {
-      return executor_.RunScan();
-    });
-    std::string result = future.get();
-    response = BuildScanSuccess(command.trace_id, result);
+  auto [success, result] = co_await RunScanAsync();
+
+  if (!success) {
+    LogErrorFormat("IPCscan 執行失敗: {}", result);
+    response = BuildScanError(command.trace_id, result);
+  } else {
     LogInfoFormat(
         "IPCscan 完成，trace_id={} 結果長度 {}",
         command.trace_id,
         result.size());
     LogInfoFormat(
         "IPCscan 結果內容 trace_id={} result={}", command.trace_id, result);
-  } catch (const std::exception& ex) {
-    LogErrorFormat("IPCscan 執行失敗: {}", ex.what());
-    response = BuildScanError(command.trace_id, ex.what());
-  } catch (...) {
-    LogError("IPCscan 執行發生未知錯誤");
-    response = BuildScanError(command.trace_id, "unknown error");
+    response = BuildScanSuccess(command.trace_id, result);
   }
 
   const bool published =
@@ -40,6 +41,44 @@ awaitable<void> ScanCommandHandler::Handle(const CommandMessage& command) {
   if (published) {
     LogInfo("IPCscan 結果已送出");
   }
+}
+
+awaitable<std::tuple<bool, std::string>> ScanCommandHandler::RunScanAsync() {
+  auto executor = co_await boost::asio::this_coro::executor;
+  co_return co_await boost::asio::async_initiate<
+      decltype(boost::asio::use_awaitable),
+      void(bool, std::string)>(
+      [this, executor](auto&& completion_handler) {
+        using HandlerType = std::decay_t<decltype(completion_handler)>;
+        auto handler = std::make_shared<HandlerType>(
+            std::forward<decltype(completion_handler)>(completion_handler));
+
+        boost::asio::post(
+            scan_pool_, [handler, executor, timeout = scan_timeout_]() mutable {
+              bool success = true;
+              std::string result;
+              try {
+                ipcscan::ScanExecutor executor_obj(timeout);
+                result = executor_obj.RunScan();
+              } catch (...) {
+                success = false;
+                try {
+                  throw;
+                } catch (const std::exception& ex) {
+                  result = ex.what();
+                } catch (...) {
+                  result = "unknown error";
+                }
+              }
+
+              boost::asio::post(
+                  executor,
+                  [handler, success, result = std::move(result)]() mutable {
+                    (*handler)(success, std::move(result));
+                  });
+            });
+      },
+      boost::asio::use_awaitable);
 }
 
 std::string ScanCommandHandler::BuildScanSuccess(

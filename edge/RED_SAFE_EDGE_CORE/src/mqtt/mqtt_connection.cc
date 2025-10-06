@@ -19,12 +19,10 @@ MqttWorkflow::MqttWorkflow(
     boost::asio::io_context& io_context,
     mqtt_client& client,
     EdgeConfig config,
-    ipcscan::ScanExecutor& executor,
     IEdgeOnlineService& online_service)
     : io_context_(io_context),
       client_(client),
       config_(std::move(config)),
-      executor_(executor),
       online_service_(online_service),
       status_topic_(config_.edge_id + "/status"),
       cmd_topic_(config_.edge_id + "/cmd"),
@@ -147,7 +145,6 @@ void MqttWorkflow::InitializeHandlers() {
       unsupported_handler_holder_,
       unsupported_handler_,
       config_,
-      executor_,
       publish_status,
       publish_response,
       std::move(reset_keepalive));

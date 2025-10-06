@@ -8,7 +8,6 @@
 #include "handler/scan_handler.hpp"
 #include "handler/unsupported_command_handler.hpp"
 #include "http/http_client.hpp"
-#include "ipcscan/app/scan_executor.hpp"
 #include "mqtt/mqtt_traits.hpp"
 
 #include <chrono>
@@ -40,7 +39,6 @@ class MqttWorkflow {
       boost::asio::io_context& io_context,
       mqtt_client& client,
       EdgeConfig config,
-      ipcscan::ScanExecutor& executor,
       IEdgeOnlineService& online_service);
 
   boost::asio::awaitable<void> Run();
@@ -59,7 +57,6 @@ class MqttWorkflow {
   boost::asio::io_context& io_context_;
   mqtt_client& client_;
   EdgeConfig config_;
-  ipcscan::ScanExecutor& executor_;
   IEdgeOnlineService& online_service_;
   std::string status_topic_;
   std::string cmd_topic_;

@@ -42,7 +42,6 @@ inline void RegisterDefaultHandlers(
     std::unique_ptr<UnsupportedCommandHandler>& unsupported_holder,
     UnsupportedCommandHandler*& unsupported_handler,
     EdgeConfig& config,
-    ipcscan::ScanExecutor& executor,
     CommandPublishFn publish_status,
     CommandPublishFn publish_response,
     std::function<void()> reset_keepalive) {
@@ -55,7 +54,8 @@ inline void RegisterDefaultHandlers(
           publish_status,
           publish_response,
           reset_keepalive),
-      MQTT_HANDLER_ENTRY("101", ScanCommandHandler, executor, publish_response),
+      MQTT_HANDLER_ENTRY(
+          "101", ScanCommandHandler, config.ipcscan_timeout, publish_response),
       MQTT_HANDLER_ENTRY("102", NetworkInfoHandler, config),
       // TODO: 未來可在此加入更多Handler
   };

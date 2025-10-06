@@ -53,7 +53,7 @@ int EdgeApplication::Run() {
   SetupSignalHandlers();
 
   auto workflow = std::make_shared<MqttWorkflow>(
-      io_context_, mqtt_client_, config_, scan_executor_, online_service_);
+      io_context_, mqtt_client_, config_, online_service_);
   boost::asio::co_spawn(
       io_context_,
       [workflow]() -> boost::asio::awaitable<void> {
