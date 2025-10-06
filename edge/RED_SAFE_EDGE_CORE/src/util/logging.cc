@@ -1,9 +1,9 @@
-#include "common/logging.hpp"
+#include "util/logging.hpp"
 
 #include <iostream>
 #include <string>
 
-#include "common/time.hpp"
+#include "util/time.hpp"
 
 namespace {
 std::mutex& LogMutex() {

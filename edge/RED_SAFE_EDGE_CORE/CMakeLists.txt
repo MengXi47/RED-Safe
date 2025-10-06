@@ -31,6 +31,7 @@ if (WIN32)
 endif ()
 
 include(cmake/Target.cmake)
+include(cmake/CLangFormat.cmake)
 
 find_package(Boost 1.82 REQUIRED COMPONENTS system thread)
 find_package(OpenSSL REQUIRED)

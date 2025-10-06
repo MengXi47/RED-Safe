@@ -1,9 +1,9 @@
-#include "common/logging.hpp"
 #include "core/edge_application.hpp"
 #include "core/env_setting.hpp"
 #include "http/http_client.hpp"
 #include "ipcscan/app/scan_executor.hpp"
 #include "mqtt/mqtt_workflow.hpp"
+#include "util/logging.hpp"
 
 #include <exception>
 #include <boost/asio/io_context.hpp>
@@ -23,7 +23,6 @@ using mqtt_client =
     mqtt5::mqtt_client<websocket_stream, asio::ssl::context, mqtt5::logger>;
 
 namespace {
-// 管理 curl 全域初始化/釋放的 RAII 工具
 class CurlGlobalInit final {
  public:
   CurlGlobalInit() {
@@ -31,11 +30,11 @@ class CurlGlobalInit final {
       throw std::runtime_error("curl_global_init failed");
     }
   }
+
   ~CurlGlobalInit() { curl_global_cleanup(); }
 };
 } // namespace
 
-// 程式進入點：串接設定、MQTT 與 gRPC 工作流程
 int main() {
   try {
     CurlGlobalInit curl_guard;

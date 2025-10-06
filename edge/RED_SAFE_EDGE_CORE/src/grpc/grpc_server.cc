@@ -1,8 +1,8 @@
 #include "grpc_server.hpp"
 
-#include "common/logging.hpp"
 #include "ipcscan/app/scan_executor.hpp"
 #include "red_safe_edge_core.grpc.pb.h"
+#include "util/logging.hpp"
 
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>

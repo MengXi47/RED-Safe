@@ -22,6 +22,10 @@ data/
 
 .vscode
 
+.cache/
+
+CMakePresets.json
+
 # Xcode user data
 *.xcuserstate
 *.xcworkspace/xcuserdata/

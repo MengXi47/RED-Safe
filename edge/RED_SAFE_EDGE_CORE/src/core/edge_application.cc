@@ -1,7 +1,7 @@
 #include "core/edge_application.hpp"
 
-#include "common/logging.hpp"
 #include "grpc/ip_resolver.hpp"
+#include "util/logging.hpp"
 
 #include <csignal>
 #include <memory>

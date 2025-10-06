@@ -8,12 +8,12 @@ namespace absl {
 ABSL_NAMESPACE_BEGIN
 namespace log_internal {
 
-template LogMessage& LogMessage::operator<<<unsigned long>(
+template LogMessage& LogMessage::operator<< <unsigned long>(
     const unsigned long&);
-template LogMessage& LogMessage::operator<<<unsigned long long>(
+template LogMessage& LogMessage::operator<< <unsigned long long>(
     const unsigned long long&);
 
-}  // namespace log_internal
+} // namespace log_internal
 ABSL_NAMESPACE_END
-}  // namespace absl
+} // namespace absl
 #endif

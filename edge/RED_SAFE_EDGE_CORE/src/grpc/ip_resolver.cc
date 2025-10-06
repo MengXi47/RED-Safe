@@ -1,7 +1,7 @@
 #include "grpc/ip_resolver.hpp"
 
-#include "common/logging.hpp"
 #include "grpc/grpc_client.hpp"
+#include "util/logging.hpp"
 
 #include <grpcpp/grpcpp.h>
 
@@ -9,10 +9,14 @@
 #include <string>
 
 namespace {
-constexpr const char* kDefaultInterface = "eth0";
+constexpr auto kDefaultInterface = "eth0";
 }
 
 std::optional<std::string> FetchEdgeIpFromIptool(const EdgeConfig& config) {
+#ifndef NDEBUG
+  (void)config;
+  return std::nullopt;
+#else
   const std::string target =
       config.iptool_target.empty() ? "localhost:20002" : config.iptool_target;
 
@@ -51,4 +55,5 @@ std::optional<std::string> FetchEdgeIpFromIptool(const EdgeConfig& config) {
   }
 
   return config_proto.ip_address();
+#endif
 }

@@ -1,8 +1,8 @@
 #include "http/http_client.hpp"
 
-#include "common/logging.hpp"
-#include "common/time.hpp"
 #include "grpc/ip_resolver.hpp"
+#include "util/logging.hpp"
+#include "util/time.hpp"
 
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>

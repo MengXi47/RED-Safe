@@ -1,6 +1,6 @@
 #include "grpc_client.hpp"
 
-#include "common/logging.hpp"
+#include "util/logging.hpp"
 
 #include <memory>
 #include <optional>
@@ -28,8 +28,9 @@ std::optional<NetworkConfig> NetworkServiceClient::GetNetworkConfig(
   GetNetworkConfigResponse response;
   ClientContext context;
 
-  const Status status = stub_->GetNetworkConfig(&context, request, &response);
-  if (!status.ok()) {
+  if (const Status status =
+          stub_->GetNetworkConfig(&context, request, &response);
+      !status.ok()) {
     LogErrorFormat(
         "GetNetworkConfig RPC 失敗，interface={} code={} message={}",
         interface_name,

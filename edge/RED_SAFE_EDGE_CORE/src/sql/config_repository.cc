@@ -1,6 +1,6 @@
-#include "sql/config_repository.hpp"
+#include "config_repository.hpp"
 
-#include "common/logging.hpp"
+#include "../util/logging.hpp"
 
 #include <pqxx/pqxx>
 
@@ -10,9 +10,8 @@
 namespace {
 constexpr const char* kConnectionUri =
     "postgresql://redsafedb:redsafedb@localhost/redsafedb";
-constexpr const char* kSelectEdgeId =
-    "SELECT edge_id FROM config LIMIT 1";
-}
+constexpr const char* kSelectEdgeId = "SELECT edge_id FROM config LIMIT 1";
+} // namespace
 
 namespace sql {
 
@@ -58,4 +57,3 @@ std::optional<std::string> LoadEdgeId() {
 }
 
 } // namespace sql
-
