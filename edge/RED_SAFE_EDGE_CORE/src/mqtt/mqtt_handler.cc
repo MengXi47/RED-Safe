@@ -4,6 +4,7 @@
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/error.hpp>
+#include <boost/system/errc.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -35,16 +36,26 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
     if (ec == mqtt5::client::error::session_expired) {
       LogWarn("MQTT 會話過期，嘗試重新訂閱");
       if (!(co_await SubscribeCommands())) {
-        LogError("重新訂閱指令 Topic 失敗，停止 command loop");
+        LogError("重新訂閱指令 Topic 失敗，準備重新連線");
+        RequestReconnect(
+            boost::system::errc::make_error_code(
+                boost::system::errc::not_connected));
         co_return;
       }
       continue;
     }
 
-    if (ec) {
-      if (ec != boost::asio::error::operation_aborted) {
-        LogErrorFormat("接收 MQTT 訊息失敗: {}", ec.message());
+    if (ec == boost::asio::error::operation_aborted) {
+      if (!reconnect_requested_ && !io_context_.stopped()) {
+        LogWarn("MQTT 接收流程被中止，準備重新連線");
+        RequestReconnect(ec);
       }
+      co_return;
+    }
+
+    if (ec) {
+      LogErrorFormat("接收 MQTT 訊息失敗: {}", ec.message());
+      RequestReconnect(ec);
       co_return;
     }
 

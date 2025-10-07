@@ -12,6 +12,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -47,10 +48,11 @@ class MqttWorkflow {
   boost::asio::awaitable<bool> SubscribeCommands();
   boost::asio::awaitable<void> ConsumeCommands();
   void InitializeHandlers();
+  void RequestReconnect(const boost::system::error_code& ec);
   [[nodiscard]] boost::asio::awaitable<bool> PublishCommandResponse(
-      std::string payload, std::string_view error_context) const;
+      std::string payload, std::string_view error_context);
   [[nodiscard]] boost::asio::awaitable<bool> PublishStatusMessage(
-      std::string payload, std::string_view error_context) const;
+      std::string payload, std::string_view error_context);
   void ResetCommandKeepalive();
   void HandleCommandTimeout(const boost::system::error_code& ec);
 
@@ -67,4 +69,9 @@ class MqttWorkflow {
   std::unique_ptr<UnsupportedCommandHandler> unsupported_handler_holder_;
   UnsupportedCommandHandler* unsupported_handler_{nullptr};
   HeartbeatHandler* heartbeat_handler_{nullptr};
+  bool heartbeat_started_{false};
+  bool reconnect_requested_{false};
+  std::optional<boost::system::error_code> last_error_;
+  static constexpr std::chrono::seconds reconnect_delay_{5};
+  bool connected_{false};
 };

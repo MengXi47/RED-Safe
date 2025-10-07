@@ -46,6 +46,7 @@ inline void RegisterDefaultHandlers(
     CommandPublishFn publish_response,
     std::function<void()> reset_keepalive) {
   std::array handler_entries{
+      // 心跳包
       MQTT_HANDLER_ENTRY_WITH_PTR(
           "100",
           HeartbeatHandler,
@@ -54,9 +55,14 @@ inline void RegisterDefaultHandlers(
           publish_status,
           publish_response,
           reset_keepalive),
+
+      // IPC掃描
       MQTT_HANDLER_ENTRY(
           "101", ScanCommandHandler, config.ipcscan_timeout, publish_response),
+
+      // 獲取網路配置
       MQTT_HANDLER_ENTRY("102", NetworkInfoHandler, config),
+
       // TODO: 未來可在此加入更多Handler
   };
 
