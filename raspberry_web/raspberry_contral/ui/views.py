@@ -16,6 +16,7 @@ from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from ipcscan_client.ipcsacn import scan_ipc_dynamic
 
 from .models import EdgeConfig
 
@@ -445,7 +446,7 @@ def device_info(request):
     """顯示裝置基本資訊與預設 QR Code。"""
 
     # 若未接實際裝置資料，先使用預設（題主要求）
-    serial = "12345678"  # 預留：序號（目前固定為 12345678）
+    serial = scan_ipc_dynamic()  # 預留：序號（目前固定為 12345678）
     version = "v1.0.0"  # 預留：版本
     status = 1  # 1 = 已連線, 0 = 未連線
     password = "12345678"  # 預留密碼（題主要求預設為 12345678）

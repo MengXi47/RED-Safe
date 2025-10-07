@@ -4,9 +4,10 @@
 #include "util/logging.hpp"
 #include "util/time.hpp"
 
-#include <boost/asio/as_tuple.hpp>
+#include <boost/asio/redirect_error.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/this_coro.hpp>
+#include <boost/asio/use_awaitable.hpp>
 
 #include <nlohmann/json.hpp>
 
@@ -31,7 +32,7 @@ awaitable<void> HeartbeatHandler::Handle(const CommandMessage& command) {
 }
 
 // 以協程方式定期發送心跳訊息
-awaitable<void> HeartbeatHandler::RunPublisher() const {
+awaitable<void> HeartbeatHandler::RunPublisher() {
   boost::asio::steady_timer timer(co_await boost::asio::this_coro::executor);
   std::uint64_t sequence = 0;
 
@@ -41,8 +42,9 @@ awaitable<void> HeartbeatHandler::RunPublisher() const {
     co_await publish_status_(payload, "MQTT 心跳發佈失敗");
 
     timer.expires_after(config_.heartbeat_interval);
-    auto [wait_ec] =
-        co_await timer.async_wait(boost::asio::as_tuple(boost::asio::deferred));
+    boost::system::error_code wait_ec;
+    co_await timer.async_wait(
+        boost::asio::redirect_error(boost::asio::use_awaitable, wait_ec));
     if (wait_ec) {
       break;
     }

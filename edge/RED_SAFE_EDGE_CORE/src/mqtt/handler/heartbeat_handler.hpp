@@ -21,13 +21,13 @@ class HeartbeatHandler final : public ICommandHandler {
 
   boost::asio::awaitable<void> Handle(const CommandMessage& command) override;
 
-  [[nodiscard]] boost::asio::awaitable<void> RunPublisher() const;
+  [[nodiscard]] boost::asio::awaitable<void> RunPublisher();
 
  private:
   [[nodiscard]] std::string BuildHeartbeatPayload(std::uint64_t sequence) const;
   [[nodiscard]] static std::string BuildAckMessage(
       const std::string& trace_id, const std::string& code);
-  static void RefreshEdgeIp();
+  void RefreshEdgeIp();
 
   EdgeConfig& config_;
   CommandPublishFn publish_status_;
