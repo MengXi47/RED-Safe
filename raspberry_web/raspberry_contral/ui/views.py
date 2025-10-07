@@ -3,6 +3,7 @@
 import base64
 import io
 import re
+import json
 import subprocess
 
 import netifaces
@@ -451,7 +452,8 @@ def device_info(request):
 
     # QR code 內容格式（你可以按需要改格式）
     # 我用簡單 key=value;key=value 讓掃描端能解析
-    payload = f"serial={serial};password={password}"
+    payload_dict = {"serial": serial, "password": password}
+    payload = json.dumps(payload_dict, ensure_ascii=False, separators=(",", ":"))
 
     # 產生 QR image 至 memory buffer，轉成 base64 data URI
     try:
@@ -488,11 +490,12 @@ def device_info(request):
 @_require_auth
 @require_http_methods(["GET"])
 def device_qr(request: HttpRequest):
-    """產生裝置資訊的 QR Code 影像。"""
+    """產生裝置資訊（JSON 格式）的 QR Code 影像。"""
 
     serial = "12345678"
     password = "12345678"
-    payload = f"serial={serial};password={password}"
+    payload_dict = {"serial": serial, "password": password}
+    payload = json.dumps(payload_dict, ensure_ascii=False, separators=(",", ":"))
 
     qr = qrcode.QRCode(
         version=1,
