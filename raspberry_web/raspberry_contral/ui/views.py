@@ -515,6 +515,23 @@ def device_qr(request: HttpRequest):
     buf.seek(0)
     return HttpResponse(buf.getvalue(), content_type="image/png")
 
+# ====== camera =====
+@_require_auth
+@require_http_methods(["GET"])
+def cameras(request: HttpRequest):
+    """攝影機管理頁面：包含已綁定與搜尋功能在同一頁面。"""
+    # 模擬已綁定清單（之後可改成資料庫或 API）
+    bound = [
+        {"ip": "192.168.0.60", "mac": "AA:BB:CC:DD:EE:60", "name": "VIGI C400HP-4"},
+        {"ip": "192.168.0.48", "mac": "AA:BB:CC:DD:EE:48", "name": "IPC"},
+    ]
+    # 模擬搜尋結果
+    search_results = [
+        {"ip": "192.168.0.101", "mac": "AA:BB:CC:DD:EE:01", "name": "Cam-101"},
+        {"ip": "192.168.0.102", "mac": "AA:BB:CC:DD:EE:02", "name": "Cam-102"},
+    ]
+    context = {"bound": bound, "search_results": search_results}
+    return render(request, "ui/cameras_combined.html", context)
 
 # ====== API（啟用；登入保護） ======
 @_require_auth

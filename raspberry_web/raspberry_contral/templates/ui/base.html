@@ -42,6 +42,16 @@
           <a class="link {% if request.path == '/device/info/' %}active{% endif %}" href="{% url 'device_info' %}">裝置資訊</a>
         </div>
       </div>
+
+      <!-- 攝影機 -->
+      <div class="item {% if request.path|slice:':9' == '/cameras/' %}open{% endif %}">
+        <button type="button" data-target="camMenu">
+          <span>攝影機</span><span class="caret">▶</span>
+        </button>
+        <div id="camMenu" class="submenu">
+          <a class="link {% if request.path == '/cameras/' %}active{% endif %}" href="{% url 'cameras' %}">攝影機管理</a>
+        </div>
+      </div>
     </nav>
 
     <div class="footer">

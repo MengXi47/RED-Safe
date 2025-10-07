@@ -1,0 +1,180 @@
+{% extends "ui/base.html" %}
+{% block title %}攝影機管理{% endblock %}
+{% block header %}攝影機管理{% endblock %}
+
+{% block content %}
+<style>
+  /* ===== Cameras page scoped styles ===== */
+  #cam-page .tbl{width:100%;border-collapse:separate;border-spacing:0;min-width:720px}
+  #cam-page .tbl th,#cam-page .tbl td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
+  #cam-page .tbl th, #cam-page .tbl td {
+    vertical-align: middle;
+  }
+  #cam-page .tbl td .chip,
+  #cam-page .tbl td button.action-btn {
+    display: inline-flex;
+    align-items: center;
+  }
+  #cam-page .tbl th {
+    height: 48px;
+    line-height: 48px;
+  }
+  #cam-page .tbl td {
+    height: 48px;
+    line-height: 1.4;
+  }
+  #cam-page .tbl thead th{position:sticky;top:0;background:rgba(255,255,255,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+  @media (prefers-color-scheme: dark){#cam-page .tbl thead th{background:rgba(17,24,39,.55)}}
+  #cam-page .tbl tbody tr:hover{background:rgba(255,255,255,.06)}
+
+  #cam-page .num{width:64px;text-align:center}
+  #cam-page .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.45)}
+  @media (prefers-color-scheme: dark){#cam-page .chip{background:rgba(255,255,255,.06)}}
+  #cam-page .chip .dot{width:6px;height:6px;border-radius:50%;background:#60a5fa;box-shadow:0 0 8px rgba(96,165,250,.6)}
+  #cam-page .chip.mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+
+  #cam-page .actions{white-space:nowrap;display:flex;gap:8px}
+  #cam-page .col-actions{width:160px}
+  #cam-page .tbl .actions{justify-content:flex-start}
+  #cam-page .action-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;cursor:pointer}
+  #cam-page .action-btn:hover{background:rgba(255,255,255,.08)}
+  #cam-page .action-btn.danger{border-color:transparent;background:linear-gradient(180deg,var(--danger),calc(100% - 1px),#e34b50);color:#fff}
+
+  #cam-page .empty-state{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);padding:18px}
+  #cam-page .empty-state .icon{width:16px;height:16px;opacity:.7}
+
+  #cam-page section.glass {
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  #cam-page section.glass h2 {
+    margin-bottom: 4px;
+  }
+  #cam-page .cam-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    align-items: stretch;
+  }
+  #cam-page .cam-sections section.glass {
+    width: 100%;
+  }
+</style>
+<div id="cam-page">
+<div class="content-container">
+  <div class="cam-sections">
+    <section class="glass">
+      <div class="toolbar">
+        <button class="btn" onclick="refreshSearch()">搜尋攝影機</button>
+        <button class="btn btn-ghost" onclick="location.reload()">重新整理</button>
+      </div>
+      <h2>搜尋結果</h2>
+      <div class="table-wrap">
+        <table class="tbl">
+          <colgroup>
+            <col style="width:64px">
+            <col style="width:25%">
+            <col style="width:30%">
+            <col>
+            <col class="col-actions" style="width:160px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="num">No.</th>
+              <th>IP</th>
+              <th>MAC</th>
+              <th>名稱</th>
+              <th class="col-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% if search_results %}
+            {% for r in search_results %}
+            <tr>
+              <td class="num">{{ forloop.counter }}</td>
+              <td><span class="chip mono"><span class="dot" aria-hidden="true"></span>{{ r.ip }}</span></td>
+              <td><span class="chip mono">{{ r.mac }}</span></td>
+              <td>{{ r.name }}</td>
+              <td class="actions">
+                <button class="action-btn" onclick="addCam('{{ r.ip }}','{{ r.mac }}','{{ r.name }}')">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                  添加
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5" class="empty-state"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Z" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg> 未找到任何裝置</td></tr>
+          {% endif %}
+          </tbody>
+        </table>
+      </div>
+      <div class="hint">提示：按下「搜尋攝影機」可更新列表。</div>
+    </section>
+    <section class="glass">
+      <h2>已綁定攝影機</h2>
+      <div class="table-wrap">
+        <table class="tbl">
+          <colgroup>
+            <col style="width:64px">
+            <col style="width:25%">
+            <col style="width:30%">
+            <col>
+            <col class="col-actions" style="width:160px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="num">No.</th>
+              <th>IP</th>
+              <th>MAC</th>
+              <th>名稱</th>
+              <th class="col-actions">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% if bound %}
+            {% for cam in bound %}
+            <tr>
+              <td class="num">{{ forloop.counter }}</td>
+              <td><span class="chip mono"><span class="dot" aria-hidden="true"></span>{{ cam.ip }}</span></td>
+              <td><span class="chip mono">{{ cam.mac }}</span></td>
+              <td>{{ cam.name }}</td>
+              <td class="actions">
+                <button class="action-btn danger" onclick="delCam('{{ cam.mac }}')">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M3 6h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+                  刪除
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5" class="empty-state"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M8 12h8" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg> 尚未綁定任何攝影機</td></tr>
+          {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function delCam(mac){
+    if(!confirm('確定要刪除這台攝影機嗎？')) return;
+    // TODO: 換成實際 API
+    alert('模擬刪除: '+mac);
+  }
+  async function addCam(ip, mac, name){
+    // TODO: 換成實際 API
+    alert('模擬添加: '+name+' ('+ip+')');
+  }
+  function refreshSearch(){
+    // TODO: 換成實際 API
+    alert('模擬搜尋中...');
+  }
+</script>
+{% endblock %}
