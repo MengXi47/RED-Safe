@@ -8,6 +8,7 @@ service IPCScanService {
 
 message ScanRequest {}
 
+// 回傳json
 message ScanResponse {
   string result = 1;
 }
