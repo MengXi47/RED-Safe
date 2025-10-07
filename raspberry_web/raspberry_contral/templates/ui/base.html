@@ -32,17 +32,6 @@
         </div>
       </div>
 
-      <!-- 裝置 -->
-      <div class="item {% if request.path|slice:':9' == '/device/' %}open{% endif %}">
-        <button type="button" data-target="devMenu">
-          <span>裝置</span><span class="caret">▶</span>
-        </button>
-        <div id="devMenu" class="submenu">
-          <a class="link {% if request.path == '/device/change-password/' %}active{% endif %}" href="{% url 'device_change_password' %}">改密碼</a>
-          <a class="link {% if request.path == '/device/info/' %}active{% endif %}" href="{% url 'device_info' %}">裝置資訊</a>
-        </div>
-      </div>
-
       <!-- 攝影機 -->
       <div class="item {% if request.path|slice:':9' == '/cameras/' %}open{% endif %}">
         <button type="button" data-target="camMenu">
@@ -50,6 +39,16 @@
         </button>
         <div id="camMenu" class="submenu">
           <a class="link {% if request.path == '/cameras/' %}active{% endif %}" href="{% url 'cameras' %}">攝影機管理</a>
+        </div>
+      </div>
+        <!-- 裝置 -->
+      <div class="item {% if request.path|slice:':9' == '/device/' %}open{% endif %}">
+        <button type="button" data-target="devMenu">
+          <span>裝置</span><span class="caret">▶</span>
+        </button>
+        <div id="devMenu" class="submenu">
+          <a class="link {% if request.path == '/device/change-password/' %}active{% endif %}" href="{% url 'device_change_password' %}">改密碼</a>
+          <a class="link {% if request.path == '/device/info/' %}active{% endif %}" href="{% url 'device_info' %}">裝置資訊</a>
         </div>
       </div>
     </nav>
