@@ -449,10 +449,10 @@ def device_info(request):
     version = "v1.0.0"  # 預留：版本
     status = 1  # 1 = 已連線, 0 = 未連線
     password = "12345678"  # 預留密碼（題主要求預設為 12345678）
+    name = "裝置"
 
-    # QR code 內容格式（你可以按需要改格式）
-    # 我用簡單 key=value;key=value 讓掃描端能解析
-    payload_dict = {"serial": serial, "password": password}
+    # QR code 內容格式：JSON，包含 serial / password / name 三個欄位
+    payload_dict = {"serial": serial, "password": password, "name": name}
     payload = json.dumps(payload_dict, ensure_ascii=False, separators=(",", ":"))
 
     # 產生 QR image 至 memory buffer，轉成 base64 data URI
@@ -482,6 +482,7 @@ def device_info(request):
         "version": version,
         "status": status,
         "password": password,
+        "name": name,
     }
     return render(request, "ui/device_info.html", {"info": info, "qrcode_data": qrcode_data})
 
@@ -494,7 +495,8 @@ def device_qr(request: HttpRequest):
 
     serial = "12345678"
     password = "12345678"
-    payload_dict = {"serial": serial, "password": password}
+    name="裝置"
+    payload_dict = {"serial": serial, "password": password, "name": name}
     payload = json.dumps(payload_dict, ensure_ascii=False, separators=(",", ":"))
 
     qr = qrcode.QRCode(

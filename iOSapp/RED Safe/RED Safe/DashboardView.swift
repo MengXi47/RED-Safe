@@ -372,6 +372,7 @@ private struct BindEdgeSheet: View {
     @State private var edgeId = ""
     @State private var displayName = ""
     @State private var edgePassword = ""
+    @State private var scanError: String? = nil
 
     @State private var showScanner = false
     @State private var showPhotoPicker = false
@@ -393,12 +394,66 @@ private struct BindEdgeSheet: View {
     private var isNameValid: Bool { !displayName.trimmed.isEmpty && displayName.trimmed.count <= 16 }
     private var isFormValid: Bool { isEdgeIdValid && isNameValid && !edgePassword.trimmed.isEmpty }
 
-    // 從QR字串自動帶入欄位
+    // 支援 JSON 掃描內容（容忍不同鍵名）
+    private struct QRPayload: Decodable {
+        let serial: String?
+        let edge_id: String?
+        let edgeId: String?
+        let password: String?
+        let pass: String?
+        let pwd: String?
+        // （可選）顯示名稱（如果你需要新的鍵名，直接在這裡加欄位即可）
+        let name: String?
+    }
+
+    /// 嘗試將 JSON 內容帶入欄位；成功時回傳 true
+    private func tryAutofillFromJSON(_ payload: String) -> Bool {
+        guard let data = payload.data(using: .utf8) else { return false }
+        do {
+            let obj = try JSONDecoder().decode(QRPayload.self, from: data)
+            let id = obj.serial ?? obj.edge_id ?? obj.edgeId
+            let pw = obj.password ?? obj.pass ?? obj.pwd
+
+            var filled = false
+            if let id, !id.isEmpty {
+                edgeId = id.uppercased()
+                filled = true
+            }
+            if let pw, !pw.isEmpty {
+                edgePassword = pw
+                filled = true
+            }
+            if let name = obj.name?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
+                // 套用現有限制（最長 16）
+                displayName = String(name.prefix(16))
+                filled = true
+            }
+            return filled
+        } catch {
+            return false
+        }
+    }
+
+    // 從QR字串自動帶入欄位（優先解析 JSON；失敗則回退既有格式）
     private func autofill(from payload: String) {
+        let beforeId = edgeId
+        let beforePw = edgePassword
+        let beforeName = displayName
+
+        // 1) 先試著把 JSON 格式帶入
+        if tryAutofillFromJSON(payload) {
+            // 若完全沒有帶入任何欄位，提示使用者
+            if edgeId == beforeId && edgePassword == beforePw && displayName == beforeName {
+                scanError = "無法從掃描內容辨識出有效的 JSON 或欄位。\n\n請確認 QR 內容包含例如：{\"serial\":\"RED-XXXXXXXX\",\"password\":\"******\"}"
+            }
+            return
+        }
+
+        // 2) 回退：相容舊版「文字/鍵值」格式
         let fullRange = NSRange(location: 0, length: (payload as NSString).length)
         if let idMatch = edgeIdRegex.firstMatch(in: payload, options: [], range: fullRange) {
             if let range = Range(idMatch.range, in: payload) {
-                edgeId = String(payload[range])
+                edgeId = String(payload[range]).uppercased()
             }
         }
         if let passMatch = passwordRegex.firstMatch(in: payload, options: [], range: fullRange) {
@@ -409,10 +464,16 @@ private struct BindEdgeSheet: View {
         // 若字串只包含 Edge ID (無密碼)，也盡量抓出
         if edgePassword.isEmpty {
             // 嘗試用逗號或換行分割並找像密碼的片段
-            let parts = payload.replacingOccurrences(of: "\r", with: "").components(separatedBy: CharacterSet(charactersIn: ",\n\t "))
+            let parts = payload
+                .replacingOccurrences(of: "\r", with: "")
+                .components(separatedBy: CharacterSet(charactersIn: ",\n\t "))
             if let candidate = parts.first(where: { !$0.isEmpty && !$0.uppercased().hasPrefix("RED-") }) {
                 edgePassword = candidate
             }
+        }
+        // 若完全沒有帶入任何欄位，提示使用者
+        if edgeId == beforeId && edgePassword == beforePw && displayName == beforeName {
+            scanError = "無法從掃描內容辨識出有效的 JSON 或欄位。\n\n請確認 QR 內容包含例如：{\"serial\":\"RED-XXXXXXXX\",\"password\":\"******\"}"
         }
     }
 
@@ -533,6 +594,11 @@ private struct BindEdgeSheet: View {
             Button("知道了", role: .cancel) {}
         } message: {
             Text(permissionAlertMessage)
+        }
+        .alert("掃描內容無法解析", isPresented: .constant(scanError != nil)) {
+            Button("知道了") { scanError = nil }
+        } message: {
+            Text(scanError ?? "")
         }
     }
 }
