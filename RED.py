@@ -4,6 +4,7 @@ import os
 import requests
 
 BASE_URL = os.environ.get("RED_API_BASE_URL", "https://api.redsafe-tw.com").rstrip("/")
+# BASE_URL = os.environ.get("RED_API_BASE_URL", "https://127.0.0.1").rstrip("/")
 TOKEN_FILE = ".tokens.json"
 
 
@@ -29,6 +30,7 @@ def request_json(method, path, token=None, payload=None):
     url = f"{BASE_URL}{path}"
     headers = {}
     if payload is not None:
+        payload = {k: v for k, v in payload.items() if v not in (None, "")}
         headers["Content-Type"] = "application/json"
     if token:
         headers["Authorization"] = f"Bearer {token}"
@@ -90,8 +92,11 @@ def do_signin():
     payload = {"email": email, "password": password}
     data = api_post("/auth/signin", payload)
     if data:
-        print("✅ Signin 成功:", data)
-        save_tokens(data.get("access_token"), data.get("refresh_token"))
+        if isinstance(data, dict) and data.get("message") == "150":
+            print("⚠️ 此帳號已啟用 OTP，請使用「signin with OTP」選項並輸入動態密碼。")
+        else:
+            print("✅ Signin 成功:", data)
+            save_tokens(data.get("access_token"), data.get("refresh_token"))
 
 
 def do_refresh():
@@ -141,6 +146,7 @@ def do_bind_edge():
         "edge_password": edge_password,
     }
     api_post("/user/bind", payload, token=token)
+
 def do_unbind_edge():
     edge_id = input("Edge ID to unbind: ")
     token, _ = load_tokens()
@@ -205,6 +211,33 @@ def do_update_edge_password():
     api_post("/user/update/edge_password", payload, token=token)
 
 
+def do_create_otp():
+    token, _ = load_tokens()
+    if not token:
+        print("❌ 請先 signin 取得 access_token")
+        return
+    data = api_post("/auth/create/otp", {}, token=token)
+    if data:
+        print("✅ 取得 OTP 秘鑰與備援碼，請妥善保管：", data)
+
+
+def do_signin_with_otp():
+    email = input("Email: ")
+    password = input("Password: ")
+    otp_code = input("OTP Code (如使用備援碼可留空): ").strip()
+    otp_backup_code = input("Backup Code (若使用備援碼請輸入，否則留空): ").strip()
+    payload = {
+        "email": email,
+        "password": password,
+        "otp_code": otp_code or None,
+        "otp_backup_code": otp_backup_code or None,
+    }
+    data = api_post("/auth/signin/otp", payload)
+    if data:
+        print("✅ OTP Signin 成功:", data)
+        save_tokens(data.get("access_token"), data.get("refresh_token"))
+
+
 def do_ios_register():
     token, _ = load_tokens()
     if not token:
@@ -243,6 +276,8 @@ def main():
         print("11) update edge password")
         print("12) register iOS device")
         print("13) send edge command")
+        print("14) create OTP secret")
+        print("15) signin with OTP")
         choice = input("選擇操作: ").strip()
         if choice == "1":
             do_signup()
@@ -270,6 +305,10 @@ def main():
             do_ios_register()
         elif choice == "13":
             do_send_edge_command()
+        elif choice == "14":
+            do_create_otp()
+        elif choice == "15":
+            do_signin_with_otp()
         else:
             print("無效選項")
 

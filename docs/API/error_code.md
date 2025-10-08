@@ -32,6 +32,9 @@
 | 146 | edge_id已存在 |
 | 147 | edge_password錯誤 |
 | 148 | new_edge_password為空 |
+| 150 | 需要二階段驗證 OTP |
+| 151 | OTP 未啟用 |
+| 152 | OTP 驗證失敗 |
 
 ---
 

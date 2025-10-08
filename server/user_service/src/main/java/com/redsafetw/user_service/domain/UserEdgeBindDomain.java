@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -31,8 +32,8 @@ public class UserEdgeBindDomain {
     @Column(name = "display_name")
     private String displayName;
 
-    @Column(name = "is_online")
-    private Boolean isOnline;
+    @Column(name = "bind_at")
+    private OffsetDateTime bindAt;
 
     // JPA 複合主鍵類別
     @Getter

@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import lombok.Getter;
 import lombok.Setter;
+import org.checkerframework.checker.units.qual.C;
 import org.hibernate.annotations.UuidGenerator;
 
 /**
@@ -58,8 +59,21 @@ public class UserDomain {
     private OffsetDateTime last_login_at;
 
     /**
-     * 帳號狀態
-     **/
-    @Column(name = "status")
-    private Boolean status;
+     * 使用者的 TOTP 秘鑰（用於產生 30 秒一次的 OTP）
+     */
+    @Column(name = "otp_secret")
+    private String otpSecret;
+
+    /**
+     * 是否啟用二階段驗證
+     */
+    @Column(name = "otp_enabled")
+    private Boolean otpEnabled;
+
+    /**
+     * 備用驗證碼（陣列型別），萬一用戶手機丟失還能登入，三組 6 位數驗證碼
+     */
+    @Column(name = "otp_backup_codes", columnDefinition = "text[]")
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.ARRAY)
+    private String[] otpBackupCodes;
 }

@@ -72,6 +72,14 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 }
 ```
 
+### 啟用 OTP 時的回應 (200)
+```json
+{
+  "error_code": "150"
+}
+```
+帳號若已啟用二階段驗證，會回傳 `error_code = 150`，此時必須改呼叫「/auth/signin/otp」。
+
 ### 失敗回應範例
 ```json
 {
@@ -79,7 +87,40 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 }
 ```
 
-**常見錯誤碼**：`124`、`128`、`129`、`130`
+**常見錯誤碼**：`124`、`128`、`129`、`130`、`150`
+
+---
+
+## POST /auth/create/otp
+產生 TOTP 秘鑰並啟用二階段驗證，需提供已登入的 `access_token`。
+
+### Headers
+- `Authorization: Bearer <access_token>`
+
+### Request Body
+無
+
+### 成功回應 (200)
+```json
+{
+  "otp_key": "JBSWY3DPEHPK3PXPJBSWY3DP",
+  "backup_codes": [
+    "123456",
+    "654321",
+    "112233"
+  ]
+}
+```
+回傳的 `otp_key` 可手動輸入或轉換成 QR Code 匯入 Authenticator App。`backup_codes` 為一次性備援碼，使用後會作廢。
+
+### 失敗回應範例
+```json
+{
+  "error_code": "126"
+}
+```
+
+**常見錯誤碼**：`126`（token 失效）、`142`（使用者不存在）
 
 ---
 
@@ -115,3 +156,46 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 ```
 
 **常見錯誤碼**：`132`、`137`
+
+---
+
+## POST /auth/signin/otp
+針對已啟用 OTP 的帳號，使用 Email、密碼與 6 碼 OTP 或備援碼登入。
+
+### Headers
+- `Content-Type: application/json`
+
+### Request Body
+```json
+{
+  "email": "user@example.com",
+  "password": "Password",
+  "otp_code": "123456",
+  "backup_code": "654321"
+}
+```
+
+| 欄位 | 型別 | 必填 | 約束 |
+|------|------|------|------|
+| `email` | string | ✅ | 合法 Email 格式，不能為空 |
+| `password` | string | ✅ | 不能為空 |
+| `otp_code` | string | ⭕ | 6 位數字；與 `backup_code` 擇一提供 |
+| `backup_code` | string | ⭕ | 備援碼；與 `otp_code` 擇一提供 |
+
+### 成功回應 (200)
+```json
+{
+  "user_name": "USER_NAME",
+  "access_token": "eyJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "ajh23kjasd..."
+}
+```
+
+### 失敗回應範例
+```json
+{
+  "error_code": "152"
+}
+```
+
+**常見錯誤碼**：`124`、`128`、`129`、`130`、`151`（尚未啟用 OTP）、`152`（OTP 或備援碼驗證失敗）

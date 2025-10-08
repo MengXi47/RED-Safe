@@ -56,7 +56,6 @@ public class BindService {
         userEdgeBindDomain.setUserId(userId);
         userEdgeBindDomain.setEdgeId(edgeId);
         userEdgeBindDomain.setDisplayName(bindRequest.getEdgeName());
-        userEdgeBindDomain.setIsOnline(false);
         userEdgeBindRepository.save(userEdgeBindDomain);
 
         logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} Bind successful", userId, edgeId);

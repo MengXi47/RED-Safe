@@ -1,0 +1,50 @@
+package com.redsafetw.user_service.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.redsafetw.user_service.config.MqttIntegrationConfig.MqttCommandGateway;
+import com.redsafetw.user_service.config.MqttProperties;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.MessagingException;
+import org.springframework.stereotype.Service;
+
+/**
+ * Edge MQTT 指令發佈器：包裝 trace_id/code/payload 送往指定 Edge topic。
+ */
+@Service
+@RequiredArgsConstructor
+public class EdgeMqttPublisher {
+    private static final Logger log = LoggerFactory.getLogger(EdgeMqttPublisher.class);
+
+    private final MqttCommandGateway mqttGateway;
+    private final MqttProperties mqttProperties;
+    private final ObjectMapper objectMapper;
+
+    public void publishEdgeCommand(String edgeId, String traceId, String code, String payloadJson) throws MessagingException {
+        ObjectNode message = objectMapper.createObjectNode();
+        message.put("trace_id", traceId);
+        message.put("code", code);
+
+        if (payloadJson != null && !payloadJson.isBlank()) {
+            try {
+                JsonNode payloadNode = objectMapper.readTree(payloadJson);
+                message.set("payload", payloadNode);
+            } catch (JsonProcessingException ex) {
+                log.warn("Invalid payload JSON provided for edge command. edgeId={} traceId={}", edgeId, traceId, ex);
+                message.put("payload", payloadJson);
+            }
+        }
+
+        String topic = topicForEdge(edgeId);
+        mqttGateway.publish(topic, message.toString());
+        log.info("Published MQTT command. topic={} traceId={} qos={}", topic, traceId, mqttProperties.getQos());
+    }
+
+    private String topicForEdge(String edgeId) {
+        return edgeId + "/cmd";
+    }
+}

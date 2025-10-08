@@ -1,20 +1,26 @@
 package com.redsafetw.user_service.service;
 
+import com.redsafetw.user_service.domain.AuthDomain;
 import com.redsafetw.user_service.domain.UserDomain;
 import com.redsafetw.user_service.dto.*;
+import com.redsafetw.user_service.repository.AuthRepository;
 import com.redsafetw.user_service.repository.UserRepository;
 import com.redsafetw.user_service.util.*;
-import com.redsafetw.user_service.repository.AuthRepository;
-import com.redsafetw.user_service.domain.AuthDomain;
+import com.warrenstrange.googleauth.GoogleAuthenticator;
+import com.warrenstrange.googleauth.GoogleAuthenticatorConfig;
+import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.security.SecureRandom;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,6 +37,15 @@ public class AuthService {
     private final AuthRepository auths;
     private final AuthRepository authRepository;
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private final GoogleAuthenticator gAuth = new GoogleAuthenticator(
+            new GoogleAuthenticatorConfig.GoogleAuthenticatorConfigBuilder()
+                    .setSecretBits(160)
+                    .setCodeDigits(6)
+                    .setTimeStepSizeInMillis(30_000)
+                    .setWindowSize(1)
+                    .build()
+    );
 
     public SignupResponse signup(SignupRequest req) {
 
@@ -48,7 +63,6 @@ public class AuthService {
         user.setEmail(req.getEmail());
         user.setUser_name(req.getUserName());
         user.setUser_password_hash(Argon2id.hash(req.getPassword()));
-        user.setStatus(true);
         user = users.save(user);
 
         logger.info("Signup: {\"user_name\":\"{}\", \"email\":\"{}\", \"password\":\"{}\"} Signup successful user_id: {}",
@@ -73,6 +87,10 @@ public class AuthService {
         var user = users.findByEmail(req.getEmail().trim())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "128"));
 
+        if (Boolean.TRUE.equals(user.getOtpEnabled())) {
+            throw new ResponseStatusException(HttpStatus.OK, "150");
+        }
+
         String accessToken = JwtService.createToken(user.getUserId());
         String refreshToken = RefreshToken.generateRefreshToken();
 
@@ -91,7 +109,55 @@ public class AuthService {
                 req.getEmail(),
                 req.getPassword(),
                 user.getUserId());
-        return SigninResponse.builder().userName(user.getUser_name()).accessToken(accessToken).refreshToken(refreshToken).build();
+        return SigninResponse.builder()
+                .userName(user.getUser_name())
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    public SigninResponse signinWithOtp(SigninRequest req) {
+        if (!verifyPassword(req.getEmail(), req.getPassword())) {
+            logger.info("SigninOTP: {\"email\":\"{}\", \"password\":\"{}\"} 帳號密碼錯誤", req.getEmail(), req.getPassword());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "128");
+        }
+
+        var user = users.findByEmail(req.getEmail().trim())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "128"));
+
+        if (!Boolean.TRUE.equals(user.getOtpEnabled())) {
+            logger.info("SigninOTP: {\"email\":\"{}\"} otp 未啟用", req.getEmail());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "151");
+        }
+
+        boolean verified = verifyTotp(user.getOtpSecret(), req.getOtpCode())
+                || verifyBackupCode(user, req.getBackupCode());
+
+        if (!verified) {
+            logger.info("SigninOTP: {\"email\":\"{}\"} OTP 驗證失敗", req.getEmail());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "152");
+        }
+
+        String accessToken = JwtService.createToken(user.getUserId());
+        String refreshToken = RefreshToken.generateRefreshToken();
+
+        user.setLast_login_at(OffsetDateTime.now());
+        users.save(user);
+
+        AuthDomain auth = new AuthDomain();
+        auth.setUser(user);
+        auth.setRefresh_token(refreshToken);
+        auth.setCreated_at(OffsetDateTime.now());
+        auth.setExpires_at(OffsetDateTime.now().plusDays(30));
+        auth.setRevoked(false);
+        auths.save(auth);
+
+        logger.info("SigninOTP: {\"email\":\"{}\"} Signin successful with OTP user_id: {}", req.getEmail(), user.getUserId());
+        return SigninResponse.builder()
+                .userName(user.getUser_name())
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
     }
 
     public RefreshResponse refresh(RefreshRequest req) {
@@ -151,4 +217,79 @@ public class AuthService {
         var user = userOpt.get();
         return Argon2id.verify(user.getUser_password_hash(), rawPassword);
     }
+
+    /**
+     * 建立使用者 OTP 秘鑰與備援驗證碼，並啟用二階段驗證。
+     * @param accessToken 使用者 access token
+     * @return 建立完成後返回的 OTP 秘鑰
+     */
+    public CreateOTPResponse createOtp(String accessToken) {
+        UUID userId = JwtService.verifyAndGetUserId(accessToken);
+        if (userId.equals(new UUID(0L, 0L))) {
+            logger.info("createOtp: {\"access_token\":\"{}\"} access_token 失效", accessToken);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
+        }
+
+        UserDomain user = users.findByUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "142"));
+
+        GoogleAuthenticatorKey key = gAuth.createCredentials();
+        String otpSecret = key.getKey();
+        List<String> backupCodes = generateBackupCodes(3);
+
+        user.setOtpSecret(otpSecret);
+        user.setOtpEnabled(Boolean.TRUE);
+        user.setOtpBackupCodes(backupCodes.toArray(new String[0]));
+        users.save(user);
+
+        logger.info("createOtp: {{\"user_id\":\"{}\"}} OTP secret generated", userId);
+        return CreateOTPResponse.builder()
+                .otpKey(otpSecret)
+                .backupCodes(List.copyOf(backupCodes))
+                .build();
+    }
+
+    private List<String> generateBackupCodes(int count) {
+        List<String> codes = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            codes.add(String.format("%06d", RANDOM.nextInt(1_000_000)));
+        }
+        return codes;
+    }
+
+    private boolean verifyTotp(String secret, String otpCode) {
+        if (secret == null || otpCode == null || otpCode.isBlank()) {
+            return false;
+        }
+
+        String sanitized = otpCode.replace(" ", "").trim();
+        try {
+            int code = Integer.parseInt(sanitized);
+            return gAuth.authorize(secret, code);
+        } catch (NumberFormatException ex) {
+            logger.warn("verifyTotp: 非數字格式 OTP -> {}", otpCode);
+            return false;
+        }
+    }
+
+    private boolean verifyBackupCode(UserDomain user, String backupCode) {
+        if (backupCode == null || backupCode.isBlank()) {
+            return false;
+        }
+        String[] codes = user.getOtpBackupCodes();
+        if (codes == null || codes.length == 0) {
+            return false;
+        }
+        for (int i = 0; i < codes.length; i++) {
+            if (backupCode.equals(codes[i])) {
+                codes[i] = null; // 標記為已使用
+                user.setOtpBackupCodes(codes);
+                users.save(user);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // decodeBase32 and manual TOTP generation removed in favor of GoogleAuthenticator utilities.
 }
