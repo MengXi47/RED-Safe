@@ -163,18 +163,48 @@
 
 {% block scripts %}
 <script>
-  async function delCam(mac){
-    if(!confirm('確定要刪除這台攝影機嗎？')) return;
-    // TODO: 換成實際 API
-    alert('模擬刪除: '+mac);
+(function(){
+  // 讀 CSRF（如果你頁面已經有 getCookie，就可以刪掉這個）
+  function getCookie(name){
+    const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
+    return v ? v.pop() : '';
   }
-  async function addCam(ip, mac, name){
-    // TODO: 換成實際 API
-    alert('模擬添加: '+name+' ('+ip+')');
+  const CSRF = getCookie('csrftoken');
+
+  // 若頁面上尚未提供全域 addCam，就補上一個
+  if (typeof window.addCam !== 'function') {
+    window.addCam = async function(ip, mac, name){
+      try{
+        const res = await fetch("{% url 'api_cameras_bind' %}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+          body: JSON.stringify({ ip_address: ip, mac_address: mac, ipc_name: name })
+        });
+        const j = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(j.error || ('HTTP '+res.status));
+        if (j.ok) { location.reload(); }
+        else { alert('新增失敗：' + (j.error || JSON.stringify(j))); }
+      }catch(err){ alert('請求失敗：' + err.message); }
+    };
   }
-  function refreshSearch(){
-    // TODO: 換成實際 API
-    alert('模擬搜尋中...');
+
+  // 若頁面上尚未提供全域 delCam，就補上一個
+  if (typeof window.delCam !== 'function') {
+    window.delCam = async function(mac){
+      if(!confirm('確定要刪除這台攝影機嗎？')) return;
+      try{
+        const res = await fetch("{% url 'api_cameras_unbind' %}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+          body: JSON.stringify({ mac_address: mac })
+        });
+        const j = await res.json().catch(()=>({}));
+        if (!res.ok) throw new Error(j.error || ('HTTP '+res.status));
+        if (j.ok) { location.reload(); }
+        else { alert('刪除失敗：' + (j.error || JSON.stringify(j))); }
+      }catch(err){ alert('請求失敗：' + err.message); }
+    };
   }
+})();
 </script>
 {% endblock %}

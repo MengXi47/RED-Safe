@@ -15,10 +15,10 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods,require_POST
 from ipcscan_client.ipcsacn import scan_ipc_dynamic
 
-from .models import EdgeConfig
+from .models import EdgeConfig, ConnectedIPC
 
 
 def show_users(request):
@@ -519,19 +519,107 @@ def device_qr(request: HttpRequest):
 @_require_auth
 @require_http_methods(["GET"])
 def cameras(request: HttpRequest):
-    """攝影機管理頁面：包含已綁定與搜尋功能在同一頁面。"""
-    # 模擬已綁定清單（之後可改成資料庫或 API）
-    bound = [
-        {"ip": "192.168.0.60", "mac": "AA:BB:CC:DD:EE:60", "name": "VIGI C400HP-4"},
-        {"ip": "192.168.0.48", "mac": "AA:BB:CC:DD:EE:48", "name": "IPC"},
-    ]
-    # 模擬搜尋結果
+    """攝影機管理頁面：上方為搜尋結果，下方為已綁定清單（讀取外部資料庫 connected_ipc）。"""
+    # 僅使用本地資料庫
+    bound = []
+    try:
+        # 僅使用本地資料庫
+        rows = ConnectedIPC.objects.all()
+        for r in rows:
+            bound.append({
+                "ip": r.ip_address,
+                "mac": r.mac_address,
+                # 顯示名稱優先順序：custom_name > ipc_name > mac
+                "name": (r.custom_name or r.ipc_name or r.mac_address or "IPC"),
+            })
+    except Exception as e:
+        print("ConnectedIPC query error:", e)
+        bound = []
+
+    # 搜尋結果（示範；之後可換成實際掃描或 API）
     search_results = [
         {"ip": "192.168.0.101", "mac": "AA:BB:CC:DD:EE:01", "name": "Cam-101"},
         {"ip": "192.168.0.102", "mac": "AA:BB:CC:DD:EE:02", "name": "Cam-102"},
     ]
+
     context = {"bound": bound, "search_results": search_results}
     return render(request, "ui/cameras_combined.html", context)
+
+
+
+
+# ui/views.py
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+import psycopg2
+
+DB_CONFIG = {
+    "dbname": "redsafedb",
+    "user": "redsafedb",
+    "password": "redsafedb",
+    "host": "127.0.0.1",
+    "port": "5432"
+}
+
+@csrf_exempt
+def api_cameras_bind(request):
+    print("==== 接收到綁定請求 ====")
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode())
+        except json.JSONDecodeError:
+            return JsonResponse({"ok": False, "error": "Invalid JSON"})
+
+        ip_address = data.get("ip_address")
+        mac_address = data.get("mac_address")
+        ipc_name = data.get("ipc_name")
+        ipc_account = data.get("ipc_account")
+        ipc_password = data.get("ipc_password")
+
+        if not ip_address or not mac_address:
+            return JsonResponse({"ok": False, "error": "Missing required fields"})
+
+        try:
+            conn = psycopg2.connect(**DB_CONFIG)
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO connected_ipc (ip_address, mac_address, ipc_name, custom_name, ipc_account, ipc_password)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (
+                ip_address,
+                mac_address,
+                ipc_name,
+                ipc_name,
+                ipc_account,
+                ipc_password,
+            ))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return JsonResponse({"ok": True})
+        except Exception as e:
+            print("DB insert error:", e)
+            return JsonResponse({"ok": False, "error": str(e)})
+    return JsonResponse({"ok": False, "error": "Invalid method"})
+
+@csrf_exempt
+def api_cameras_unbind(request):
+    print("==== 接收到刪除請求 ====")
+    if request.method == "POST":
+        data = json.loads(request.body.decode())
+        try:
+            conn = psycopg2.connect(**DB_CONFIG)
+            cur = conn.cursor()
+            cur.execute("DELETE FROM connected_ipc WHERE mac_address = %s", (data["mac_address"],))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return JsonResponse({"ok": True})
+        except Exception as e:
+            print("DB delete error:", e)
+            return JsonResponse({"ok": False, "error": str(e)})
+    return JsonResponse({"ok": False, "error": "Invalid method"})
 
 # ====== API（啟用；登入保護） ======
 @_require_auth
