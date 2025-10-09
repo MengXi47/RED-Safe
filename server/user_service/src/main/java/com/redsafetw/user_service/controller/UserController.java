@@ -9,8 +9,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 使用者控制器
@@ -96,5 +98,13 @@ public class UserController {
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
         String token = authorization.replace("Bearer ", "");
         return edgeCommandService.sendCommand(request, token);
+    }
+
+    @GetMapping(value = "/sse/get/command/{trace_id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamEdgeCommand(
+            @PathVariable("trace_id") String traceId,
+            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
+        String token = authorization.replace("Bearer ", "");
+        return edgeCommandService.streamCommandResponse(traceId, token);
     }
 }
