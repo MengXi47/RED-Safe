@@ -7,6 +7,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var message: String?
     @Published var showMessage: Bool = false
     @Published var lastRegisteredDevice: IOSRegisterResponse?
+    @Published var lastOTPSetup: CreateOTPResponse?
 
     /// 使用者更新登入密碼。
     func updatePassword(currentPassword: String, newPassword: String) async -> Bool {
@@ -36,6 +37,23 @@ final class ProfileViewModel: ObservableObject {
         } catch {
             presentMessage(error.localizedDescription)
             return false
+        }
+    }
+
+    /// 產生 OTP 秘鑰與備援碼。
+    @discardableResult
+    func enableOTP() async -> CreateOTPResponse? {
+        isWorking = true
+        defer { isWorking = false }
+
+        do {
+            let response = try await APIClient.shared.createOTP()
+            lastOTPSetup = response
+            presentMessage("已啟用 OTP")
+            return response
+        } catch {
+            presentMessage(error.localizedDescription)
+            return nil
         }
     }
 

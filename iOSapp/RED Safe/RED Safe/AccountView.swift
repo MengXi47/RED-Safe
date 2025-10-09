@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - 帳號分頁
 
@@ -6,12 +7,14 @@ enum ProfileSheet: Identifiable {
     case displayName
     case password
     case push
+    case otp
 
     var id: String {
         switch self {
         case .displayName: return "display-name"
         case .password: return "password"
         case .push: return "push"
+        case .otp: return "otp"
         }
     }
 }
@@ -68,6 +71,8 @@ struct AccountView: View {
                             completion(success)
                         }
                     }
+                case .otp:
+                    EnableOTPSheet(viewModel: profileVM)
                 }
             }
             .navigationTitle("帳號")
@@ -119,6 +124,9 @@ struct AccountView: View {
                 }
                 ButtonRow(icon: "lock.rotation", title: "變更使用者密碼") {
                     profileSheet = .password
+                }
+                ButtonRow(icon: "key.fill", title: "啟用二階段驗證 (OTP)") {
+                    profileSheet = .otp
                 }
             }
         }
@@ -188,6 +196,150 @@ struct AccountView: View {
 }
 
 // MARK: - 元件
+
+private struct EnableOTPSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: ProfileViewModel
+
+    @State private var otpKey: String?
+    @State private var backupCodes: [String] = []
+    @State private var isGenerating: Bool = false
+    @State private var errorMessage: String?
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 24) {
+                    Text("啟用二階段驗證後，登入時需要輸入 6 碼 OTP 或備援碼。請妥善保存以下資訊，避免遺失。")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+
+                    if let otpKey {
+                        otpKeySection(key: otpKey)
+                    }
+
+                    if !backupCodes.isEmpty {
+                        backupCodesSection
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundColor(.red)
+                    }
+
+                    Button(action: { Task { await generateOTP() } }) {
+                        Label(otpKey == nil ? "產生 OTP 金鑰" : "重新產生 OTP 金鑰", systemImage: "key.horizontal.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .disabled(isGenerating)
+                    .buttonStyle(.borderedProminent)
+                    .tint(.accentColor)
+
+                    if isGenerating {
+                        ProgressView("產生中…")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(24)
+            }
+            .navigationTitle("啟用二階段驗證")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("關閉") { dismiss() }
+                }
+            }
+            .task {
+                if let existing = viewModel.lastOTPSetup, otpKey == nil {
+                    otpKey = existing.otpKey
+                    backupCodes = existing.backupCodes
+                }
+            }
+        }
+    }
+
+    private func otpKeySection(key: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("OTP 金鑰")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.secondary)
+            Text(key)
+                .font(.title3.monospaced())
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .center)
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+            Button(action: { copyToClipboard(key) }) {
+                Label("複製金鑰", systemImage: "doc.on.doc")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(20)
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+    }
+
+    private var backupCodesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("備援驗證碼")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.secondary)
+            Text("每組備援碼僅能使用一次，請存放於安全位置。")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+
+            ForEach(Array(backupCodes.enumerated()), id: \.offset) { index, code in
+                HStack {
+                    Text("#\(index + 1)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 32, alignment: .leading)
+                    Text(code)
+                        .font(.body.monospaced())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button(action: { copyToClipboard(code) }) {
+                        Image(systemName: "doc.on.doc")
+                            .foregroundColor(.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+            }
+        }
+        .padding(20)
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+    }
+
+    private func generateOTP() async {
+        guard !isGenerating else { return }
+        await MainActor.run {
+            isGenerating = true
+            errorMessage = nil
+        }
+        let response = await viewModel.enableOTP()
+        await MainActor.run {
+            isGenerating = false
+            if let response {
+                otpKey = response.otpKey
+                backupCodes = response.backupCodes
+                errorMessage = nil
+            } else {
+                errorMessage = viewModel.message
+            }
+        }
+    }
+
+    private func copyToClipboard(_ text: String) {
+        UIPasteboard.general.string = text
+    }
+}
 
 private struct ButtonRow: View {
     let icon: String

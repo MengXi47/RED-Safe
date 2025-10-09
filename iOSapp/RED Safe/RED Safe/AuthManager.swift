@@ -61,6 +61,17 @@ final class AuthManager: ObservableObject {
         case signedOut
     }
 
+    enum SignInError: LocalizedError {
+        case otpRequired(email: String, password: String)
+
+        var errorDescription: String? {
+            switch self {
+            case .otpRequired:
+                return "此帳號已啟用二階段驗證，請輸入 OTP 驗證碼"
+            }
+        }
+    }
+
     struct UserProfile: Equatable {
         var email: String
         var displayName: String
@@ -145,26 +156,23 @@ final class AuthManager: ObservableObject {
         defer { isWorking = false }
 
         let response = try await APIClient.shared.signIn(email: email, password: password)
-#if DEBUG
-        print("🔐 SignInResponse debug userName=\(response.userName ?? "nil") access=\(response.accessToken) refresh=\(response.refreshToken)")
-#endif
-        let access = response.accessToken
-        guard !access.isEmpty else {
-            throw ApiError.invalidPayload(reason: "伺服器未回傳 access token")
-        }
-        let refresh = response.refreshToken
-        guard !refresh.isEmpty else {
-            throw ApiError.invalidPayload(reason: "伺服器未回傳 refresh token")
+        if response.requiresOTP {
+            throw SignInError.otpRequired(email: email, password: password)
         }
 
-        let resolvedName = response.normalizedUserName ?? email
-        let profile = UserProfile(email: email, displayName: resolvedName)
+        return try finalizeSignIn(with: response, email: email)
+    }
 
-        persistSession(refreshToken: refresh, displayName: resolvedName, email: email)
-        tokens = SessionTokens(accessToken: access, refreshToken: refresh)
-        self.profile = profile
-        phase = .authenticated
-        return profile
+    @discardableResult
+    func signInWithOTP(email: String, password: String, otpCode: String?, backupCode: String?) async throws -> UserProfile {
+        isWorking = true
+        defer { isWorking = false }
+
+        let response = try await APIClient.shared.signInWithOTP(email: email, password: password, otpCode: otpCode, backupCode: backupCode)
+        if response.requiresOTP {
+            throw ApiError.invalidPayload(reason: "伺服器回傳要求再次輸入 OTP，請稍後再試")
+        }
+        return try finalizeSignIn(with: response, email: email)
     }
 
     @discardableResult
@@ -211,6 +219,27 @@ final class AuthManager: ObservableObject {
         profile = nil
         clearPersistedSession()
         phase = .signedOut
+    }
+
+    private func finalizeSignIn(with response: SignInResponse, email: String) throws -> UserProfile {
+#if DEBUG
+        print("🔐 SignInResponse debug userName=\(response.userName ?? "nil") access=\(response.accessToken ?? "<nil>") refresh=\(response.refreshToken ?? "<nil>")")
+#endif
+        guard let access = response.accessToken, !access.isEmpty else {
+            throw ApiError.invalidPayload(reason: "伺服器未回傳 access token")
+        }
+        guard let refresh = response.refreshToken, !refresh.isEmpty else {
+            throw ApiError.invalidPayload(reason: "伺服器未回傳 refresh token")
+        }
+
+        let resolvedName = response.normalizedUserName ?? email
+        let profile = UserProfile(email: email, displayName: resolvedName)
+
+        persistSession(refreshToken: refresh, displayName: resolvedName, email: email)
+        tokens = SessionTokens(accessToken: access, refreshToken: refresh)
+        self.profile = profile
+        phase = .authenticated
+        return profile
     }
 
     @discardableResult
