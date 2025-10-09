@@ -73,25 +73,17 @@ struct AccountView: View {
                         }
                     }
                 case .otp:
-                    EnableOTPSheet(viewModel: profileVM)
+                    OTPSetupIntroSheet(
+                        viewModel: profileVM,
+                        enabledInitial: auth.profile?.otpEnabled == true,
+                        accountEmail: auth.profile?.email
+                    )
                 }
             }
             .navigationTitle("帳號")
             .navigationBarTitleDisplayMode(.inline)
             .task {
                 await auth.refreshProfileFromRemote()
-            }
-            .confirmationDialog(
-                "停用二階段驗證？",
-                isPresented: $showDisableOtpConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("停用", role: .destructive) {
-                    Task { await profileVM.disableOTP() }
-                }
-                Button("取消", role: .cancel) { }
-            } message: {
-                Text("停用後將清除一次性密碼與備援碼，登入時不再需要 OTP。")
             }
         }
     }
@@ -152,7 +144,9 @@ struct AccountView: View {
 
     private var otpStatusRow: some View {
         let enabled = auth.profile?.otpEnabled == true
-        return VStack(alignment: .leading, spacing: 6) {
+        return Button {
+            profileSheet = .otp
+        } label: {
             HStack {
                 Label("二階段驗證 (OTP)", systemImage: "key.fill")
                     .labelStyle(.titleAndIcon)
@@ -160,32 +154,12 @@ struct AccountView: View {
                 Text(enabled ? "已啟用" : "未啟用")
                     .font(.caption.weight(.semibold))
                     .foregroundColor(enabled ? .green : .secondary)
+                Image(systemName: "chevron.right")
+                    .foregroundColor(Color(UIColor.tertiaryLabel))
             }
-            Button {
-                if enabled {
-                    showDisableOtpConfirmation = true
-                } else {
-                    profileSheet = .otp
-                }
-            } label: {
-                if profileVM.isWorking {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                } else {
-                    Text(enabled ? "停用 OTP" : "啟用 OTP")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                }
-            }
-            .buttonStyle(.plain)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(enabled ? Color.red.opacity(0.15) : Color.accentColor.opacity(0.15))
-            )
-            .disabled(profileVM.isWorking)
+            .padding(.vertical, 10)
         }
+        .buttonStyle(.plain)
     }
 
     private var pushCard: some View {
@@ -386,6 +360,234 @@ private struct EnableOTPSheet: View {
                 errorMessage = viewModel.message
             }
         }
+    }
+
+    private func copyToClipboard(_ text: String) {
+        UIPasteboard.general.string = text
+    }
+}
+
+private struct OTPSetupIntroSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: ProfileViewModel
+    let enabledInitial: Bool
+    let accountEmail: String?
+
+    @State private var showDisableConfirm = false
+    @State private var isDisabling = false
+    @State private var disableError: String?
+    @State private var enabled: Bool = false
+    @State private var isEnabling = false
+    @State private var enableError: String?
+    @State private var otpKey: String?
+    @State private var backupCodes: [String] = []
+    @State private var showQR: Bool = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 24) {
+                    Text("二階段驗證（OTP）能提升帳號安全性。啟用後，登入時需要輸入 6 碼一次性密碼或備援碼。")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("需要一個認證器 App", systemImage: "app.badge.checkmark")
+                        Text("例如：Google Authenticator、1Password、Authy 等。")
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Button {
+                        if enabled {
+                            showDisableConfirm = true
+                        } else {
+                            Task {
+                                isEnabling = true
+                                enableError = nil
+                                let result = await viewModel.enableOTP()
+                                isEnabling = false
+                                if let result {
+                                    enabled = true
+                                    otpKey = result.otpKey
+                                    backupCodes = result.backupCodes
+                                    enableError = nil
+                                } else {
+                                    enableError = viewModel.message
+                                }
+                            }
+                        }
+                    } label: {
+                        Label(enabled ? "停用 OTP" : "啟用 OTP", systemImage: enabled ? "key.slash.fill" : "key.horizontal.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(enabled ? .red : .accentColor)
+                    .disabled(isEnabling || isDisabling)
+
+                    if isEnabling {
+                        ProgressView("正在啟用…")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if let enableError {
+                        Text(enableError)
+                            .font(.footnote)
+                            .foregroundColor(.red)
+                    }
+                    if isDisabling {
+                        ProgressView("正在停用…")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if let disableError {
+                        Text(disableError)
+                            .font(.footnote)
+                            .foregroundColor(.red)
+                    }
+
+                    // --- Insert key, QR, backup codes sections here ---
+                    if let key = otpKey {
+                        otpKeySection(key: key)
+                        if !showQR {
+                            Button {
+                                showQR = true
+                            } label: {
+                                Label("顯示 QRCode", systemImage: "qrcode")
+                                    .font(.subheadline.weight(.semibold))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                            }
+                            .buttonStyle(.bordered)
+                        } else if let qr = qrImage(for: key) {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("掃描 QR Code 匯入")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(.secondary)
+                                Image(uiImage: qr)
+                                    .interpolation(.none)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: 240)
+                                    .padding()
+                                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                            }
+                            .padding(20)
+                            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
+                            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+                        }
+                    }
+                    if !backupCodes.isEmpty {
+                        backupCodesSection
+                    }
+                }
+                .padding(24)
+            }
+            .navigationTitle("二階段驗證")
+            .navigationBarTitleDisplayMode(.inline)
+            .task {
+                enabled = enabledInitial
+            }
+            .alert("停用二階段驗證？", isPresented: $showDisableConfirm) {
+                Button("停用", role: .destructive) {
+                    Task {
+                        isDisabling = true
+                        disableError = nil
+                        let success = await viewModel.disableOTP()
+                        isDisabling = false
+                        if success {
+                            enabled = false
+                            dismiss()
+                        } else {
+                            disableError = viewModel.message
+                        }
+                    }
+                }
+                Button("取消", role: .cancel) { }
+            } message: {
+                Text("停用後將清除一次性密碼與備援碼，登入時將不再需要輸入 OTP。")
+            }
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("關閉") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func otpKeySection(key: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("OTP 金鑰")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.secondary)
+            Text(key)
+                .font(.title3.monospaced())
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .center)
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+            Button(action: { copyToClipboard(key) }) {
+                Label("複製金鑰", systemImage: "doc.on.doc")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(20)
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+    }
+
+    private var backupCodesSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("備援驗證碼")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.secondary)
+            Text("每組備援碼僅能使用一次，請存放於安全位置。")
+                .font(.footnote)
+                .foregroundColor(.secondary)
+            ForEach(Array(backupCodes.enumerated()), id: \.offset) { index, code in
+                HStack {
+                    Text("#\(index + 1)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(width: 32, alignment: .leading)
+                    Text(code)
+                        .font(.body.monospaced())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button(action: { copyToClipboard(code) }) {
+                        Image(systemName: "doc.on.doc")
+                            .foregroundColor(.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+            }
+        }
+        .padding(20)
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+    }
+
+    private func qrImage(for secret: String) -> UIImage? {
+        let issuer = "RED Safe"
+        let account = accountEmail ?? "account"
+        let label = "\(issuer):\(account)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "\(issuer):\(account)"
+        let query = "secret=\(secret)&issuer=\(issuer.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? issuer)&algorithm=SHA1&digits=6&period=30"
+        let otpauth = "otpauth://totp/\(label)?\(query)"
+        guard let data = otpauth.data(using: .utf8) else { return nil }
+        let filter = CIFilter(name: "CIQRCodeGenerator")
+        filter?.setValue(data, forKey: "inputMessage")
+        filter?.setValue("M", forKey: "inputCorrectionLevel")
+        guard let outputImage = filter?.outputImage else { return nil }
+        let transform = CGAffineTransform(scaleX: 8, y: 8)
+        let scaled = outputImage.transformed(by: transform)
+        let context = CIContext()
+        if let cgimg = context.createCGImage(scaled, from: scaled.extent) {
+            return UIImage(cgImage: cgimg)
+        }
+        return nil
     }
 
     private func copyToClipboard(_ text: String) {

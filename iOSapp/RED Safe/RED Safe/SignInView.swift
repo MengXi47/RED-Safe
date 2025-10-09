@@ -348,43 +348,122 @@ private struct OTPVerificationSheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("帳號") {
+            VStack(spacing: 20) {
+                // Account chip
+                HStack(spacing: 8) {
+                    Image(systemName: "envelope.fill")
+                        .foregroundColor(.accentColor)
                     Text(pending.email)
                         .font(.callout.monospaced())
+                        .foregroundColor(.primary)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 14)
+                .background(.thinMaterial, in: Capsule())
+                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 8)
+                .padding(.top, 8)
+
+                // Title & hint
+                VStack(spacing: 6) {
+                    Text("輸入 6 碼 OTP")
+                        .font(.title3.weight(.semibold))
+                    Text("請開啟你的認證 App（Google Authenticator、1Password、Authy…）輸入目前顯示的 6 碼。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
                 }
 
-                Section(header: Text("OTP 驗證碼"), footer: Text("請輸入認證 App 顯示的 6 碼一次性密碼。")) {
-                    TextField("例如：123456", text: $otpCode)
-                        .keyboardType(.numberPad)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($focusedField, equals: .otp)
-                        .onChange(of: otpCode) { otpCode = sanitize(code: $0) }
+                // Hidden field to capture input
+                TextField("", text: $otpCode)
+                    .keyboardType(.numberPad)
+                    .textContentType(.oneTimeCode)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focusedField, equals: .otp)
+                    .onChange(of: otpCode) { otpCode = sanitize(code: $0) }
+                    .opacity(0.02)
+                    .frame(width: 1, height: 1)
+
+                // Six-digit boxes
+                HStack(spacing: 12) {
+                    ForEach(0..<6, id: \.self) { idx in
+                        let char: String = {
+                            let array = Array(otpCode)
+                            return idx < array.count ? String(array[idx]) : ""
+                        }()
+
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.95))
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(
+                                    idx == min(otpCode.count, 5) && focusedField == .otp
+                                    ? Color.accentColor.opacity(0.6)
+                                    : Color.black.opacity(0.08),
+                                    lineWidth: 1.2
+                                )
+                            Text(char.isEmpty ? " " : char)
+                                .font(.title2.monospacedDigit().weight(.semibold))
+                                .foregroundColor(.primary)
+                        }
+                        .frame(width: 48, height: 56)
+                        .contentShape(Rectangle())
+                        .onTapGesture { focusedField = .otp }
+                    }
                 }
+                .padding(.top, 4)
 
                 if let validationError {
-                    Section {
-                        Text(validationError)
-                            .font(.footnote)
-                            .foregroundColor(.red)
-                    }
+                    Text(validationError)
+                        .font(.footnote)
+                        .foregroundColor(.red)
+                        .padding(.top, 4)
                 }
 
-                Section {
-                    Button(action: { Task { await verifyOTP() } }) {
-                        if viewModel.isVerifyingOTP {
-                            ProgressView()
-                                .frame(maxWidth: .infinity)
-                        } else {
-                            Text("送出驗證")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity)
+
+                Button(action: { Task { await verifyOTP() } }) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: viewModel.isVerifyingOTP ? [
+                                        Color(UIColor.systemGray5),
+                                        Color(UIColor.systemGray4)
+                                    ] : [
+                                        Color(red: 118/255, green: 186/255, blue: 255/255),
+                                        Color(red: 78/255, green: 156/255, blue: 255/255)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(viewModel.isVerifyingOTP ? Color.black.opacity(0.08) : Color.white.opacity(0.4))
+                        HStack(spacing: 10) {
+                            if viewModel.isVerifyingOTP {
+                                ProgressView().tint(.white)
+                            } else {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+                            }
+                            Text(viewModel.isVerifyingOTP ? "驗證中" : "送出驗證")
+                                .font(.headline.weight(.semibold))
+                                .foregroundColor(.white)
                         }
+                        .padding(.vertical, 14)
                     }
-                    .disabled(viewModel.isVerifyingOTP)
+                    .frame(height: 54)
                 }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isVerifyingOTP || otpCode.count != 6)
+                .shadow(color: Color.black.opacity(otpCode.count == 6 ? 0.25 : 0.0), radius: 18, x: 0, y: 12)
+
+                Spacer(minLength: 8)
             }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
             .navigationTitle("OTP 驗證")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -395,7 +474,9 @@ private struct OTPVerificationSheet: View {
                     }
                 }
             }
-            .onAppear { focusedField = .otp }
+            .onAppear {
+                focusedField = .otp
+            }
         }
     }
 
