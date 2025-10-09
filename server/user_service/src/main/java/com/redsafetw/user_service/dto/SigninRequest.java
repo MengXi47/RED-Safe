@@ -25,7 +25,4 @@ public class SigninRequest {
 
     @JsonProperty("otp_code")
     private String otpCode;
-
-    @JsonProperty("otp_back_code")
-    private String backupCode;
 }

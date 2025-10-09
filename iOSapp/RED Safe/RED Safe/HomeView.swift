@@ -45,6 +45,7 @@ struct HomeView: View {
             .tabItem { Label("帳號", systemImage: "person.crop.circle") }
         }
         .task {
+            await auth.refreshProfileFromRemote()
             if homeVM.edges.isEmpty {
                 homeVM.loadEdges()
             }

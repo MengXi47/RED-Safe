@@ -49,11 +49,35 @@ final class ProfileViewModel: ObservableObject {
         do {
             let response = try await APIClient.shared.createOTP()
             lastOTPSetup = response
+            await AuthManager.shared.refreshProfileFromRemote(force: true)
             presentMessage("已啟用 OTP")
             return response
         } catch {
             presentMessage(error.localizedDescription)
             return nil
+        }
+    }
+
+    /// 停用 OTP，清除備援碼與金鑰。
+    @discardableResult
+    func disableOTP() async -> Bool {
+        isWorking = true
+        defer { isWorking = false }
+
+        do {
+            let response = try await APIClient.shared.deleteOTP()
+            if response.errorCode.isSuccess {
+                lastOTPSetup = nil
+                await AuthManager.shared.refreshProfileFromRemote(force: true)
+                presentMessage("已停用 OTP")
+                return true
+            } else {
+                presentMessage(response.errorCode.message)
+                return false
+            }
+        } catch {
+            presentMessage(error.localizedDescription)
+            return false
         }
     }
 

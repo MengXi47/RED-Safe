@@ -116,11 +116,11 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 ### 失敗回應範例
 ```json
 {
-  "error_code": "126"
+  "error_code": "153"
 }
 ```
 
-**常見錯誤碼**：`126`（token 失效）、`142`（使用者不存在）
+**常見錯誤碼**：`126`（token 失效）、`142`（使用者不存在）、`153`（OTP 已啟用）
 
 ---
 
@@ -160,7 +160,7 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 ---
 
 ## POST /auth/signin/otp
-針對已啟用 OTP 的帳號，使用 Email、密碼與 6 碼 OTP 或備援碼登入。
+針對已啟用 OTP 的帳號，使用 Email、密碼與單一 6 碼驗證碼登入。伺服器會同時檢查輸入的數值是否為當期 OTP 或尚未使用的備援碼。
 
 ### Headers
 - `Content-Type: application/json`
@@ -170,8 +170,7 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 {
   "email": "user@example.com",
   "password": "Password",
-  "otp_code": "123456",
-  "backup_code": "654321"
+  "otp_code": "123456"
 }
 ```
 
@@ -179,8 +178,7 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 |------|------|------|------|
 | `email` | string | ✅ | 合法 Email 格式，不能為空 |
 | `password` | string | ✅ | 不能為空 |
-| `otp_code` | string | ⭕ | 6 位數字；與 `backup_code` 擇一提供 |
-| `backup_code` | string | ⭕ | 備援碼；與 `otp_code` 擇一提供 |
+| `otp_code` | string | ⭕ | 6 位數字，可輸入當期 OTP 或備援碼 |
 
 ### 成功回應 (200)
 ```json
@@ -198,4 +196,31 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 }
 ```
 
-**常見錯誤碼**：`124`、`128`、`129`、`130`、`151`（尚未啟用 OTP）、`152`（OTP 或備援碼驗證失敗）
+**常見錯誤碼**：`124`、`128`、`129`、`130`、`150`、`151`、`152`
+
+---
+
+## POST /auth/delete/otp
+停用 OTP 並刪除伺服器上的 OTP 秘鑰與備援碼，需提供合法的 `access_token`。
+
+### Headers
+- `Authorization: Bearer <access_token>`
+
+### Request Body
+無
+
+### 成功回應 (200)
+```json
+{
+  "error_code": "0"
+}
+```
+
+### 失敗回應範例
+```json
+{
+  "error_code": "154"
+}
+```
+
+**常見錯誤碼**：`126`（token 失效）、`142`（使用者不存在）、`154`（尚未啟用 OTP）

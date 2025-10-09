@@ -45,4 +45,10 @@ public class AuthController {
         String token = authorization.replace("Bearer ", "");
         return auth.createOtp(token);
     }
+
+    @PostMapping("/delete/otp")
+    public ErrorCodeResponse deleteOTP(@NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
+        String token = authorization.replace("Bearer ", "");
+        return auth.deleteOtp(token);
+    }
 }

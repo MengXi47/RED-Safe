@@ -84,6 +84,8 @@ private extension ApiErrorCode {
         "150": "此帳號已啟用二階段驗證",
         "151": "尚未啟用二階段驗證",
         "152": "OTP 或備援碼驗證失敗",
+        "153": "已啟用二階段驗證，請先停用後再產生",
+        "154": "尚未啟用二階段驗證",
         "MISSING_AUTHORIZATION_HEADER": "缺少 Authorization 標頭",
         "INVALID_AUTHORIZATION_HEADER": "Authorization 標頭格式錯誤",
         "INVALID_TOKEN": "Access Token 驗證失敗",
@@ -394,7 +396,6 @@ struct SignInOTPRequest: Encodable {
     let email: String
     let password: String
     let otpCode: String?
-    let backupCode: String?
 }
 
 struct SignUpRequest: Encodable {
@@ -460,6 +461,12 @@ struct CreateOTPResponse: Decodable {
     let backupCodes: [String]
 }
 
+struct UserInfoResponse: Decodable {
+    let userName: String?
+    let email: String
+    let otpEnabled: Bool
+}
+
 struct SignUpResponse: Decodable {
     let userId: String
     let userName: String
@@ -513,8 +520,8 @@ extension APIClient {
         return try await send(endpoint)
     }
 
-    func signInWithOTP(email: String, password: String, otpCode: String?, backupCode: String?) async throws -> SignInResponse {
-        let payload = SignInOTPRequest(email: email, password: password, otpCode: otpCode, backupCode: backupCode)
+    func signInWithOTP(email: String, password: String, otpCode: String?) async throws -> SignInResponse {
+        let payload = SignInOTPRequest(email: email, password: password, otpCode: otpCode)
         let endpoint = Endpoint<SignInResponse>(
             path: "/auth/signin/otp",
             method: .post,
@@ -524,9 +531,25 @@ extension APIClient {
         return try await send(endpoint)
     }
 
+    func fetchUserInfo() async throws -> UserInfoResponse {
+        let endpoint = Endpoint<UserInfoResponse>(
+            path: "/user/info",
+            method: .get
+        )
+        return try await send(endpoint)
+    }
+
     func createOTP() async throws -> CreateOTPResponse {
         let endpoint = Endpoint<CreateOTPResponse>(
             path: "/auth/create/otp",
+            method: .post
+        )
+        return try await send(endpoint)
+    }
+
+    func deleteOTP() async throws -> ErrorCodeResponse {
+        let endpoint = Endpoint<ErrorCodeResponse>(
+            path: "/auth/delete/otp",
             method: .post
         )
         return try await send(endpoint)

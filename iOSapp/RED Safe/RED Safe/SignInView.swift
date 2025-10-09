@@ -336,7 +336,6 @@ private struct BannerView: View {
 private struct OTPVerificationSheet: View {
     enum Field: Hashable {
         case otp
-        case backup
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -344,7 +343,6 @@ private struct OTPVerificationSheet: View {
     let pending: SignInViewModel.PendingOTP
 
     @State private var otpCode: String = ""
-    @State private var backupCode: String = ""
     @State private var validationError: String?
     @FocusState private var focusedField: Field?
 
@@ -363,15 +361,6 @@ private struct OTPVerificationSheet: View {
                         .autocorrectionDisabled()
                         .focused($focusedField, equals: .otp)
                         .onChange(of: otpCode) { otpCode = sanitize(code: $0) }
-                }
-
-                Section(header: Text("備援驗證碼 (可選)"), footer: Text("若無法取得 OTP，可改輸入備援碼。每組僅能使用一次。")) {
-                    TextField("例如：654321", text: $backupCode)
-                        .keyboardType(.numberPad)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($focusedField, equals: .backup)
-                        .onChange(of: backupCode) { backupCode = sanitize(code: $0) }
                 }
 
                 if let validationError {
@@ -417,19 +406,15 @@ private struct OTPVerificationSheet: View {
 
     private func verifyOTP() async {
         let trimmedOTP = otpCode.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedBackup = backupCode.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !trimmedOTP.isEmpty || !trimmedBackup.isEmpty else {
-            await MainActor.run { validationError = "請輸入 OTP 或備援碼" }
+        guard !trimmedOTP.isEmpty else {
+            await MainActor.run { validationError = "請輸入 OTP 驗證碼" }
             return
         }
 
         await MainActor.run { validationError = nil }
 
-        let result = await viewModel.completeOTP(
-            otpCode: trimmedOTP.isEmpty ? nil : trimmedOTP,
-            backupCode: trimmedBackup.isEmpty ? nil : trimmedBackup
-        )
+        let result = await viewModel.completeOTP(otpCode: trimmedOTP)
 
         if case .success = result {
             dismiss()
@@ -567,8 +552,8 @@ final class SignInViewModel: ObservableObject {
         password = ""
     }
 
-    /// 使用 OTP 或備援碼完成登入流程。
-    func completeOTP(otpCode: String?, backupCode: String?) async -> Result<Void, Error> {
+    /// 使用 OTP 完成登入流程。
+    func completeOTP(otpCode: String?) async -> Result<Void, Error> {
         guard let pendingOTP else {
             return .failure(OTPFlowError.missingContext)
         }
@@ -580,8 +565,7 @@ final class SignInViewModel: ObservableObject {
             let profile = try await AuthManager.shared.signInWithOTP(
                 email: pendingOTP.email,
                 password: pendingOTP.password,
-                otpCode: otpCode,
-                backupCode: backupCode
+                otpCode: otpCode
             )
             self.pendingOTP = nil
             showBanner(title: "登入成功", message: "歡迎回來，\(profile.displayName)", kind: .success)

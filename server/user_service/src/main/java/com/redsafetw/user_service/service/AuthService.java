@@ -130,8 +130,7 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "151");
         }
 
-        boolean verified = verifyTotp(user.getOtpSecret(), req.getOtpCode())
-                || verifyBackupCode(user, req.getBackupCode());
+        boolean verified = verifyOtpOrBackup(user, req.getOtpCode());
 
         if (!verified) {
             logger.info("SigninOTP: {\"email\":\"{}\"} OTP 驗證失敗", req.getEmail());
@@ -233,6 +232,11 @@ public class AuthService {
         UserDomain user = users.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "142"));
 
+        if (Boolean.TRUE.equals(user.getOtpEnabled()) && user.getOtpSecret() != null) {
+            logger.info("createOtp: {{\"user_id\":\"{}\"}} 已啟用 OTP", userId);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "153");
+        }
+
         GoogleAuthenticatorKey key = gAuth.createCredentials();
         String otpSecret = key.getKey();
         List<String> backupCodes = generateBackupCodes(3);
@@ -249,6 +253,37 @@ public class AuthService {
                 .build();
     }
 
+    /**
+     * 刪除使用者的 OTP 資訊並關閉二階段驗證
+     * @param accessToken 使用者 access token
+     * @return 刪除成功回傳 0
+     */
+    public ErrorCodeResponse deleteOtp(String accessToken) {
+        UUID userId = JwtService.verifyAndGetUserId(accessToken);
+        if (userId.equals(new UUID(0L, 0L))) {
+            logger.info("deleteOtp: {\"access_token\":\"{}\"} access_token 失效", accessToken);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
+        }
+
+        UserDomain user = users.findByUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "142"));
+
+        if (!Boolean.TRUE.equals(user.getOtpEnabled()) || user.getOtpSecret() == null) {
+            logger.info("deleteOtp: {{\"user_id\":\"{}\"}} 尚未啟用 OTP", userId);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "154");
+        }
+
+        user.setOtpSecret(null);
+        user.setOtpEnabled(Boolean.FALSE);
+        user.setOtpBackupCodes(null);
+        users.save(user);
+
+        logger.info("deleteOtp: {{\"user_id\":\"{}\"}} OTP 已停用", userId);
+        return ErrorCodeResponse.builder()
+                .errorCode("0")
+                .build();
+    }
+
     private List<String> generateBackupCodes(int count) {
         List<String> codes = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -257,14 +292,27 @@ public class AuthService {
         return codes;
     }
 
+    private boolean verifyOtpOrBackup(UserDomain user, String rawCode) {
+        String normalized = normalizeOtp(rawCode);
+        if (normalized == null) {
+            return false;
+        }
+        return verifyTotp(user.getOtpSecret(), normalized)
+                || verifyBackupCode(user, normalized);
+    }
+
     private boolean verifyTotp(String secret, String otpCode) {
-        if (secret == null || otpCode == null || otpCode.isBlank()) {
+        if (secret == null) {
             return false;
         }
 
-        String sanitized = otpCode.replace(" ", "").trim();
+        String normalized = normalizeOtp(otpCode);
+        if (normalized == null) {
+            return false;
+        }
+
         try {
-            int code = Integer.parseInt(sanitized);
+            int code = Integer.parseInt(normalized);
             return gAuth.authorize(secret, code);
         } catch (NumberFormatException ex) {
             logger.warn("verifyTotp: 非數字格式 OTP -> {}", otpCode);
@@ -273,15 +321,17 @@ public class AuthService {
     }
 
     private boolean verifyBackupCode(UserDomain user, String backupCode) {
-        if (backupCode == null || backupCode.isBlank()) {
+        String normalized = normalizeOtp(backupCode);
+        if (normalized == null) {
             return false;
         }
+
         String[] codes = user.getOtpBackupCodes();
         if (codes == null || codes.length == 0) {
             return false;
         }
         for (int i = 0; i < codes.length; i++) {
-            if (backupCode.equals(codes[i])) {
+            if (normalized.equals(codes[i])) {
                 codes[i] = null; // 標記為已使用
                 user.setOtpBackupCodes(codes);
                 users.save(user);
@@ -289,6 +339,14 @@ public class AuthService {
             }
         }
         return false;
+    }
+
+    private String normalizeOtp(String code) {
+        if (code == null) {
+            return null;
+        }
+        String sanitized = code.replace(" ", "").trim();
+        return sanitized.isEmpty() ? null : sanitized;
     }
 
     // decodeBase32 and manual TOTP generation removed in favor of GoogleAuthenticator utilities.

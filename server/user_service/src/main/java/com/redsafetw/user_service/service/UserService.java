@@ -32,6 +32,23 @@ public class UserService {
     private final EdgeGrpcClient edgeGrpcClient;
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
+    public UserInfoResponse getUserInfo(String accessToken) {
+        UUID userId = JwtService.verifyAndGetUserId(accessToken);
+        if (userId.equals(new UUID(0L, 0L))) {
+            logger.info("getUserInfo: {\"access_token\":\"{}\"} access_token 失效", accessToken);
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
+        }
+
+        var user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "142"));
+
+        return UserInfoResponse.builder()
+                .userName(user.getUser_name())
+                .email(user.getEmail())
+                .otpEnabled(Boolean.TRUE.equals(user.getOtpEnabled()))
+                .build();
+    }
+
     public ErrorCodeResponse updataEdgeName(
             UpdateEdgeNameRequest updateEdgeNameRequest,
             String accessToken) {

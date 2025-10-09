@@ -24,6 +24,7 @@ struct AccountView: View {
     @ObservedObject var auth: AuthManager
     @ObservedObject var profileVM: ProfileViewModel
     @Binding var profileSheet: ProfileSheet?
+    @State private var showDisableOtpConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -77,6 +78,21 @@ struct AccountView: View {
             }
             .navigationTitle("帳號")
             .navigationBarTitleDisplayMode(.inline)
+            .task {
+                await auth.refreshProfileFromRemote()
+            }
+            .confirmationDialog(
+                "停用二階段驗證？",
+                isPresented: $showDisableOtpConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("停用", role: .destructive) {
+                    Task { await profileVM.disableOTP() }
+                }
+                Button("取消", role: .cancel) { }
+            } message: {
+                Text("停用後將清除一次性密碼與備援碼，登入時不再需要 OTP。")
+            }
         }
     }
 
@@ -125,15 +141,51 @@ struct AccountView: View {
                 ButtonRow(icon: "lock.rotation", title: "變更使用者密碼") {
                     profileSheet = .password
                 }
-                ButtonRow(icon: "key.fill", title: "啟用二階段驗證 (OTP)") {
-                    profileSheet = .otp
-                }
+                otpStatusRow
             }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
         .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Color.black.opacity(0.04)))
+    }
+
+    private var otpStatusRow: some View {
+        let enabled = auth.profile?.otpEnabled == true
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Label("二階段驗證 (OTP)", systemImage: "key.fill")
+                    .labelStyle(.titleAndIcon)
+                Spacer()
+                Text(enabled ? "已啟用" : "未啟用")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(enabled ? .green : .secondary)
+            }
+            Button {
+                if enabled {
+                    showDisableOtpConfirmation = true
+                } else {
+                    profileSheet = .otp
+                }
+            } label: {
+                if profileVM.isWorking {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                } else {
+                    Text(enabled ? "停用 OTP" : "啟用 OTP")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                }
+            }
+            .buttonStyle(.plain)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(enabled ? Color.red.opacity(0.15) : Color.accentColor.opacity(0.15))
+            )
+            .disabled(profileVM.isWorking)
+        }
     }
 
     private var pushCard: some View {

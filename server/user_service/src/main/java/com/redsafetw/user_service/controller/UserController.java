@@ -1,7 +1,6 @@
 package com.redsafetw.user_service.controller;
 
 import com.redsafetw.user_service.dto.*;
-import com.redsafetw.user_service.repository.UserEdgeBindRepository;
 import com.redsafetw.user_service.service.BindService;
 import com.redsafetw.user_service.service.EdgeCommandService;
 import com.redsafetw.user_service.service.EdgeListService;
@@ -28,6 +27,13 @@ public class UserController {
     private final UserService userService;
     private final EdgeCommandService edgeCommandService;
     private final EdgeListService edgeListService;
+
+    @GetMapping("/info")
+    public UserInfoResponse getUserInfo(
+            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
+        String token = authorization.replace("Bearer ", "");
+        return userService.getUserInfo(token);
+    }
 
     @PostMapping("/bind")
     public BindResponse bind(

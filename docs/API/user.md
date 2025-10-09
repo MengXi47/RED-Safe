@@ -4,6 +4,32 @@
 
 ---
 
+## GET /user/info
+取得目前使用者的基本資料與 OTP 啟用狀態。
+
+### Headers
+- `Authorization: Bearer {access_token}`
+
+### 成功回應 (200)
+```json
+{
+  "user_name": "USER_NAME",
+  "email": "user@example.com",
+  "otp_enabled": true
+}
+```
+
+### 失敗回應範例
+```json
+{
+  "error_code": "126"
+}
+```
+
+**常見錯誤碼**：`126`、`142`
+
+---
+
 ## POST /user/bind
 將目前使用者與指定 Edge 裝置綁定。
 

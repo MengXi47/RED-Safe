@@ -75,10 +75,17 @@ final class AuthManager: ObservableObject {
     struct UserProfile: Equatable {
         var email: String
         var displayName: String
+        var otpEnabled: Bool
 
         func renamed(_ name: String) -> UserProfile {
             var copy = self
             copy.displayName = name
+            return copy
+        }
+
+        func withOtpEnabled(_ enabled: Bool) -> UserProfile {
+            var copy = self
+            copy.otpEnabled = enabled
             return copy
         }
     }
@@ -104,6 +111,7 @@ final class AuthManager: ObservableObject {
     private let refreshKey = "refreshtoken"
     private let usernameKey = "username"
     private let emailKey = "email"
+    private let otpEnabledKey = "otp_enabled"
 
     private init() {}
 
@@ -136,7 +144,9 @@ final class AuthManager: ObservableObject {
             }
 
             tokens = SessionTokens(accessToken: access, refreshToken: refresh)
-            hydrateProfileIfNeeded()
+            if await refreshProfileFromRemote(force: true) == nil {
+                hydrateProfileIfNeeded()
+            }
             phase = .authenticated
             return true
         } catch {
@@ -160,19 +170,19 @@ final class AuthManager: ObservableObject {
             throw SignInError.otpRequired(email: email, password: password)
         }
 
-        return try finalizeSignIn(with: response, email: email)
+        return try await finalizeSignIn(with: response, email: email)
     }
 
     @discardableResult
-    func signInWithOTP(email: String, password: String, otpCode: String?, backupCode: String?) async throws -> UserProfile {
+    func signInWithOTP(email: String, password: String, otpCode: String?) async throws -> UserProfile {
         isWorking = true
         defer { isWorking = false }
 
-        let response = try await APIClient.shared.signInWithOTP(email: email, password: password, otpCode: otpCode, backupCode: backupCode)
+        let response = try await APIClient.shared.signInWithOTP(email: email, password: password, otpCode: otpCode)
         if response.requiresOTP {
             throw ApiError.invalidPayload(reason: "伺服器回傳要求再次輸入 OTP，請稍後再試")
         }
-        return try finalizeSignIn(with: response, email: email)
+        return try await finalizeSignIn(with: response, email: email)
     }
 
     @discardableResult
@@ -202,7 +212,9 @@ final class AuthManager: ObservableObject {
                 tokens = SessionTokens(accessToken: access, refreshToken: refresh)
             }
 
-            hydrateProfileIfNeeded()
+            if await refreshProfileFromRemote(force: true) == nil {
+                hydrateProfileIfNeeded()
+            }
             phase = .authenticated
             return true
         } catch {
@@ -221,7 +233,7 @@ final class AuthManager: ObservableObject {
         phase = .signedOut
     }
 
-    private func finalizeSignIn(with response: SignInResponse, email: String) throws -> UserProfile {
+    private func finalizeSignIn(with response: SignInResponse, email: String) async throws -> UserProfile {
 #if DEBUG
         print("🔐 SignInResponse debug userName=\(response.userName ?? "nil") access=\(response.accessToken ?? "<nil>") refresh=\(response.refreshToken ?? "<nil>")")
 #endif
@@ -233,13 +245,19 @@ final class AuthManager: ObservableObject {
         }
 
         let resolvedName = response.normalizedUserName ?? email
-        let profile = UserProfile(email: email, displayName: resolvedName)
+        let fallbackProfile = UserProfile(email: email, displayName: resolvedName, otpEnabled: false)
 
-        persistSession(refreshToken: refresh, displayName: resolvedName, email: email)
+        persistSession(refreshToken: refresh, displayName: resolvedName, email: email, otpEnabled: fallbackProfile.otpEnabled)
         tokens = SessionTokens(accessToken: access, refreshToken: refresh)
-        self.profile = profile
-        phase = .authenticated
-        return profile
+
+        if let remoteProfile = await refreshProfileFromRemote(force: true) {
+            phase = .authenticated
+            return remoteProfile
+        } else {
+            self.profile = fallbackProfile
+            phase = .authenticated
+            return fallbackProfile
+        }
     }
 
     @discardableResult
@@ -248,12 +266,50 @@ final class AuthManager: ObservableObject {
         let result = try await APIClient.shared.updateUserName(newName)
         KeychainHelper.saveString(newName, for: usernameKey)
         if let current = profile {
-            profile = current.renamed(newName)
+            let updated = current.renamed(newName)
+            profile = updated
+            if let session = tokens {
+                persistSession(
+                    refreshToken: session.refreshToken,
+                    displayName: updated.displayName,
+                    email: updated.email,
+                    otpEnabled: updated.otpEnabled
+                )
+            }
         }
         return result
     }
 
     // MARK: - Helpers
+
+    @discardableResult
+    func refreshProfileFromRemote(force: Bool = false) async -> UserProfile? {
+        guard let session = tokens, force || !session.accessToken.isEmpty else { return nil }
+        do {
+            let response = try await APIClient.shared.fetchUserInfo()
+            let normalizedEmail = normalize(response.email) ?? profile?.email ?? ""
+            let fallbackName = normalize(profile?.displayName)
+            let normalizedName = normalize(response.userName)
+                ?? fallbackName
+                ?? (normalizedEmail.isEmpty ? "使用者" : normalizedEmail)
+            let resolvedProfile = UserProfile(
+                email: normalizedEmail,
+                displayName: normalizedName,
+                otpEnabled: response.otpEnabled
+            )
+            persistSession(
+                refreshToken: session.refreshToken,
+                displayName: resolvedProfile.displayName,
+                email: resolvedProfile.email,
+                otpEnabled: resolvedProfile.otpEnabled
+            )
+            profile = resolvedProfile
+            return resolvedProfile
+        } catch {
+            lastErrorDescription = error.localizedDescription
+            return nil
+        }
+    }
 
     private var storedRefreshToken: String? {
         KeychainHelper.loadString(key: refreshKey)
@@ -261,20 +317,32 @@ final class AuthManager: ObservableObject {
 
     private func hydrateProfileIfNeeded() {
         guard profile == nil else { return }
-        let displayName = KeychainHelper.loadString(key: usernameKey) ?? "使用者"
-        let email = KeychainHelper.loadString(key: emailKey) ?? ""
-        profile = UserProfile(email: email, displayName: displayName)
+        let storedName = normalize(KeychainHelper.loadString(key: usernameKey))
+        let storedEmail = normalize(KeychainHelper.loadString(key: emailKey)) ?? ""
+        let otpFlag = KeychainHelper.loadString(key: otpEnabledKey)?.lowercased()
+        let otpEnabled = otpFlag == "1" || otpFlag == "true"
+        let resolvedName = storedName ?? (storedEmail.isEmpty ? "使用者" : storedEmail)
+        profile = UserProfile(email: storedEmail, displayName: resolvedName, otpEnabled: otpEnabled)
     }
 
-    private func persistSession(refreshToken: String, displayName: String, email: String) {
+    private func persistSession(refreshToken: String, displayName: String, email: String, otpEnabled: Bool) {
         KeychainHelper.saveString(refreshToken, for: refreshKey)
         KeychainHelper.saveString(displayName, for: usernameKey)
         KeychainHelper.saveString(email, for: emailKey)
+        KeychainHelper.saveString(otpEnabled ? "1" : "0", for: otpEnabledKey)
     }
 
     private func clearPersistedSession() {
         KeychainHelper.delete(key: refreshKey)
         KeychainHelper.delete(key: usernameKey)
         KeychainHelper.delete(key: emailKey)
+        KeychainHelper.delete(key: otpEnabledKey)
+    }
+
+    private func normalize(_ text: String?) -> String? {
+        guard let trimmed = text?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
     }
 }
