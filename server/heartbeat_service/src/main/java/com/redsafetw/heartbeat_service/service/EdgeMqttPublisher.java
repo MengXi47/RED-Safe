@@ -40,7 +40,7 @@ public class EdgeMqttPublisher {
 
         String topic = topicForEdge(edgeId);
         mqttGateway.publish(topic, message.toString());
-        log.info("Published MQTT command. topic={} traceId={} qos={}", topic, traceId, mqttProperties.getQos());
+        // log.info("Published MQTT command. topic={} traceId={} qos={}", topic, traceId, mqttProperties.getQos());
     }
 
     private String topicForEdge(String edgeId) {

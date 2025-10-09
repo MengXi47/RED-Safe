@@ -25,6 +25,17 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        if (isSseRequest(request)) {
+            long start = System.currentTimeMillis();
+            try {
+                filterChain.doFilter(request, response);
+            } finally {
+                long duration = System.currentTimeMillis() - start;
+                log.info("HTTP {} {} status={} duration={}ms (SSE stream)",
+                        request.getMethod(), request.getRequestURI(), response.getStatus(), duration);
+            }
+            return;
+        }
         long start = System.currentTimeMillis();
         ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper(request);
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
@@ -43,6 +54,15 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                     request.getMethod(), path, responseWrapper.getStatus(), duration, requestBody, responseBody);
             responseWrapper.copyBodyToResponse();
         }
+    }
+
+    private boolean isSseRequest(HttpServletRequest request) {
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("text/event-stream")) {
+            return true;
+        }
+        String requestUri = request.getRequestURI();
+        return requestUri != null && requestUri.contains("/sse/");
     }
 
     private String bodyAsString(byte[] body, String encoding) {

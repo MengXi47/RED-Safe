@@ -17,6 +17,8 @@ import org.springframework.messaging.handler.annotation.Payload;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
+import static com.redsafetw.user_service.service.EdgeMqttSubscriber.getMqttConnectionOptions;
+
 @Configuration
 @RequiredArgsConstructor
 public class MqttIntegrationConfig {
@@ -40,18 +42,7 @@ public class MqttIntegrationConfig {
     }
 
     private MqttConnectionOptions buildOptions() {
-        MqttConnectionOptions options = new MqttConnectionOptions();
-        options.setServerURIs(new String[]{mqttProperties.getUri()});
-        options.setAutomaticReconnect(true);
-        options.setCleanStart(true);
-        options.setSessionExpiryInterval(0L);
-        options.setConnectionTimeout(10);
-        options.setKeepAliveInterval(30);
-        options.setUserName(mqttProperties.getUsername());
-        if (mqttProperties.getPassword() != null) {
-            options.setPassword(mqttProperties.getPassword().getBytes(StandardCharsets.UTF_8));
-        }
-        return options;
+        return getMqttConnectionOptions(mqttProperties);
     }
 
     @MessagingGateway(defaultRequestChannel = "mqttOutboundChannel")

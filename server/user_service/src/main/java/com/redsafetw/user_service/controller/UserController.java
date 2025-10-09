@@ -3,6 +3,7 @@ package com.redsafetw.user_service.controller;
 import com.redsafetw.user_service.dto.*;
 import com.redsafetw.user_service.service.BindService;
 import com.redsafetw.user_service.service.EdgeCommandService;
+import com.redsafetw.user_service.service.EdgeCommandSseService;
 import com.redsafetw.user_service.service.EdgeListService;
 import com.redsafetw.user_service.service.UserService;
 import jakarta.validation.Valid;
@@ -11,6 +12,8 @@ import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 使用者控制器
@@ -27,6 +30,7 @@ public class UserController {
     private final UserService userService;
     private final EdgeCommandService edgeCommandService;
     private final EdgeListService edgeListService;
+    private final EdgeCommandSseService edgeCommandSseService;
 
     @GetMapping("/info")
     public UserInfoResponse getUserInfo(
@@ -96,5 +100,14 @@ public class UserController {
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
         String token = authorization.replace("Bearer ", "");
         return edgeCommandService.sendCommand(request, token);
+    }
+
+    @GetMapping(value = "/sse/get/command/{trace_id}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter getCommandSse(
+            @PathVariable("trace_id") @NotBlank(message = "149")
+            @Pattern(regexp = "^[0-9a-fA-F\\-]{36}$", message = "149") String traceId,
+            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
+        String token = authorization.replace("Bearer ", "");
+        return edgeCommandSseService.streamCommandResult(traceId, token);
     }
 }

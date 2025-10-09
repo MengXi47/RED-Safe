@@ -160,7 +160,7 @@ public class EdgeHeartbeatManager {
                     ensurePingScheduled(edgeId);
                 } else if (topic.endsWith("/data")) {
                     // TODO: Persist edge data payload once downstream pipeline is ready.
-                    log.info("Edge data received. edge_id={} payload={}", edgeId, payload);
+                    // log.info("Edge data received. edge_id={} payload={}", edgeId, payload);
                 } else {
                     log.debug("Received message on unexpected topic {} payload={}", topic, payload);
                 }
