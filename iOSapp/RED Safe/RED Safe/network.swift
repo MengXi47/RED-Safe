@@ -494,6 +494,30 @@ struct EdgeListResponse: Decodable {
     let edges: [EdgeSummary]
 }
 
+struct EdgeCommandRequest: Encodable {
+    let edgeId: String
+    let code: String
+}
+
+struct EdgeCommandResponseDTO: Decodable {
+    let traceId: String
+}
+
+struct IPCameraDeviceDTO: Decodable, Identifiable, Hashable {
+    let ip: String
+    let mac: String
+    let name: String
+
+    var id: String { "\(mac)#\(ip)" }
+}
+
+struct EdgeCommandResultDTO: Decodable {
+    let code: Int
+    let result: [IPCameraDeviceDTO]
+    let status: String
+    let traceId: String?
+}
+
 struct ErrorCodeResponse: Decodable {
     let errorCode: ApiErrorCode
 }
@@ -661,6 +685,74 @@ extension APIClient {
             body: AnyEncodable(payload)
         )
         return try await send(endpoint)
+    }
+
+    func sendEdgeCommand(edgeId: String, code: String) async throws -> EdgeCommandResponseDTO {
+        let payload = EdgeCommandRequest(edgeId: edgeId, code: code)
+        let endpoint = Endpoint<EdgeCommandResponseDTO>(
+            path: "/user/edge/command",
+            method: .post,
+            body: AnyEncodable(payload)
+        )
+        return try await send(endpoint)
+    }
+
+    func fetchEdgeCommandResult(traceId: String, timeout: TimeInterval = 20) async throws -> EdgeCommandResultDTO {
+        let sseURL = configuration.baseURL.appendingPathComponent("user/sse/get/command/\(traceId)")
+        var request = URLRequest(url: sseURL)
+        request.httpMethod = "GET"
+        request.timeoutInterval = timeout
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let token = await tokenProvider()
+        guard let token, !token.isEmpty else {
+            throw ApiError.missingToken
+        }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (bytes, response) = try await session.bytes(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ApiError.http(status: -1, code: nil, message: "無效的 SSE 回應", payload: nil)
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            throw ApiError.http(status: httpResponse.statusCode, code: nil, message: nil, payload: nil)
+        }
+
+        var dataLines: [String] = []
+        do {
+            for try await line in bytes.lines {
+                let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                if trimmed.isEmpty {
+                    if !dataLines.isEmpty { break }
+                    continue
+                }
+                if trimmed.hasPrefix("data:") {
+                    dataLines.append(String(trimmed.dropFirst(5)).trimmingCharacters(in: .whitespaces))
+                }
+            }
+        } catch {
+            throw ApiError.transport(error)
+        }
+
+        guard !dataLines.isEmpty else {
+            throw ApiError.http(status: httpResponse.statusCode, code: nil, message: "SSE 無資料", payload: nil)
+        }
+
+        let merged = dataLines.joined(separator: "\n")
+        if merged == "notfound" {
+            throw ApiError.http(status: httpResponse.statusCode, code: nil, message: "查無對應資料", payload: nil)
+        }
+
+        guard let payloadData = merged.data(using: .utf8) else {
+            throw ApiError.invalidPayload(reason: "SSE 資料格式錯誤")
+        }
+
+        do {
+            return try decoder.decode(EdgeCommandResultDTO.self, from: payloadData)
+        } catch {
+            throw ApiError.decoding(error)
+        }
     }
 
     private func mapSuccess(from response: ErrorCodeResponse) throws -> ApiErrorCode {

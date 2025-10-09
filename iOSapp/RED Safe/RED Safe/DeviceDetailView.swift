@@ -41,6 +41,22 @@ struct DeviceDetailView: View {
                 ActionRow(title: "更新 Edge 密碼", icon: "key.fill", action: updatePassword)
                 ActionRow(title: "解除綁定", icon: "link.badge.minus", tint: .red, action: unbind)
             }
+
+            Section("IP Camera配置") {
+                NavigationLink {
+                    IPCameraConfigView(edge: edge)
+                } label: {
+                    HStack {
+                        Image(systemName: "camera.on.rectangle")
+                        Text("IP Camera配置")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.tertiary)
+                    }
+                    .font(.body.weight(.semibold))
+                    .padding(.vertical, 8)
+                }
+            }
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
