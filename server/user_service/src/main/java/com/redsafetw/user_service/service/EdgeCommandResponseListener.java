@@ -86,8 +86,8 @@ public class EdgeCommandResponseListener {
             };
 
             MqttSubscription subscription = new MqttSubscription(topic, mqttProperties.getQos());
-            // 直接使用單一訂閱搭配 listener，避免傳入空陣列導致 Paho 取得 topic 失敗
-            client.subscribe(subscription, listener).waitForCompletion();
+            // 改成手動建立僅含一個元素的訂閱陣列，再搭配單一 listener，避免 Paho 內部產生空陣列導致 IndexOutOfBoundsException
+            client.subscribe(new MqttSubscription[]{subscription}, listener).waitForCompletion();
 
             boolean received = latch.await(RESPONSE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
