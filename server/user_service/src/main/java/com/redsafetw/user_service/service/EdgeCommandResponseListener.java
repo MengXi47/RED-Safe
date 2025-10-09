@@ -86,8 +86,8 @@ public class EdgeCommandResponseListener {
             };
 
             MqttSubscription subscription = new MqttSubscription(topic, mqttProperties.getQos());
-            client.subscribe(subscription, null, null, listener,
-                    (org.eclipse.paho.mqttv5.common.packet.MqttProperties) null).waitForCompletion();
+            // 直接使用單一訂閱搭配 listener，避免傳入空陣列導致 Paho 取得 topic 失敗
+            client.subscribe(subscription, listener).waitForCompletion();
 
             boolean received = latch.await(RESPONSE_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
 
