@@ -57,6 +57,9 @@ struct SignInView: View {
             .safeAreaInset(edge: .top) {
                 Color.clear.frame(height: 4)
             }
+            .sheet(item: $viewModel.pendingOTP) { pending in
+                OTPVerificationSheet(viewModel: viewModel, pending: pending)
+            }
         }
     }
 
@@ -330,6 +333,118 @@ private struct BannerView: View {
     }
 }
 
+private struct OTPVerificationSheet: View {
+    enum Field: Hashable {
+        case otp
+        case backup
+    }
+
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: SignInViewModel
+    let pending: SignInViewModel.PendingOTP
+
+    @State private var otpCode: String = ""
+    @State private var backupCode: String = ""
+    @State private var validationError: String?
+    @FocusState private var focusedField: Field?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("帳號") {
+                    Text(pending.email)
+                        .font(.callout.monospaced())
+                }
+
+                Section(header: Text("OTP 驗證碼"), footer: Text("請輸入認證 App 顯示的 6 碼一次性密碼。")) {
+                    TextField("例如：123456", text: $otpCode)
+                        .keyboardType(.numberPad)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($focusedField, equals: .otp)
+                        .onChange(of: otpCode) { otpCode = sanitize(code: $0) }
+                }
+
+                Section(header: Text("備援驗證碼 (可選)"), footer: Text("若無法取得 OTP，可改輸入備援碼。每組僅能使用一次。")) {
+                    TextField("例如：654321", text: $backupCode)
+                        .keyboardType(.numberPad)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($focusedField, equals: .backup)
+                        .onChange(of: backupCode) { backupCode = sanitize(code: $0) }
+                }
+
+                if let validationError {
+                    Section {
+                        Text(validationError)
+                            .font(.footnote)
+                            .foregroundColor(.red)
+                    }
+                }
+
+                Section {
+                    Button(action: { Task { await verifyOTP() } }) {
+                        if viewModel.isVerifyingOTP {
+                            ProgressView()
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("送出驗證")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .disabled(viewModel.isVerifyingOTP)
+                }
+            }
+            .navigationTitle("OTP 驗證")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        viewModel.pendingOTP = nil
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear { focusedField = .otp }
+        }
+    }
+
+    private func sanitize(code: String) -> String {
+        let filtered = code.filter { $0.isNumber }
+        return String(filtered.prefix(6))
+    }
+
+    private func verifyOTP() async {
+        let trimmedOTP = otpCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedBackup = backupCode.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedOTP.isEmpty || !trimmedBackup.isEmpty else {
+            await MainActor.run { validationError = "請輸入 OTP 或備援碼" }
+            return
+        }
+
+        await MainActor.run { validationError = nil }
+
+        let result = await viewModel.completeOTP(
+            otpCode: trimmedOTP.isEmpty ? nil : trimmedOTP,
+            backupCode: trimmedBackup.isEmpty ? nil : trimmedBackup
+        )
+
+        if case .success = result {
+            dismiss()
+        } else if case .failure(let error) = result {
+            await MainActor.run {
+                if let localized = (error as? LocalizedError)?.errorDescription {
+                    validationError = localized
+                } else {
+                    validationError = error.localizedDescription
+                }
+            }
+        }
+    }
+}
+
 // MARK: - View Model
 
 @MainActor
@@ -348,11 +463,30 @@ final class SignInViewModel: ObservableObject {
         let kind: Kind
     }
 
+    struct PendingOTP: Identifiable, Equatable {
+        let id = UUID()
+        let email: String
+        let password: String
+    }
+
+    enum OTPFlowError: LocalizedError {
+        case missingContext
+
+        var errorDescription: String? {
+            switch self {
+            case .missingContext:
+                return "驗證流程已過期，請重新登入"
+            }
+        }
+    }
+
     @Published var email: String = ""
     @Published var password: String = ""
     @Published var isPasswordVisible: Bool = false
     @Published var isSubmitting: Bool = false
     @Published var banner: Banner?
+    @Published var pendingOTP: PendingOTP?
+    @Published var isVerifyingOTP: Bool = false
 
     private var bannerDismissTask: Task<Void, Never>?
 
@@ -409,6 +543,13 @@ final class SignInViewModel: ObservableObject {
             let profile = try await AuthManager.shared.signIn(email: trimmedEmail, password: trimmedPassword)
             showBanner(title: "登入成功", message: "歡迎回來，\(profile.displayName)", kind: .success)
             clearSensitiveFields()
+        } catch let signInError as AuthManager.SignInError {
+            switch signInError {
+            case .otpRequired(let email, let password):
+                pendingOTP = PendingOTP(email: email, password: password)
+                showBanner(title: "需要 OTP 驗證", message: signInError.errorDescription ?? "請輸入 OTP 驗證碼", kind: .error)
+                clearSensitiveFields()
+            }
         } catch {
             showBanner(title: "登入失敗", message: resolveMessage(from: error), kind: .error)
         }
@@ -424,6 +565,32 @@ final class SignInViewModel: ObservableObject {
     /// 登入成功後清除密碼等敏感資料。
     private func clearSensitiveFields() {
         password = ""
+    }
+
+    /// 使用 OTP 或備援碼完成登入流程。
+    func completeOTP(otpCode: String?, backupCode: String?) async -> Result<Void, Error> {
+        guard let pendingOTP else {
+            return .failure(OTPFlowError.missingContext)
+        }
+
+        isVerifyingOTP = true
+        defer { isVerifyingOTP = false }
+
+        do {
+            let profile = try await AuthManager.shared.signInWithOTP(
+                email: pendingOTP.email,
+                password: pendingOTP.password,
+                otpCode: otpCode,
+                backupCode: backupCode
+            )
+            self.pendingOTP = nil
+            showBanner(title: "登入成功", message: "歡迎回來，\(profile.displayName)", kind: .success)
+            clearSensitiveFields()
+            return .success(())
+        } catch {
+            showBanner(title: "登入失敗", message: resolveMessage(from: error), kind: .error)
+            return .failure(error)
+        }
     }
 
     /// 顯示短暫提示讓使用者理解目前狀態。

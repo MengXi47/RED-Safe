@@ -81,6 +81,9 @@ private extension ApiErrorCode {
         "146": "Edge ID 已存在",
         "147": "Edge 密碼錯誤",
         "148": "新 Edge 密碼為空",
+        "150": "此帳號已啟用二階段驗證",
+        "151": "尚未啟用二階段驗證",
+        "152": "OTP 或備援碼驗證失敗",
         "MISSING_AUTHORIZATION_HEADER": "缺少 Authorization 標頭",
         "INVALID_AUTHORIZATION_HEADER": "Authorization 標頭格式錯誤",
         "INVALID_TOKEN": "Access Token 驗證失敗",
@@ -387,6 +390,13 @@ struct SignInRequest: Encodable {
     let password: String
 }
 
+struct SignInOTPRequest: Encodable {
+    let email: String
+    let password: String
+    let otpCode: String?
+    let backupCode: String?
+}
+
 struct SignUpRequest: Encodable {
     let email: String
     let userName: String
@@ -431,8 +441,9 @@ struct UpdateEdgePasswordRequest: Encodable {
 
 struct SignInResponse: Decodable {
     let userName: String?
-    let accessToken: String
-    let refreshToken: String
+    let accessToken: String?
+    let refreshToken: String?
+    let errorCode: ApiErrorCode?
 
     var normalizedUserName: String? {
         guard let name = userName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else {
@@ -440,6 +451,13 @@ struct SignInResponse: Decodable {
         }
         return name
     }
+
+    var requiresOTP: Bool { errorCode?.rawValue == "150" }
+}
+
+struct CreateOTPResponse: Decodable {
+    let otpKey: String
+    let backupCodes: [String]
 }
 
 struct SignUpResponse: Decodable {
@@ -491,6 +509,25 @@ extension APIClient {
             method: .post,
             requiresAuth: false,
             body: AnyEncodable(payload)
+        )
+        return try await send(endpoint)
+    }
+
+    func signInWithOTP(email: String, password: String, otpCode: String?, backupCode: String?) async throws -> SignInResponse {
+        let payload = SignInOTPRequest(email: email, password: password, otpCode: otpCode, backupCode: backupCode)
+        let endpoint = Endpoint<SignInResponse>(
+            path: "/auth/signin/otp",
+            method: .post,
+            requiresAuth: false,
+            body: AnyEncodable(payload)
+        )
+        return try await send(endpoint)
+    }
+
+    func createOTP() async throws -> CreateOTPResponse {
+        let endpoint = Endpoint<CreateOTPResponse>(
+            path: "/auth/create/otp",
+            method: .post
         )
         return try await send(endpoint)
     }
