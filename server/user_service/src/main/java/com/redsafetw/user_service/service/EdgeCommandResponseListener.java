@@ -36,6 +36,7 @@ public class EdgeCommandResponseListener {
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
 
+    // 針對指定 edge 與 traceId 非同步啟動監聽程序
     public void listenForResponse(String edgeId, String traceId) {
         CompletableFuture.runAsync(() -> awaitAndCache(edgeId, traceId));
     }
@@ -50,8 +51,10 @@ public class EdgeCommandResponseListener {
 
         ObjectNode cacheNode = objectMapper.createObjectNode();
         if (payloadNode != null) {
+            // 成功取得資料時把完整 payload 寫入 Redis
             cacheNode.set("payload", payloadNode);
         } else {
+            // 未在時限內取得資料時寫入 notfound
             cacheNode.put("payload", "notfound");
         }
         try {
@@ -78,6 +81,7 @@ public class EdgeCommandResponseListener {
                 if (!topic.equals(receivedTopic)) {
                     return;
                 }
+                // 收到指定 topic 的訊息後解析 trace_id 確認是否為此次請求
                 handleMessage(traceId, message, resultHolder, latch);
             };
 
@@ -123,6 +127,7 @@ public class EdgeCommandResponseListener {
 
     private void handleMessage(String traceId, MqttMessage message, JsonNode[] resultHolder, CountDownLatch latch) {
         try {
+            // MQTT payload 預期為 JSON 格式，需解析出內層 payload.trace_id
             String payload = new String(message.getPayload(), StandardCharsets.UTF_8);
             JsonNode root = objectMapper.readTree(payload);
             JsonNode payloadNode = root.path("payload");
@@ -137,6 +142,7 @@ public class EdgeCommandResponseListener {
     }
 
     private MqttConnectionOptions buildOptions() {
+        // 建立 MQTT 連線設定，使用設定檔中的連線資訊
         MqttConnectionOptions options = new MqttConnectionOptions();
         options.setServerURIs(new String[]{mqttProperties.getUri()});
         options.setAutomaticReconnect(true);

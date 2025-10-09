@@ -37,6 +37,7 @@ public class EdgeCommandService {
     private final StringRedisTemplate redisTemplate;
     private final EdgeCommandResponseListener edgeCommandResponseListener;
 
+    // 發送 Edge 指令後回傳 traceId
     public EdgeCommandResponse sendCommand(EdgeCommandRequest request, String accessToken) {
         UUID userId = JwtService.verifyAndGetUserId(accessToken);
         if (userId.equals(new UUID(0L, 0L))) {
@@ -44,6 +45,7 @@ public class EdgeCommandService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
         }
 
+        // 驗證使用者是否真的綁定指定 Edge
         String edgeId = request.getEdgeId();
         if (!userEdgeBindRepository.existsByUserIdAndEdgeId(userId, edgeId)) {
             logger.info("sendCommand: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} 未綁定", userId, edgeId);
@@ -51,8 +53,10 @@ public class EdgeCommandService {
         }
 
         String traceId = UUID.randomUUID().toString();
+        // 將 payload 序列化成字串後送到 MQTT
         String payloadJson = serializePayload(request);
 
+        // 將指令請求資訊暫存到 Redis，供 SSE 查詢
         cacheCommandRequest(traceId, edgeId, request.getCode(), request.getPayload());
 
         try {
@@ -65,6 +69,7 @@ public class EdgeCommandService {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "MQTT_PUBLISH_FAILED");
         }
 
+        // 非同步監聽 Edge 回覆並寫入 Redis
         edgeCommandResponseListener.listenForResponse(edgeId, traceId);
 
         return EdgeCommandResponse.builder()
@@ -73,17 +78,20 @@ public class EdgeCommandService {
     }
 
     public SseEmitter streamCommandResponse(String traceId, String accessToken) {
+        // 先確認 Redis 是否存在對應的指令請求
         String requestCache = redisTemplate.opsForValue().get(requestKey(traceId));
         if (requestCache == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "155");
         }
 
+        // 驗證存取權杖是否有效
         UUID userId = JwtService.verifyAndGetUserId(accessToken);
         if (userId.equals(new UUID(0L, 0L))) {
             logger.info("streamCommandResponse: {\"access_token\":\"{}\"} access_token 失效", accessToken);
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
         }
 
+        // 解析 Redis 中的資料取得 edge_id 後再比對綁定關係
         String edgeId = extractEdgeId(requestCache, traceId);
         if (!userEdgeBindRepository.existsByUserIdAndEdgeId(userId, edgeId)) {
             logger.info("streamCommandResponse: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} 未綁定", userId, edgeId);
@@ -91,6 +99,7 @@ public class EdgeCommandService {
         }
 
         SseEmitter emitter = new SseEmitter(0L);
+        // 透過非同步背景執行等待結果並以 SSE 回傳
         CompletableFuture.runAsync(() -> emitResponse(traceId, emitter));
         return emitter;
     }
@@ -100,6 +109,7 @@ public class EdgeCommandService {
             return null;
         }
         try {
+            // 將 payload 轉為 JSON 字串
             return objectMapper.writeValueAsString(request.getPayload());
         } catch (JsonProcessingException ex) {
             logger.warn("sendCommand: Failed to serialize payload for edge {}", request.getEdgeId(), ex);
@@ -109,6 +119,7 @@ public class EdgeCommandService {
 
     private void cacheCommandRequest(String traceId, String edgeId, String code, JsonNode payload) {
         ObjectNode node = objectMapper.createObjectNode();
+        // 將 edge_id、code、payload 打包成 JSON 存進 Redis
         node.put("edge_id", edgeId);
         node.put("code", code);
         if (payload != null) {
@@ -140,6 +151,7 @@ public class EdgeCommandService {
     private void emitResponse(String traceId, SseEmitter emitter) {
         try {
             String responseJson = awaitResponse(traceId);
+            // 從 Redis 中取得回應並解析 payload
             JsonNode responseNode = objectMapper.readTree(responseJson);
             JsonNode payloadNode = responseNode.path("payload");
 
@@ -176,6 +188,7 @@ public class EdgeCommandService {
         }
 
         if (value == null) {
+            // 若超時仍無資料，統一寫入 notfound
             ObjectNode node = objectMapper.createObjectNode();
             node.put("payload", "notfound");
             value = node.toString();
