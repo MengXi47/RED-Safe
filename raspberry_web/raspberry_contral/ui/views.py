@@ -5,6 +5,7 @@ import io
 import re
 import json
 import subprocess
+from typing import Any
 
 import netifaces
 import psutil
@@ -81,6 +82,99 @@ def _pi_temperature() -> str:
                 return f"{int(f.read()) / 1000:.1f}°C"
         except Exception:
             return "N/A"
+
+
+def _extract_scan_list(payload: Any) -> list[Any]:
+    """從 IPC 掃描結果中找出可能的列表資料。"""
+    if isinstance(payload, list):
+        return payload
+
+    if isinstance(payload, dict):
+        # 最常見的列表欄位名稱
+        for key in ("results", "result", "items", "list", "cameras", "devices", "data"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return value
+
+        # 若沒有明確欄位，回傳所有為 list 的值
+        aggregate = []
+        for value in payload.values():
+            if isinstance(value, list):
+                aggregate.extend(value)
+        if aggregate:
+            return aggregate
+
+    return []
+
+
+def _normalize_scan_results(payload: Any) -> tuple[list[dict[str, str]], str | None]:
+    """整理 IPC 掃描回傳的資料，轉成統一格式。"""
+    if payload is None:
+        return [], "IPC 掃描服務無回應"
+
+    # 若是純字串，直接回傳錯誤
+    if isinstance(payload, str):
+        return [], "掃描結果格式不正確"
+
+    entries = _extract_scan_list(payload)
+    # 若不是列表，也許回傳的是單一物件
+    if not entries and isinstance(payload, dict):
+        entries = [payload]
+
+    normalized: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        ip = (entry.get("ip")
+              or entry.get("ip_address")
+              or entry.get("ipAddress")
+              or entry.get("ipv4")
+              or entry.get("IPv4")
+              or "")
+        mac = (entry.get("mac")
+               or entry.get("mac_address")
+               or entry.get("macAddress")
+               or entry.get("MacAddress")
+               or entry.get("mac_addr")
+               or "")
+        name = (entry.get("name")
+                or entry.get("ipc_name")
+                or entry.get("ipcName")
+                or entry.get("device_name")
+                or entry.get("DeviceName")
+                or "")
+
+        ip = str(ip).strip()
+        mac = str(mac).strip()
+        name = str(name).strip()
+
+        if not (ip or mac or name):
+            continue
+
+        key = (ip.lower(), mac.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+
+        if not name:
+            name = mac or ip or "IPC"
+
+        normalized.append({
+            "ip": ip,
+            "mac": mac,
+            "name": name,
+        })
+
+    if normalized:
+        return normalized, None
+
+    # entries 為空但掃描成功，仍視為正常回傳
+    if isinstance(entries, list):
+        return [], None
+
+    return [], "未找到任何裝置"
 
 
 @require_http_methods(["GET", "POST"])
@@ -536,14 +630,25 @@ def cameras(request: HttpRequest):
         print("ConnectedIPC query error:", e)
         bound = []
 
-    # 搜尋結果（示範；之後可換成實際掃描或 API）
-    search_results = [
-        {"ip": "192.168.0.101", "mac": "AA:BB:CC:DD:EE:01", "name": "Cam-101"},
-        {"ip": "192.168.0.102", "mac": "AA:BB:CC:DD:EE:02", "name": "Cam-102"},
-    ]
-
-    context = {"bound": bound, "search_results": search_results}
+    context = {
+        "bound": bound,
+        "search_results": [],
+        "search_error": None,
+    }
     return render(request, "ui/cameras_combined.html", context)
+
+
+@_require_auth
+@require_http_methods(["GET"])
+def api_cameras_search(request: HttpRequest):
+    """即時掃描網路上的攝影機並回傳列表。"""
+
+    payload = scan_ipc_dynamic()
+    results, error = _normalize_scan_results(payload)
+    if error and not results:
+        return JsonResponse({"ok": False, "error": error}, status=503)
+
+    return JsonResponse({"ok": True, "results": results})
 
 
 

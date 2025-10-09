@@ -1,0 +1,3 @@
+[submodule "edge/RED_SAFE_EDGE_CORE/external/boost_mqtt5"]
+	path = edge/RED_SAFE_EDGE_CORE/external/boost_mqtt5
+	url = https://github.com/boostorg/mqtt5

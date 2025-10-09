@@ -61,15 +61,21 @@
   #cam-page .cam-sections section.glass {
     width: 100%;
   }
+  #cam-page .hint.error {
+    color: var(--danger);
+  }
 </style>
 <div id="cam-page">
 <div class="content-container">
   <div class="cam-sections">
     <section class="glass">
       <div class="toolbar">
-        <button class="btn" onclick="refreshSearch()">搜尋攝影機</button>
-        <button class="btn btn-ghost" onclick="location.reload()">重新整理</button>
+        <button class="btn" type="button" onclick="refreshSearch(this)">搜尋攝影機</button>
+        <button class="btn btn-ghost" type="button" onclick="location.reload()">重新整理</button>
       </div>
+      {% if search_error %}
+      <div class="hint error">初次載入掃描失敗：{{ search_error }}</div>
+      {% endif %}
       <h2>搜尋結果</h2>
       <div class="table-wrap">
         <table class="tbl">
@@ -89,7 +95,7 @@
               <th class="col-actions">操作</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody id="search-results-body">
           {% if search_results %}
             {% for r in search_results %}
             <tr>
@@ -205,6 +211,103 @@
       }catch(err){ alert('請求失敗：' + err.message); }
     };
   }
+
+  window.refreshSearch = async function(buttonEl){
+    const tbody = document.getElementById('search-results-body');
+    if (!tbody) return;
+
+    const button = (buttonEl instanceof HTMLElement) ? buttonEl : null;
+    const originalText = button ? button.textContent : '';
+
+    if (button) {
+      button.disabled = true;
+      button.dataset.originalText = originalText;
+      button.textContent = '搜尋中…';
+    }
+
+    const setStatusRow = (html) => {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${html}</td></tr>`;
+    };
+
+    setStatusRow('搜尋中…');
+
+    try{
+      const res = await fetch("{% url 'api_cameras_search' %}", {
+        headers: { 'Accept': 'application/json' },
+      });
+      const data = await res.json().catch(()=>({}));
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.error || ('HTTP '+res.status));
+      }
+
+      const list = Array.isArray(data.results) ? data.results : [];
+      if (!list.length) {
+        setStatusRow(`<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Z" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg> 未找到任何裝置`);
+        return;
+      }
+
+      const rows = [];
+      list.forEach((cam, index) => {
+        const ip = (cam && cam.ip ? String(cam.ip) : '').trim();
+        const mac = (cam && cam.mac ? String(cam.mac) : '').trim();
+        const name = (cam && cam.name ? String(cam.name) : '').trim() || mac || ip || 'IPC';
+
+        const tr = document.createElement('tr');
+
+        const numTd = document.createElement('td');
+        numTd.className = 'num';
+        numTd.textContent = String(index + 1);
+        tr.appendChild(numTd);
+
+        const ipTd = document.createElement('td');
+        const ipChip = document.createElement('span');
+        ipChip.className = 'chip mono';
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.setAttribute('aria-hidden', 'true');
+        ipChip.appendChild(dot);
+        ipChip.appendChild(document.createTextNode(ip));
+        ipTd.appendChild(ipChip);
+        tr.appendChild(ipTd);
+
+        const macTd = document.createElement('td');
+        const macChip = document.createElement('span');
+        macChip.className = 'chip mono';
+        macChip.appendChild(document.createTextNode(mac));
+        macTd.appendChild(macChip);
+        tr.appendChild(macTd);
+
+        const nameTd = document.createElement('td');
+        nameTd.textContent = name;
+        tr.appendChild(nameTd);
+
+        const actionTd = document.createElement('td');
+        actionTd.className = 'actions';
+        const addButton = document.createElement('button');
+        addButton.type = 'button';
+        addButton.className = 'action-btn';
+        addButton.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> 添加';
+        addButton.addEventListener('click', () => addCam(ip, mac, name));
+        actionTd.appendChild(addButton);
+        tr.appendChild(actionTd);
+
+        rows.push(tr);
+      });
+
+      tbody.innerHTML = '';
+      rows.forEach((row) => { tbody.appendChild(row); });
+    }catch(err){
+      console.error('IPC 搜尋失敗：', err);
+      setStatusRow(`<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M8 12h8" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg> 搜尋失敗`);
+      alert('搜尋失敗：' + err.message);
+    }finally{
+      if (button) {
+        button.disabled = false;
+        button.textContent = button.dataset.originalText || '搜尋攝影機';
+        delete button.dataset.originalText;
+      }
+    }
+  };
 })();
 </script>
 {% endblock %}
