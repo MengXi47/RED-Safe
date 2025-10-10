@@ -5,10 +5,12 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <thread>
 
 namespace {
 constexpr int kMinHeartbeatMs = 100;
 constexpr int kMinScanTimeoutMs = 500;
+constexpr auto kEdgeIdRetryDelay = std::chrono::seconds(1);
 } // namespace
 
 std::string ConfigLoader::GetEnvOrDefault(
@@ -35,13 +37,14 @@ std::optional<int> ConfigLoader::GetEnvInt(const char* name) {
 
 EdgeConfig ConfigLoader::Load() {
   EdgeConfig cfg;
-  if (const auto edge_id = sql::LoadEdgeId()) {
-    cfg.edge_id = *edge_id;
-    LogInfoFormat("從資料庫載入 edge_id: {}", cfg.edge_id);
-  } else {
-    cfg.edge_id = GetEnvOrDefault("RED_SAFE_EDGE_ID", "RED-AAAAAAAA");
-    LogWarnFormat(
-        "使用環境變數或預設值 edge_id={} (資料庫載入失敗)", cfg.edge_id);
+  while (true) {
+    if (const auto edge_id = sql::LoadEdgeId()) {
+      cfg.edge_id = *edge_id;
+      LogInfoFormat("從資料庫載入 edge_id: {}", cfg.edge_id);
+      break;
+    }
+    LogWarn("從資料庫載入 edge_id 失敗，稍後重試");
+    std::this_thread::sleep_for(kEdgeIdRetryDelay);
   }
   cfg.version = GetEnvOrDefault("RED_SAFE_EDGE_VERSION", "1.0.0");
   cfg.edge_ip = GetEnvOrDefault("RED_SAFE_EDGE_IP", "");
