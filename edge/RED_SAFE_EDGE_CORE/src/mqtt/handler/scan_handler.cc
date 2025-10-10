@@ -48,10 +48,10 @@ awaitable<std::tuple<bool, std::string>> ScanCommandHandler::RunScanAsync() {
   co_return co_await boost::asio::async_initiate<
       decltype(boost::asio::use_awaitable),
       void(bool, std::string)>(
-      [this, executor](auto&& completion_handler) {
-        using HandlerType = std::decay_t<decltype(completion_handler)>;
-        auto handler = std::make_shared<HandlerType>(
-            std::forward<decltype(completion_handler)>(completion_handler));
+      [this, executor]<typename T0>(T0&& completion_handler) {
+        using HandlerType = std::decay_t<T0>;
+        auto handler =
+            std::make_shared<HandlerType>(std::forward<T0>(completion_handler));
 
         boost::asio::post(
             scan_pool_, [handler, executor, timeout = scan_timeout_]() mutable {
@@ -87,10 +87,10 @@ std::string ScanCommandHandler::BuildScanSuccess(
   if (data.is_discarded()) {
     data = nlohmann::json::array();
   }
-  return BuildSuccessResponse(trace_id, "101", std::move(data));
+  return BuildSuccessResponse(trace_id, 101, std::move(data));
 }
 
 std::string ScanCommandHandler::BuildScanError(
     const std::string& trace_id, std::string_view error_message) {
-  return BuildErrorResponse(trace_id, "101", error_message);
+  return BuildErrorResponse(trace_id, 101, error_message);
 }

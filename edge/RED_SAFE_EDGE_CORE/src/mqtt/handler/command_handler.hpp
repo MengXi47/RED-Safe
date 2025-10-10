@@ -25,10 +25,10 @@ class ICommandHandler {
 
  protected:
   static std::string BuildSuccessResponse(
-      std::string trace_id, std::string code, nlohmann::json result) {
+      std::string trace_id, int code, nlohmann::json result) {
     nlohmann::json message{
         {"trace_id", std::move(trace_id)},
-        {"code", std::move(code)},
+        {"code", code},
         {"status", "ok"},
         {"result", std::move(result)}};
     return message.dump();
@@ -36,11 +36,11 @@ class ICommandHandler {
 
   static std::string BuildErrorResponse(
       std::string trace_id,
-      std::string code,
+      int code,
       std::string_view error_message) {
     nlohmann::json message{
         {"trace_id", std::move(trace_id)},
-        {"code", std::move(code)},
+        {"code", code},
         {"status", "error"},
         {"result", nlohmann::json{{"error_message", error_message}}}};
     return message.dump();

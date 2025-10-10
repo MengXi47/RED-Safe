@@ -6,8 +6,8 @@
 #include "iptool.pb.h"
 #include "util/logging.hpp"
 
-#include <nlohmann/json.hpp>
 #include <string>
+#include <nlohmann/json.hpp>
 
 using boost::asio::awaitable;
 
@@ -31,14 +31,15 @@ nlohmann::json BuildNetworkInfoResult(const iptool::NetworkConfig& net) {
       {"subnet_mask", net.subnet_mask()},
       {"gateway", net.gateway()},
       {"dns", net.dns()},
-      {"mode", nlohmann::json{
-                   {"name", ModeToString(net.mode())},
-                   {"value", static_cast<int>(net.mode())},
-                   {"raw", iptool::NetworkMode_Name(net.mode())}}}};
+      {"mode",
+       nlohmann::json{
+           {"name", ModeToString(net.mode())},
+           {"value", static_cast<int>(net.mode())},
+           {"raw", iptool::NetworkMode_Name(net.mode())}}}};
   return result;
 }
 
-}  // namespace
+} // namespace
 
 NetworkInfoHandler::NetworkInfoHandler(
     EdgeConfig& config, CommandPublishFn publish_response)
@@ -58,10 +59,8 @@ awaitable<void> NetworkInfoHandler::Handle(const CommandMessage& command) {
         "查詢網路設定失敗，target={} interface={}",
         config_.iptool_target,
         interface_name);
-    const std::string response = BuildErrorResponse(
-        command.trace_id,
-        command.code,
-        "查詢網路設定失敗");
+    const std::string response =
+        BuildErrorResponse(command.trace_id, 102, "查詢網路設定失敗");
     co_await publish_response_(response, "發佈網路設定查詢結果失敗");
   } else {
     const auto& net = *network_config;
@@ -78,10 +77,10 @@ awaitable<void> NetworkInfoHandler::Handle(const CommandMessage& command) {
         iptool::NetworkMode_Name(net.mode()));
 
     auto result = BuildNetworkInfoResult(net);
-    const std::string response = BuildSuccessResponse(
-        command.trace_id, command.code, std::move(result));
-    const bool published = co_await publish_response_(
-        response, "發佈網路設定查詢結果失敗");
+    const std::string response =
+        BuildSuccessResponse(command.trace_id, 102, std::move(result));
+    const bool published =
+        co_await publish_response_(response, "發佈網路設定查詢結果失敗");
     if (published) {
       LogInfoFormat(
           "網路設定結果已送出 trace_id={} interface={}",
