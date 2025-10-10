@@ -229,6 +229,13 @@ final class APIClient {
 
     /// 依據 Endpoint 發送請求並解析為對應模型，維持清晰的資料流與錯誤拋出策略。
     func send<Response: Decodable>(_ endpoint: Endpoint<Response>) async throws -> Response {
+        try await send(endpoint, retryingOnAuthFailure: endpoint.requiresAuth)
+    }
+
+    private func send<Response: Decodable>(
+        _ endpoint: Endpoint<Response>,
+        retryingOnAuthFailure: Bool
+    ) async throws -> Response {
         let request = try await makeRequest(from: endpoint)
 
         do {
@@ -267,6 +274,14 @@ final class APIClient {
                 throw ApiError.decoding(error)
             }
         } catch let error as ApiError {
+            if retryingOnAuthFailure,
+               endpoint.requiresAuth,
+               case .http(_, let code?, _, _) = error,
+               code.rawValue == "126" {
+                if await handleExpiredAccessToken() {
+                    return try await send(endpoint, retryingOnAuthFailure: false)
+                }
+            }
             throw error
         } catch {
             throw ApiError.transport(error)
@@ -337,6 +352,16 @@ final class APIClient {
         }
 
         return .http(status: status, code: nil, message: nil, payload: data)
+    }
+
+    private func handleExpiredAccessToken() async -> Bool {
+        let refreshed = await AuthManager.shared.refreshAccessToken()
+        if !refreshed {
+            await MainActor.run {
+                AuthManager.shared.signOut()
+            }
+        }
+        return refreshed
     }
 }
 
