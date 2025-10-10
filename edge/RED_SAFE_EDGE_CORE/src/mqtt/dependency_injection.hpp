@@ -61,7 +61,7 @@ inline void RegisterDefaultHandlers(
           "101", ScanCommandHandler, config.ipcscan_timeout, publish_response),
 
       // 獲取網路配置
-      MQTT_HANDLER_ENTRY("102", NetworkInfoHandler, config),
+      MQTT_HANDLER_ENTRY("102", NetworkInfoHandler, config, publish_response),
 
       // TODO: 未來可在此加入更多Handler
   };

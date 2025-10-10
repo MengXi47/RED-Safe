@@ -17,7 +17,7 @@ using iptool::GetNetworkConfigResponse;
 using iptool::NetworkConfig;
 using iptool::NetworkService;
 
-NetworkServiceClient::NetworkServiceClient(std::shared_ptr<Channel> channel)
+NetworkServiceClient::NetworkServiceClient(const std::shared_ptr<Channel>& channel)
     : stub_(NetworkService::NewStub(channel)) {}
 
 std::optional<NetworkConfig> NetworkServiceClient::GetNetworkConfig(

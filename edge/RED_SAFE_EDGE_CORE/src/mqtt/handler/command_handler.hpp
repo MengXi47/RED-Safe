@@ -5,6 +5,7 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <nlohmann/json.hpp>
 
@@ -21,6 +22,29 @@ class ICommandHandler {
 
   virtual boost::asio::awaitable<void> Handle(
       const CommandMessage& command) = 0;
+
+ protected:
+  static std::string BuildSuccessResponse(
+      std::string trace_id, std::string code, nlohmann::json result) {
+    nlohmann::json message{
+        {"trace_id", std::move(trace_id)},
+        {"code", std::move(code)},
+        {"status", "ok"},
+        {"result", std::move(result)}};
+    return message.dump();
+  }
+
+  static std::string BuildErrorResponse(
+      std::string trace_id,
+      std::string code,
+      std::string_view error_message) {
+    nlohmann::json message{
+        {"trace_id", std::move(trace_id)},
+        {"code", std::move(code)},
+        {"status", "error"},
+        {"result", nlohmann::json{{"error_message", error_message}}}};
+    return message.dump();
+  }
 };
 
 // 統一的回覆函式型別：handler 可用來發佈 JSON 字串並取得成功與否

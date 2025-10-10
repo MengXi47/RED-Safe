@@ -10,7 +10,7 @@
 
 class NetworkServiceClient {
  public:
-  explicit NetworkServiceClient(std::shared_ptr<grpc::Channel> channel);
+  explicit NetworkServiceClient(const std::shared_ptr<grpc::Channel>& channel);
 
   // 呼叫 gRPC 的 GetNetworkConfig，取得指定介面的完整設定
   [[nodiscard]] std::optional<iptool::NetworkConfig> GetNetworkConfig(

@@ -83,22 +83,14 @@ awaitable<std::tuple<bool, std::string>> ScanCommandHandler::RunScanAsync() {
 
 std::string ScanCommandHandler::BuildScanSuccess(
     const std::string& trace_id, const std::string& result_json) {
-  nlohmann::json message{
-      {"trace_id", trace_id}, {"code", 101}, {"status", "ok"}};
   nlohmann::json data = nlohmann::json::parse(result_json, nullptr, false);
   if (data.is_discarded()) {
     data = nlohmann::json::array();
   }
-  message["result"] = std::move(data);
-  return message.dump();
+  return BuildSuccessResponse(trace_id, "101", std::move(data));
 }
 
 std::string ScanCommandHandler::BuildScanError(
     const std::string& trace_id, std::string_view error_message) {
-  nlohmann::json message{
-      {"trace_id", trace_id},
-      {"code", 101},
-      {"status", "error"},
-      {"result", nlohmann::json{{"error_message", error_message}}}};
-  return message.dump();
+  return BuildErrorResponse(trace_id, "101", error_message);
 }
