@@ -1,29 +1,28 @@
 import SwiftUI
 
-struct IPCameraConfigView: View {
+struct NetworkConfigView: View {
     let edge: EdgeSummary
 
-    @State private var devices: [IPCameraDeviceDTO] = []
+    @State private var config: EdgeNetworkConfigDTO?
     @State private var isLoading = false
     @State private var errorMessage: String?
-    @State private var lastTraceId: String?
 
     var body: some View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("在 Edge 上執行 IP Camera 掃描，取得當前可用的攝影機資訊。")
+                    Text("向 Edge 查詢當前的網路介面設定。")
                         .font(.footnote)
                         .foregroundColor(.secondary)
                     Button {
-                        Task { await triggerScan() }
+                        Task { await fetchNetworkConfig() }
                     } label: {
                         HStack {
                             if isLoading {
                                 ProgressView()
                                     .progressViewStyle(.circular)
                             }
-                            Text(isLoading ? "掃描中…" : "開始掃描")
+                            Text(isLoading ? "讀取中…" : "取得配置")
                                 .fontWeight(.semibold)
                         }
                         .frame(maxWidth: .infinity)
@@ -42,48 +41,50 @@ struct IPCameraConfigView: View {
                 }
             }
 
-            Section("掃描結果") {
-                if devices.isEmpty {
-                    Text(isLoading ? "正在取得資料…" : "尚未取得資料，請點擊「開始掃描」。")
-                        .foregroundColor(.secondary)
+            Section("網路資訊") {
+                if let config {
+                    let dhcpDisplay: String? = {
+                        guard config.mode != nil else { return nil }
+                        return config.isDhcpEnabled ? "啟用" : "停用"
+                    }()
+                    InfoRow(title: "IP", value: config.ipAddress)
+                    InfoRow(title: "Gateway", value: config.gateway)
+                    InfoRow(title: "Subnet Mask", value: config.subnetMask)
+                    InfoRow(title: "DHCP", value: dhcpDisplay)
                 } else {
-                    ForEach(devices) { device in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Label(device.name, systemImage: "camera.fill")
-                                    .font(.headline)
-                            }
-                            VStack(alignment: .leading, spacing: 4) {
-                                InfoRow(title: "IP", value: device.ip)
-                                InfoRow(title: "MAC", value: device.mac)
-                            }
-                        }
-                        .padding(.vertical, 6)
-                    }
+                    Text(isLoading ? "正在取得資料…" : "尚未取得資料，請點擊「取得配置」。")
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            if let dns = config?.dns, !dns.isEmpty {
+                Section("DNS") {
+                    Text(dns)
+                        .font(.subheadline.monospaced())
+                        .multilineTextAlignment(.leading)
                 }
             }
         }
-        .navigationTitle("IP Camera配置")
+        .navigationTitle("網路配置")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func triggerScan() async {
+    private func fetchNetworkConfig() async {
         await MainActor.run {
             isLoading = true
             errorMessage = nil
         }
         do {
-            let command = try await APIClient.shared.sendEdgeCommand(edgeId: edge.edgeId, code: "101")
-            let result: EdgeCommandResultDTO<[IPCameraDeviceDTO]> = try await APIClient.shared.fetchEdgeCommandResult(traceId: command.traceId)
+            let command = try await APIClient.shared.sendEdgeCommand(edgeId: edge.edgeId, code: "102")
+            let result: EdgeCommandResultDTO<EdgeNetworkConfigDTO> = try await APIClient.shared.fetchEdgeCommandResult(traceId: command.traceId)
             await MainActor.run {
-                self.devices = result.result
-                self.lastTraceId = result.traceId ?? command.traceId
+                self.config = result.result
                 self.isLoading = false
                 self.errorMessage = nil
             }
         } catch {
             await MainActor.run {
-                self.devices = []
+                self.config = nil
                 self.isLoading = false
                 self.errorMessage = error.localizedDescription
             }
@@ -93,23 +94,26 @@ struct IPCameraConfigView: View {
 
 private struct InfoRow: View {
     let title: String
-    let value: String
+    let value: String?
 
     var body: some View {
-        HStack {
+        HStack(alignment: .firstTextBaseline) {
             Text(title)
                 .font(.subheadline.weight(.medium))
                 .foregroundColor(.secondary)
-                .frame(width: 44, alignment: .leading)
-            Text(value)
+                .frame(width: 110, alignment: .leading)
+            Text(value?.isEmpty == false ? value! : "—")
                 .font(.subheadline.monospaced())
                 .foregroundColor(.primary)
         }
+        .padding(.vertical, 4)
     }
 }
 
 #Preview {
     NavigationStack {
-        IPCameraConfigView(edge: EdgeSummary(edgeId: "RED-TEST0001", displayName: "測試 Edge", isOnline: true))
+        NetworkConfigView(
+            edge: EdgeSummary(edgeId: "RED-TEST0001", displayName: "測試 Edge", isOnline: true)
+        )
     }
 }

@@ -536,9 +536,29 @@ struct IPCameraDeviceDTO: Decodable, Identifiable, Hashable {
     var id: String { "\(mac)#\(ip)" }
 }
 
-struct EdgeCommandResultDTO: Decodable {
+struct EdgeNetworkConfigDTO: Decodable, Hashable {
+    struct Mode: Decodable, Hashable {
+        let name: String
+        let raw: String
+        let value: Int
+    }
+
+    let dns: String?
+    let gateway: String?
+    let interfaceName: String?
+    let ipAddress: String?
+    let mode: Mode?
+    let subnetMask: String?
+
+    var isDhcpEnabled: Bool {
+        guard let mode else { return false }
+        return mode.name.lowercased() == "dhcp" || mode.raw.uppercased().contains("DHCP") || mode.value == 2
+    }
+}
+
+struct EdgeCommandResultDTO<Result: Decodable>: Decodable {
     let code: Int
-    let result: [IPCameraDeviceDTO]
+    let result: Result
     let status: String
     let traceId: String?
 }
@@ -722,7 +742,10 @@ extension APIClient {
         return try await send(endpoint)
     }
 
-    func fetchEdgeCommandResult(traceId: String, timeout: TimeInterval = 20) async throws -> EdgeCommandResultDTO {
+    func fetchEdgeCommandResult<Result: Decodable>(
+        traceId: String,
+        timeout: TimeInterval = 20
+    ) async throws -> EdgeCommandResultDTO<Result> {
         let sseURL = configuration.baseURL.appendingPathComponent("user/sse/get/command/\(traceId)")
         var request = URLRequest(url: sseURL)
         request.httpMethod = "GET"
@@ -773,11 +796,7 @@ extension APIClient {
             throw ApiError.invalidPayload(reason: "SSE 資料格式錯誤")
         }
 
-        do {
-            return try decoder.decode(EdgeCommandResultDTO.self, from: payloadData)
-        } catch {
-            throw ApiError.decoding(error)
-        }
+        return try decoder.decode(EdgeCommandResultDTO<Result>.self, from: payloadData)
     }
 
     private func mapSuccess(from response: ErrorCodeResponse) throws -> ApiErrorCode {

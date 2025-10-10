@@ -42,6 +42,22 @@ struct DeviceDetailView: View {
                 ActionRow(title: "解除綁定", icon: "link.badge.minus", tint: .red, action: unbind)
             }
 
+            Section("網路配置") {
+                NavigationLink {
+                    NetworkConfigView(edge: edge)
+                } label: {
+                    HStack {
+                        Image(systemName: "network")
+                        Text("網路配置")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.tertiary)
+                    }
+                    .font(.body.weight(.semibold))
+                    .padding(.vertical, 8)
+                }
+            }
+
             Section("IP Camera配置") {
                 NavigationLink {
                     IPCameraConfigView(edge: edge)
