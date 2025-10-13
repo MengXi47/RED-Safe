@@ -1,13 +1,22 @@
 {% extends "ui/base.html" %}
 {% block title %}攝影機管理{% endblock %}
-{% block header %}攝影機管理{% endblock %}
-
-{% block content %}
+{% block header %}攝影機管理{% endblock %} {% block content %}
 <style>
   /* ===== Cameras page scoped styles ===== */
-  #cam-page .tbl{width:100%;border-collapse:separate;border-spacing:0;min-width:720px}
-  #cam-page .tbl th,#cam-page .tbl td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
-  #cam-page .tbl th, #cam-page .tbl td {
+  #cam-page .tbl {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    min-width: 720px;x
+  }
+  #cam-page .tbl th,
+  #cam-page .tbl td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+  }
+  #cam-page .tbl th,
+  #cam-page .tbl td {
     vertical-align: middle;
   }
   #cam-page .tbl td .chip,
@@ -23,25 +32,135 @@
     height: 48px;
     line-height: 1.4;
   }
-  #cam-page .tbl thead th{position:sticky;top:0;background:rgba(255,255,255,.35);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-  @media (prefers-color-scheme: dark){#cam-page .tbl thead th{background:rgba(17,24,39,.55)}}
-  #cam-page .tbl tbody tr:hover{background:rgba(255,255,255,.06)}
+  #cam-page .tbl thead th {
+    position: sticky;
+    top: 0;
+    background: rgba(255, 255, 255, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  @media (prefers-color-scheme: dark) {
+    #cam-page .tbl thead th {
+      background: rgba(17, 24, 39, 0.55);
+    }
+  }
+  #cam-page .tbl tbody tr:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  #cam-page .tbl tbody tr.is-bound {
+    opacity: 0.8;
+  }
+  #cam-page .tbl tbody tr.is-bound:hover {
+    background: rgba(96, 165, 250, 0.08);
+  }
 
-  #cam-page .num{width:64px;text-align:center}
-  #cam-page .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.45)}
-  @media (prefers-color-scheme: dark){#cam-page .chip{background:rgba(255,255,255,.06)}}
-  #cam-page .chip .dot{width:6px;height:6px;border-radius:50%;background:#60a5fa;box-shadow:0 0 8px rgba(96,165,250,.6)}
-  #cam-page .chip.mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace}
+  #cam-page .num {
+    width: 64px;
+    text-align: center;
+  }
+  #cam-page .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.45);
+  }
+  @media (prefers-color-scheme: dark) {
+    #cam-page .chip {
+      background: rgba(255, 255, 255, 0.06);
+    }
+  }
+  #cam-page .chip .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #60a5fa;
+    box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+  }
+  #cam-page .chip.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+      "Liberation Mono", monospace;
+  }
 
-  #cam-page .actions{white-space:nowrap;display:flex;gap:8px}
-  #cam-page .col-actions{width:160px}
-  #cam-page .tbl .actions{justify-content:flex-start}
-  #cam-page .action-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;cursor:pointer}
-  #cam-page .action-btn:hover{background:rgba(255,255,255,.08)}
-  #cam-page .action-btn.danger{border-color:transparent;background:linear-gradient(180deg,var(--danger),calc(100% - 1px),#e34b50);color:#fff}
+  #cam-page .actions {
+    white-space: nowrap;
+    display: flex;
+    gap: 8px;
+  }
+  #cam-page .col-actions {
+    width: 160px;
+  }
+  #cam-page .tbl .actions {
+    justify-content: flex-start;
+  }
+  #cam-page .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: transparent;
+    cursor: pointer;
+  }
+  #cam-page .action-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+  #cam-page .action-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: transparent;
+  }
+  #cam-page .action-btn.danger {
+    border-color: transparent;
+    background: linear-gradient(
+      180deg,
+      var(--danger),
+      calc(100% - 1px),
+      #e34b50
+    );
+    color: #fff;
+  }
+  #cam-page .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    background: rgba(96, 165, 250, 0.16);
+    color: #1d4ed8;
+    margin-left: 8px;
+  }
+  #cam-page .tbl tbody tr.is-bound .status-badge {
+    background: rgba(52, 211, 153, 0.18);
+    color: #047857;
+  }
+  #cam-page .tbl tbody tr.is-bound .chip .dot {
+    background: #34d399;
+    box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
+  }
 
-  #cam-page .empty-state{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);padding:18px}
-  #cam-page .empty-state .icon{width:16px;height:16px;opacity:.7}
+  #cam-page .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--muted);
+    padding: 18px;
+    white-space: nowrap;
+  }
+  #cam-page .empty-state .icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.7;
+  }
 
   #cam-page section.glass {
     padding: 24px 28px;
@@ -61,253 +180,307 @@
   #cam-page .cam-sections section.glass {
     width: 100%;
   }
-  #cam-page .hint.error {
-    color: var(--danger);
-  }
 </style>
 <div id="cam-page">
-<div class="content-container">
-  <div class="cam-sections">
-    <section class="glass">
-      <div class="toolbar">
-        <button class="btn" type="button" onclick="refreshSearch(this)">搜尋攝影機</button>
-        <button class="btn btn-ghost" type="button" onclick="location.reload()">重新整理</button>
-      </div>
-      {% if search_error %}
-      <div class="hint error">初次載入掃描失敗：{{ search_error }}</div>
-      {% endif %}
-      <h2>搜尋結果</h2>
-      <div class="table-wrap">
-        <table class="tbl">
-          <colgroup>
-            <col style="width:64px">
-            <col style="width:25%">
-            <col style="width:30%">
-            <col>
-            <col class="col-actions" style="width:160px">
-          </colgroup>
-          <thead>
-            <tr>
-              <th class="num">No.</th>
-              <th>IP</th>
-              <th>MAC</th>
-              <th>名稱</th>
-              <th class="col-actions">操作</th>
-            </tr>
-          </thead>
-          <tbody id="search-results-body">
-          {% if search_results %}
-            {% for r in search_results %}
-            <tr>
-              <td class="num">{{ forloop.counter }}</td>
-              <td><span class="chip mono"><span class="dot" aria-hidden="true"></span>{{ r.ip }}</span></td>
-              <td><span class="chip mono">{{ r.mac }}</span></td>
-              <td>{{ r.name }}</td>
-              <td class="actions">
-                <button class="action-btn" onclick="addCam('{{ r.ip }}','{{ r.mac }}','{{ r.name }}')">
-                  <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                  添加
-                </button>
-              </td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr><td colspan="5" class="empty-state"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Z" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg> 未找到任何裝置</td></tr>
-          {% endif %}
-          </tbody>
-        </table>
-      </div>
-      <div class="hint">提示：按下「搜尋攝影機」可更新列表。</div>
-    </section>
-    <section class="glass">
-      <h2>已綁定攝影機</h2>
-      <div class="table-wrap">
-        <table class="tbl">
-          <colgroup>
-            <col style="width:64px">
-            <col style="width:25%">
-            <col style="width:30%">
-            <col>
-            <col class="col-actions" style="width:160px">
-          </colgroup>
-          <thead>
-            <tr>
-              <th class="num">No.</th>
-              <th>IP</th>
-              <th>MAC</th>
-              <th>名稱</th>
-              <th class="col-actions">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% if bound %}
-            {% for cam in bound %}
-            <tr>
-              <td class="num">{{ forloop.counter }}</td>
-              <td><span class="chip mono"><span class="dot" aria-hidden="true"></span>{{ cam.ip }}</span></td>
-              <td><span class="chip mono">{{ cam.mac }}</span></td>
-              <td>{{ cam.name }}</td>
-              <td class="actions">
-                <button class="action-btn danger" onclick="delCam('{{ cam.mac }}')">
-                  <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M3 6h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-                  刪除
-                </button>
-              </td>
-            </tr>
-            {% endfor %}
-          {% else %}
-            <tr><td colspan="5" class="empty-state"><svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M8 12h8" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg> 尚未綁定任何攝影機</td></tr>
-          {% endif %}
-          </tbody>
-        </table>
-      </div>
-    </section>
+  <div class="content-container">
+    <div class="cam-sections">
+      <section class="glass">
+        <div class="toolbar">
+          <button class="btn" onclick="refreshSearch()">搜尋攝影機</button>
+          <button class="btn btn-ghost" onclick="location.reload()">
+            重新整理
+          </button>
+        </div>
+        <h2>搜尋結果</h2>
+        <div class="table-wrap">
+          <table class="tbl">
+            <colgroup>
+              <col style="width: 64px" />
+              <col style="width: 25%" />
+              <col style="width: 30%" />
+              <col />
+              <col class="col-actions" style="width: 160px" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="num">No.</th>
+                <th>IP</th>
+                <th>MAC</th>
+                <th>名稱</th>
+                <th class="col-actions">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if search_results %} {% for r in search_results %}
+              <tr class="{% if r.is_bound %}is-bound{% endif %}">
+                <td class="num">{{ forloop.counter }}</td>
+                <td>
+                  <span class="chip mono"
+                    ><span class="dot" aria-hidden="true"></span>{{ r.ip
+                    }}</span
+                  >
+                </td>
+                <td><span class="chip mono">{{ r.mac }}</span></td>
+                <td>
+                  {{ r.name }}{% if r.is_bound %}<span class="status-badge"
+                    >已綁定</span
+                  >{% endif %}
+                </td>
+                <td class="actions">
+                  {% if r.is_bound %}
+                  <button class="action-btn" disabled>
+                    <svg
+                      class="icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="m5 12 4 4 10-10"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    已綁定
+                  </button>
+                  {% else %}
+                  <button
+                    class="action-btn"
+                    onclick="addCam('{{ r.ip|escapejs }}','{{ r.mac|escapejs }}','{{ r.name|escapejs }}')"
+                  >
+                    <svg
+                      class="icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="M12 5v14M5 12h14"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    添加
+                  </button>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %} {% else %}
+              <tr>
+                <td colspan="5" class="empty-state">
+                  <svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Z"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      opacity=".6"
+                    />
+                    <path
+                      d="M21 21l-4.35-4.35"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      opacity=".6"
+                    />
+                  </svg>
+                  未找到任何裝置
+                </td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+        <div class="hint">提示：按下「搜尋攝影機」可更新列表。</div>
+      </section>
+      <section class="glass">
+        <h2>已綁定攝影機</h2>
+        <div class="table-wrap">
+          <table class="tbl">
+            <colgroup>
+              <col style="width: 64px" />
+              <col style="width: 25%" />
+              <col style="width: 30%" />
+              <col />
+              <col class="col-actions" style="width: 160px" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="num">No.</th>
+                <th>IP</th>
+                <th>MAC</th>
+                <th>名稱</th>
+                <th class="col-actions">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if bound %} {% for cam in bound %}
+              <tr>
+                <td class="num">{{ forloop.counter }}</td>
+                <td>
+                  <span class="chip mono"
+                    ><span class="dot" aria-hidden="true"></span>{{ cam.ip
+                    }}</span
+                  >
+                </td>
+                <td><span class="chip mono">{{ cam.mac }}</span></td>
+                <td>{{ cam.name }}</td>
+                <td class="actions">
+                  <button
+                    class="action-btn danger"
+                    onclick="delCam('{{ cam.mac|escapejs }}')"
+                  >
+                    <svg
+                      class="icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="M3 6h18"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                      />
+                      <path
+                        d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    刪除
+                  </button>
+                </td>
+              </tr>
+              {% endfor %} {% else %}
+              <tr>
+                <td colspan="5" class="empty-state">
+                  <svg
+                    class="icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <circle
+                      cx="12"
+                      cy="12"
+                      r="9"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      opacity=".6"
+                    />
+                    <path
+                      d="M8 12h8"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      opacity=".6"
+                    />
+                  </svg>
+                  尚未綁定任何攝影機
+                </td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </div>
 </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
+{% endblock %} {% block scripts %}
 <script>
-(function(){
-  // 讀 CSRF（如果你頁面已經有 getCookie，就可以刪掉這個）
-  function getCookie(name){
-    const v=document.cookie.match('(^|;)\\s*'+name+'\\s*=\\s*([^;]+)');
-    return v ? v.pop() : '';
-  }
-  const CSRF = getCookie('csrftoken');
+  (function () {
+    // 讀 CSRF（如果你頁面已經有 getCookie，就可以刪掉這個）
+    function getCookie(name) {
+      const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
+      return v ? v.pop() : "";
+    }
+    const CSRF = getCookie("csrftoken");
 
-  // 若頁面上尚未提供全域 addCam，就補上一個
-  if (typeof window.addCam !== 'function') {
-    window.addCam = async function(ip, mac, name){
-      try{
-        const res = await fetch("{% url 'api_cameras_bind' %}", {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-          body: JSON.stringify({ ip_address: ip, mac_address: mac, ipc_name: name })
-        });
-        const j = await res.json().catch(()=>({}));
-        if (!res.ok) throw new Error(j.error || ('HTTP '+res.status));
-        if (j.ok) { location.reload(); }
-        else { alert('新增失敗：' + (j.error || JSON.stringify(j))); }
-      }catch(err){ alert('請求失敗：' + err.message); }
-    };
-  }
-
-  // 若頁面上尚未提供全域 delCam，就補上一個
-  if (typeof window.delCam !== 'function') {
-    window.delCam = async function(mac){
-      if(!confirm('確定要刪除這台攝影機嗎？')) return;
-      try{
-        const res = await fetch("{% url 'api_cameras_unbind' %}", {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
-          body: JSON.stringify({ mac_address: mac })
-        });
-        const j = await res.json().catch(()=>({}));
-        if (!res.ok) throw new Error(j.error || ('HTTP '+res.status));
-        if (j.ok) { location.reload(); }
-        else { alert('刪除失敗：' + (j.error || JSON.stringify(j))); }
-      }catch(err){ alert('請求失敗：' + err.message); }
-    };
-  }
-
-  window.refreshSearch = async function(buttonEl){
-    const tbody = document.getElementById('search-results-body');
-    if (!tbody) return;
-
-    const button = (buttonEl instanceof HTMLElement) ? buttonEl : null;
-    const originalText = button ? button.textContent : '';
-
-    if (button) {
-      button.disabled = true;
-      button.dataset.originalText = originalText;
-      button.textContent = '搜尋中…';
+    // 若頁面上尚未提供全域 refreshSearch，就補上一個
+    if (typeof window.refreshSearch !== "function") {
+      window.refreshSearch = function () {
+        location.reload();
+      };
     }
 
-    const setStatusRow = (html) => {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${html}</td></tr>`;
-    };
-
-    setStatusRow('搜尋中…');
-
-    try{
-      const res = await fetch("{% url 'api_cameras_search' %}", {
-        headers: { 'Accept': 'application/json' },
-      });
-      const data = await res.json().catch(()=>({}));
-      if (!res.ok || data.ok === false) {
-        throw new Error(data.error || ('HTTP '+res.status));
-      }
-
-      const list = Array.isArray(data.results) ? data.results : [];
-      if (!list.length) {
-        setStatusRow(`<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Z" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg> 未找到任何裝置`);
-        return;
-      }
-
-      const rows = [];
-      list.forEach((cam, index) => {
-        const ip = (cam && cam.ip ? String(cam.ip) : '').trim();
-        const mac = (cam && cam.mac ? String(cam.mac) : '').trim();
-        const name = (cam && cam.name ? String(cam.name) : '').trim() || mac || ip || 'IPC';
-
-        const tr = document.createElement('tr');
-
-        const numTd = document.createElement('td');
-        numTd.className = 'num';
-        numTd.textContent = String(index + 1);
-        tr.appendChild(numTd);
-
-        const ipTd = document.createElement('td');
-        const ipChip = document.createElement('span');
-        ipChip.className = 'chip mono';
-        const dot = document.createElement('span');
-        dot.className = 'dot';
-        dot.setAttribute('aria-hidden', 'true');
-        ipChip.appendChild(dot);
-        ipChip.appendChild(document.createTextNode(ip));
-        ipTd.appendChild(ipChip);
-        tr.appendChild(ipTd);
-
-        const macTd = document.createElement('td');
-        const macChip = document.createElement('span');
-        macChip.className = 'chip mono';
-        macChip.appendChild(document.createTextNode(mac));
-        macTd.appendChild(macChip);
-        tr.appendChild(macTd);
-
-        const nameTd = document.createElement('td');
-        nameTd.textContent = name;
-        tr.appendChild(nameTd);
-
-        const actionTd = document.createElement('td');
-        actionTd.className = 'actions';
-        const addButton = document.createElement('button');
-        addButton.type = 'button';
-        addButton.className = 'action-btn';
-        addButton.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> 添加';
-        addButton.addEventListener('click', () => addCam(ip, mac, name));
-        actionTd.appendChild(addButton);
-        tr.appendChild(actionTd);
-
-        rows.push(tr);
-      });
-
-      tbody.innerHTML = '';
-      rows.forEach((row) => { tbody.appendChild(row); });
-    }catch(err){
-      console.error('IPC 搜尋失敗：', err);
-      setStatusRow(`<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M8 12h8" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg> 搜尋失敗`);
-      alert('搜尋失敗：' + err.message);
-    }finally{
-      if (button) {
-        button.disabled = false;
-        button.textContent = button.dataset.originalText || '搜尋攝影機';
-        delete button.dataset.originalText;
-      }
+    // 若頁面上尚未提供全域 addCam，就補上一個
+    if (typeof window.addCam !== "function") {
+      window.addCam = async function (ip, mac, name) {
+        const payload = {
+          ip_address: ip,
+          mac_address: mac,
+          ipc_name: name,
+        };
+        try {
+          const res = await fetch("{% url 'api_cameras_bind' %}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": CSRF,
+            },
+            body: JSON.stringify(payload),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(j.error || "HTTP " + res.status);
+          if (j.ok) {
+            refreshSearch();
+          } else if (j.code === "ALREADY_BOUND") {
+            alert("這台攝影機已經綁定在列表中。");
+            refreshSearch();
+          } else {
+            alert("新增失敗：" + (j.error || JSON.stringify(j)));
+          }
+        } catch (err) {
+          alert("請求失敗：" + err.message);
+        }
+      };
     }
-  };
-})();
+
+    // 若頁面上尚未提供全域 delCam，就補上一個
+    if (typeof window.delCam !== "function") {
+      window.delCam = async function (mac) {
+        if (!confirm("確定要刪除這台攝影機嗎？")) return;
+        try {
+          const res = await fetch("{% url 'api_cameras_unbind' %}", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": CSRF,
+            },
+            body: JSON.stringify({ mac_address: mac }),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(j.error || "HTTP " + res.status);
+          if (j.ok) {
+            refreshSearch();
+          } else {
+            alert("刪除失敗：" + (j.error || JSON.stringify(j)));
+          }
+        } catch (err) {
+          alert("請求失敗：" + err.message);
+        }
+      };
+    }
+  })();
 </script>
 {% endblock %}

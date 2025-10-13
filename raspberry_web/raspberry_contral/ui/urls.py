@@ -29,7 +29,6 @@ urlpatterns = [
     path("api/network/port/", views.api_network_port, name="api_network_port"),
     path("device/qrcode.png", views.device_qr, name="device_qr"),
     path("cameras", views.cameras, name="cameras"),
-    path("api/cameras/search", views.api_cameras_search, name="api_cameras_search"),
     path("api/cameras/bind", views.api_cameras_bind, name="api_cameras_bind"),
     path("api/cameras/unbind", views.api_cameras_unbind, name="api_cameras_unbind"),
 ]

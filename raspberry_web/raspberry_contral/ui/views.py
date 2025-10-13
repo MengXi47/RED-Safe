@@ -2,10 +2,10 @@
 
 import base64
 import io
-import re
 import json
+import re
 import subprocess
-from typing import Any
+from ipaddress import IPv4Address, IPv6Address, ip_address
 
 import netifaces
 import psutil
@@ -19,7 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods,require_POST
 from ipcscan_client.ipcsacn import scan_ipc_dynamic
 
-from .models import EdgeConfig, ConnectedIPC
+from .models import ConnectedIPC, EdgeConfig
 
 
 def show_users(request):
@@ -82,99 +82,6 @@ def _pi_temperature() -> str:
                 return f"{int(f.read()) / 1000:.1f}°C"
         except Exception:
             return "N/A"
-
-
-def _extract_scan_list(payload: Any) -> list[Any]:
-    """從 IPC 掃描結果中找出可能的列表資料。"""
-    if isinstance(payload, list):
-        return payload
-
-    if isinstance(payload, dict):
-        # 最常見的列表欄位名稱
-        for key in ("results", "result", "items", "list", "cameras", "devices", "data"):
-            value = payload.get(key)
-            if isinstance(value, list):
-                return value
-
-        # 若沒有明確欄位，回傳所有為 list 的值
-        aggregate = []
-        for value in payload.values():
-            if isinstance(value, list):
-                aggregate.extend(value)
-        if aggregate:
-            return aggregate
-
-    return []
-
-
-def _normalize_scan_results(payload: Any) -> tuple[list[dict[str, str]], str | None]:
-    """整理 IPC 掃描回傳的資料，轉成統一格式。"""
-    if payload is None:
-        return [], "IPC 掃描服務無回應"
-
-    # 若是純字串，直接回傳錯誤
-    if isinstance(payload, str):
-        return [], "掃描結果格式不正確"
-
-    entries = _extract_scan_list(payload)
-    # 若不是列表，也許回傳的是單一物件
-    if not entries and isinstance(payload, dict):
-        entries = [payload]
-
-    normalized: list[dict[str, str]] = []
-    seen: set[tuple[str, str]] = set()
-
-    for entry in entries:
-        if not isinstance(entry, dict):
-            continue
-        ip = (entry.get("ip")
-              or entry.get("ip_address")
-              or entry.get("ipAddress")
-              or entry.get("ipv4")
-              or entry.get("IPv4")
-              or "")
-        mac = (entry.get("mac")
-               or entry.get("mac_address")
-               or entry.get("macAddress")
-               or entry.get("MacAddress")
-               or entry.get("mac_addr")
-               or "")
-        name = (entry.get("name")
-                or entry.get("ipc_name")
-                or entry.get("ipcName")
-                or entry.get("device_name")
-                or entry.get("DeviceName")
-                or "")
-
-        ip = str(ip).strip()
-        mac = str(mac).strip()
-        name = str(name).strip()
-
-        if not (ip or mac or name):
-            continue
-
-        key = (ip.lower(), mac.lower())
-        if key in seen:
-            continue
-        seen.add(key)
-
-        if not name:
-            name = mac or ip or "IPC"
-
-        normalized.append({
-            "ip": ip,
-            "mac": mac,
-            "name": name,
-        })
-
-    if normalized:
-        return normalized, None
-
-    # entries 為空但掃描成功，仍視為正常回傳
-    if isinstance(entries, list):
-        return [], None
-
-    return [], "未找到任何裝置"
 
 
 @require_http_methods(["GET", "POST"])
@@ -610,45 +517,141 @@ def device_qr(request: HttpRequest):
     return HttpResponse(buf.getvalue(), content_type="image/png")
 
 # ====== camera =====
+def _ip_sort_key(value):
+    """將 IP 轉為排序 key，IPv4 會排在 IPv6 之前。"""
+    if not value:
+        return (2, 0)
+    try:
+        addr = ip_address(value)
+        family_rank = 0 if isinstance(addr, IPv4Address) else 1
+        return (family_rank, int(addr))
+    except ValueError:
+        return (2, 0)
+
+
+def _normalize_search_rows(raw_rows):
+    """整理 IPC 掃描結果，統一欄位格式並去除重複。"""
+    normalized = []
+    seen_pairs = set()
+    for item in raw_rows or []:
+        if not isinstance(item, dict):
+            continue
+        ip_value = (item.get("ip") or item.get("ip_address") or "").strip()
+        mac_value = (item.get("mac") or item.get("mac_address") or "").replace("-", ":").strip().upper()
+        name_value = item.get("name") or item.get("ipc_name") or item.get("custom_name") or item.get("device_name")
+        if not (ip_value or mac_value):
+            continue
+        key = (ip_value, mac_value)
+        if key in seen_pairs:
+            continue
+        seen_pairs.add(key)
+        normalized.append({
+            "ip": ip_value,
+            "mac": mac_value,
+            "name": (name_value or "IPC"),
+        })
+    return normalized
+
+
+def _fetch_scan_rows():
+    """呼叫 IPC 掃描服務，並盡量從回應中提取裝置列表。"""
+    try:
+        payload = scan_ipc_dynamic()
+    except Exception as exc:  # noqa: BLE001
+        print("IPC scan call failed:", exc)
+        return []
+
+    candidates = []
+    if isinstance(payload, list):
+        candidates = payload
+    elif isinstance(payload, dict):
+        for key in ("devices", "device_list", "items", "list", "ipcs", "data"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                candidates = value
+                break
+        else:
+            candidates = [payload]
+    elif isinstance(payload, str):
+        # 非 JSON 格式時，以換行分隔建立簡易結果。
+        lines = [line.strip() for line in payload.splitlines() if line.strip()]
+        for line in lines:
+            segments = [seg.strip() for seg in re.split(r"[,\s]+", line) if seg.strip()]
+            if segments:
+                candidates.append({"ip": segments[0], "mac": segments[1] if len(segments) > 1 else ""})
+
+    return candidates
+
+
 @_require_auth
 @require_http_methods(["GET"])
 def cameras(request: HttpRequest):
     """攝影機管理頁面：上方為搜尋結果，下方為已綁定清單（讀取外部資料庫 connected_ipc）。"""
-    # 僅使用本地資料庫
     bound = []
+    bound_map_by_ip = {}
+    bound_map_by_mac = {}
     try:
-        # 僅使用本地資料庫
         rows = ConnectedIPC.objects.all()
         for r in rows:
-            bound.append({
-                "ip": r.ip_address,
-                "mac": r.mac_address,
-                # 顯示名稱優先順序：custom_name > ipc_name > mac
-                "name": (r.custom_name or r.ipc_name or r.mac_address or "IPC"),
-            })
+            ip_value = (r.ip_address or "").strip()
+            mac_value = (r.mac_address or "").replace("-", ":").strip().upper()
+            name_value = (r.custom_name or r.ipc_name or r.mac_address or "IPC")
+            entry = {
+                "ip": ip_value,
+                "mac": mac_value,
+                "name": name_value,
+            }
+            bound.append(entry)
+            if ip_value:
+                bound_map_by_ip[ip_value] = entry
+            if mac_value:
+                bound_map_by_mac[mac_value] = entry
     except Exception as e:
         print("ConnectedIPC query error:", e)
         bound = []
+        bound_map_by_ip = {}
+        bound_map_by_mac = {}
 
-    context = {
-        "bound": bound,
-        "search_results": [],
-        "search_error": None,
-    }
+    bound.sort(key=lambda item: (_ip_sort_key(item["ip"]), item["mac"]))
+
+    raw_search_results = _fetch_scan_rows()
+    search_results = _normalize_search_rows(raw_search_results)
+
+    existing_pairs = {(item["ip"], item["mac"]) for item in search_results}
+    for item in search_results:
+        ip_value = item["ip"]
+        mac_value = item["mac"]
+        bound_info = None
+        if ip_value and ip_value in bound_map_by_ip:
+            bound_info = bound_map_by_ip[ip_value]
+        elif mac_value and mac_value in bound_map_by_mac:
+            bound_info = bound_map_by_mac[mac_value]
+        item["is_bound"] = bound_info is not None
+        if bound_info and bound_info.get("name"):
+            item["name"] = bound_info["name"]
+
+    for bound_entry in bound:
+        key = (bound_entry["ip"], bound_entry["mac"])
+        if key in existing_pairs:
+            continue
+        existing_pairs.add(key)
+        search_results.append({
+            "ip": bound_entry["ip"],
+            "mac": bound_entry["mac"],
+            "name": bound_entry["name"],
+            "is_bound": True,
+        })
+
+    search_results.sort(
+        key=lambda item: (
+            1 if item.get("is_bound") else 0,
+            _ip_sort_key(item.get("ip")),
+            item.get("mac") or "",
+        )
+    )
+
+    context = {"bound": bound, "search_results": search_results}
     return render(request, "ui/cameras_combined.html", context)
-
-
-@_require_auth
-@require_http_methods(["GET"])
-def api_cameras_search(request: HttpRequest):
-    """即時掃描網路上的攝影機並回傳列表。"""
-
-    payload = scan_ipc_dynamic()
-    results, error = _normalize_scan_results(payload)
-    if error and not results:
-        return JsonResponse({"ok": False, "error": error}, status=503)
-
-    return JsonResponse({"ok": True, "results": results})
 
 
 
@@ -658,6 +661,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 import psycopg2
+from psycopg2 import errors
 
 DB_CONFIG = {
     "dbname": "redsafedb",
@@ -676,8 +680,8 @@ def api_cameras_bind(request):
         except json.JSONDecodeError:
             return JsonResponse({"ok": False, "error": "Invalid JSON"})
 
-        ip_address = data.get("ip_address")
-        mac_address = data.get("mac_address")
+        ip_address = (data.get("ip_address") or "").strip()
+        mac_address = (data.get("mac_address") or "").replace("-", ":").strip().upper()
         ipc_name = data.get("ipc_name")
         ipc_account = data.get("ipc_account")
         ipc_password = data.get("ipc_password")
@@ -685,27 +689,52 @@ def api_cameras_bind(request):
         if not ip_address or not mac_address:
             return JsonResponse({"ok": False, "error": "Missing required fields"})
 
+        conn = None
+        cur = None
         try:
             conn = psycopg2.connect(**DB_CONFIG)
             cur = conn.cursor()
-            cur.execute("""
+            cur.execute(
+                """
+                SELECT 1 FROM connected_ipc
+                WHERE ip_address = %s OR mac_address = %s
+                LIMIT 1
+                """,
+                (ip_address, mac_address),
+            )
+            if cur.fetchone():
+                return JsonResponse({"ok": False, "error": "攝影機已綁定", "code": "ALREADY_BOUND"})
+
+            cur.execute(
+                """
                 INSERT INTO connected_ipc (ip_address, mac_address, ipc_name, custom_name, ipc_account, ipc_password)
                 VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
-                ip_address,
-                mac_address,
-                ipc_name,
-                ipc_name,
-                ipc_account,
-                ipc_password,
-            ))
+                """,
+                (
+                    ip_address,
+                    mac_address,
+                    ipc_name,
+                    ipc_name,
+                    ipc_account,
+                    ipc_password,
+                ),
+            )
             conn.commit()
-            cur.close()
-            conn.close()
             return JsonResponse({"ok": True})
+        except errors.UniqueViolation:
+            if conn:
+                conn.rollback()
+            return JsonResponse({"ok": False, "error": "攝影機已綁定", "code": "ALREADY_BOUND"})
         except Exception as e:
+            if conn:
+                conn.rollback()
             print("DB insert error:", e)
             return JsonResponse({"ok": False, "error": str(e)})
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
     return JsonResponse({"ok": False, "error": "Invalid method"})
 
 @csrf_exempt
@@ -713,10 +742,13 @@ def api_cameras_unbind(request):
     print("==== 接收到刪除請求 ====")
     if request.method == "POST":
         data = json.loads(request.body.decode())
+        mac_address = (data.get("mac_address") or "").replace("-", ":").strip().upper()
+        if not mac_address:
+            return JsonResponse({"ok": False, "error": "Missing MAC address"})
         try:
             conn = psycopg2.connect(**DB_CONFIG)
             cur = conn.cursor()
-            cur.execute("DELETE FROM connected_ipc WHERE mac_address = %s", (data["mac_address"],))
+            cur.execute("DELETE FROM connected_ipc WHERE mac_address = %s", (mac_address,))
             conn.commit()
             cur.close()
             conn.close()
