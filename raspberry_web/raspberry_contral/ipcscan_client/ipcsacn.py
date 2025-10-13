@@ -11,10 +11,10 @@ from . import ipcscan_pb2, ipcscan_pb2_grpc
 LOGGER = logging.getLogger(__name__)
 
 FALLBACK_SCAN_PAYLOAD = [
-    {"ip": "192.168.0.100", "mac": "24:5E:BE:08:A9:03", "name": "IPC"},
-    {"ip": "192.168.0.110", "mac": "24:5E:BE:08:A9:03", "name": "IPC"},
-    {"ip": "192.168.0.120", "mac": "24:5E:BE:08:A9:03", "name": "IPC"},
-    {"ip": "192.168.0.130", "mac": "24:5E:BE:08:A9:03", "name": "IPC"},
+    {"ip": "192.168.0.100", "mac": "25:5E:BE:09:A9:03", "name": "IPC"},
+    {"ip": "192.168.0.110", "mac": "26:5E:BE:08:A7:06", "name": "General"},
+    {"ip": "192.168.0.120", "mac": "27:5E:BE:10:A8:03", "name": "IPC"},
+    {"ip": "192.168.0.130", "mac": "24:5E:BE:11:A9:02", "name": "IPC"},
     {"ip": "192.168.0.140", "mac": "90:E2:FC:10:A6:45", "name": "General"},
 ]
 
