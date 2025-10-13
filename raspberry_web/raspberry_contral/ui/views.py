@@ -639,43 +639,34 @@ def _load_bound_entries():
 
 
 def _merge_scan_with_bound(bound, bound_map_by_ip, bound_map_by_mac, raw_search_results):
-    """結合掃描結果與已綁定清單，補齊狀態並移除重複。"""
+    """結合掃描結果與已綁定清單，補齊狀態，但**不回傳**已綁定項目給上方搜尋表格。"""
+    # 正規化掃描結果
     search_results = _normalize_search_rows(raw_search_results)
-    existing_pairs = set()
+
+    # 標記是否已綁定，並過濾掉已綁定者
+    filtered = []
     for item in search_results:
         ip_value = item.get("ip")
         mac_value = item.get("mac")
-        key = (ip_value, mac_value)
-        existing_pairs.add(key)
         bound_info = None
         if ip_value and ip_value in bound_map_by_ip:
             bound_info = bound_map_by_ip[ip_value]
         elif mac_value and mac_value in bound_map_by_mac:
             bound_info = bound_map_by_mac[mac_value]
         item["is_bound"] = bound_info is not None
-        if bound_info and bound_info.get("name"):
-            item["name"] = bound_info["name"]
-
-    for bound_entry in bound:
-        key = (bound_entry["ip"], bound_entry["mac"])
-        if key in existing_pairs:
+        if item["is_bound"]:
+            # 已綁定者不顯示在上方搜尋清單
             continue
-        existing_pairs.add(key)
-        search_results.append({
-            "ip": bound_entry["ip"],
-            "mac": bound_entry["mac"],
-            "name": bound_entry["name"],
-            "is_bound": True,
-        })
+        filtered.append(item)
 
-    search_results.sort(
+    # 僅排序未綁定的搜尋結果（IPv4 在前，接著 MAC）
+    filtered.sort(
         key=lambda item: (
-            1 if item.get("is_bound") else 0,
             _ip_sort_key(item.get("ip")),
             item.get("mac") or "",
         )
     )
-    return search_results
+    return filtered
 
 
 def _fetch_scan_rows():
