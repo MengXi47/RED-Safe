@@ -711,8 +711,14 @@ def _merge_scan_with_bound(bound, bound_map_by_ip, bound_map_by_mac, raw_search_
         })
         seen_pairs.add((ip_b, mac_b))
 
-    # 排序：先以 IPv4/IPv6 與數值排序，再以 MAC 作次序
-    merged.sort(key=lambda item: (_ip_sort_key(item.get("ip")), item.get("mac") or ""))
+    # 排序：未綁定在前、已綁定在後，其後以 IP 與 MAC 排序
+    merged.sort(
+        key=lambda item: (
+            1 if item.get("is_bound") else 0,
+            _ip_sort_key(item.get("ip")),
+            item.get("mac") or "",
+        )
+    )
     return merged
 
 
