@@ -5,7 +5,24 @@ import io
 import json
 import re
 import subprocess
-from ipaddress import IPv4Address, IPv6Address, ip_address
+from ipaddress import IPv4Address, IPv6Address, IPv4Network, ip_address, ip_network
+def _current_ipv4_network() -> IPv4Network | None:
+    """取出預設介面的 IPv4 網段（如 192.168.1.0/24）。失敗回傳 None。"""
+    try:
+        gws = netifaces.gateways()
+        if 'default' not in gws or netifaces.AF_INET not in gws['default']:
+            return None
+        iface = gws['default'][netifaces.AF_INET][1]
+        addrs = netifaces.ifaddresses(iface)
+        ip_info = addrs.get(netifaces.AF_INET, [{}])[0]
+        addr = ip_info.get('addr')
+        netmask = ip_info.get('netmask')
+        if not addr or not netmask:
+            return None
+        # 允許 non-strict，避免 netmask 與位址不完全吻合時拋例外
+        return ip_network(f"{addr}/{netmask}", strict=False)  # type: ignore[return-value]
+    except Exception:
+        return None
 
 import netifaces
 import psutil
@@ -639,34 +656,64 @@ def _load_bound_entries():
 
 
 def _merge_scan_with_bound(bound, bound_map_by_ip, bound_map_by_mac, raw_search_results):
-    """結合掃描結果與已綁定清單，補齊狀態，但**不回傳**已綁定項目給上方搜尋表格。"""
-    # 正規化掃描結果
+    """將掃描結果與已綁定清單合併：
+    1) 上方搜尋清單要顯示『已綁定』項，但只限於 **目前區網** 的已綁定。
+    2) 對於掃描到的裝置，一律顯示（因為即屬目前區網），並標記 is_bound。
+    3) 若有同區網的已綁定裝置沒被掃描到，也補進搜尋清單並標示 is_bound=True。
+    """
+    current_net = _current_ipv4_network()
+
+    # 先整理掃描結果
     search_results = _normalize_search_rows(raw_search_results)
 
-    # 標記是否已綁定，並過濾掉已綁定者
-    filtered = []
+    # 追蹤是否已出現過（避免重複）
+    seen_pairs = set()
+    merged = []
+
     for item in search_results:
-        ip_value = item.get("ip")
-        mac_value = item.get("mac")
+        ip_value = item.get("ip") or ""
+        mac_value = (item.get("mac") or "").upper()
+
         bound_info = None
         if ip_value and ip_value in bound_map_by_ip:
             bound_info = bound_map_by_ip[ip_value]
         elif mac_value and mac_value in bound_map_by_mac:
             bound_info = bound_map_by_mac[mac_value]
-        item["is_bound"] = bound_info is not None
-        if item["is_bound"]:
-            # 已綁定者不顯示在上方搜尋清單
-            continue
-        filtered.append(item)
 
-    # 僅排序未綁定的搜尋結果（IPv4 在前，接著 MAC）
-    filtered.sort(
-        key=lambda item: (
-            _ip_sort_key(item.get("ip")),
-            item.get("mac") or "",
-        )
-    )
-    return filtered
+        item["is_bound"] = bound_info is not None
+        # 單純依掃描結果：屬於目前區網，直接保留
+        merged.append(item)
+        seen_pairs.add((ip_value, mac_value))
+
+    # 把同區網、但這次沒掃描到的『已綁定』也補進上方清單
+    for b in bound:
+        ip_b = b.get("ip") or ""
+        mac_b = (b.get("mac") or "").upper()
+        if (ip_b, mac_b) in seen_pairs:
+            continue
+        # 僅補入與目前 IPv4 網段相同的
+        try:
+            if not ip_b or current_net is None:
+                continue
+            addr = ip_address(ip_b)
+            if not isinstance(addr, IPv4Address):
+                continue
+            if addr not in current_net:
+                continue
+        except Exception:
+            continue
+
+        merged.append({
+            "ip": ip_b,
+            "mac": mac_b,
+            "name": b.get("name") or "IPC",
+            "is_bound": True,
+        })
+        seen_pairs.add((ip_b, mac_b))
+
+    # 排序：先以 IPv4/IPv6 與數值排序，再以 MAC 作次序
+    merged.sort(key=lambda item: (_ip_sort_key(item.get("ip")), item.get("mac") or ""))
+    return merged
 
 
 def _fetch_scan_rows():
