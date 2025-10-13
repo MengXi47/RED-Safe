@@ -334,7 +334,7 @@
                 <th class="col-actions">操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="bound-list-body">
               {% if bound %} {% for cam in bound %}
               <tr>
                 <td class="num">{{ forloop.counter }}</td>
@@ -417,9 +417,9 @@
   </div>
 </div>
 {% endblock %} {% block scripts %}
+{{ bound|json_script:"initial-bound-list" }}
 <script>
   (function () {
-    // 讀 CSRF（如果你頁面已經有 getCookie，就可以刪掉這個）
     function getCookie(name) {
       const v = document.cookie.match("(^|;)\\s*" + name + "\\s*=\\s*([^;]+)");
       return v ? v.pop() : "";
@@ -428,31 +428,235 @@
 
     const scanBtn = document.getElementById("scan-button");
     const searchTableBody = document.getElementById("search-results-body");
+    const boundTableBody = document.getElementById("bound-list-body");
     const initialDataScript = document.getElementById("initial-search-results");
-    let initialRows = [];
+    const initialBoundScript = document.getElementById("initial-bound-list");
+
+    let initialSearchRows = [];
     if (initialDataScript) {
       try {
-        initialRows = JSON.parse(initialDataScript.textContent) || [];
+        initialSearchRows = JSON.parse(initialDataScript.textContent) || [];
       } catch (err) {
-        initialRows = [];
+        initialSearchRows = [];
       }
     }
-    let hasSearched = initialRows.length > 0;
+
+    let initialBoundRows = [];
+    if (initialBoundScript) {
+      try {
+        initialBoundRows = JSON.parse(initialBoundScript.textContent) || [];
+      } catch (err) {
+        initialBoundRows = [];
+      }
+    }
+
+    let hasSearched = initialSearchRows.length > 0;
     let isScanning = false;
 
     const ICON_ADD =
       '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
     const ICON_CHECK =
       '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="m5 12 4 4 10-10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const ICON_TRASH =
+      '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M3 6h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
     const ICON_STATUS_DEFAULT =
       '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Z" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg>';
     const ICON_STATUS_ERROR =
       '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="16.5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg>';
+    const ICON_STATUS_BOUND_EMPTY =
+      '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M8 12h8" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg>';
 
     function createIconElement(svgMarkup) {
       const tpl = document.createElement("template");
       tpl.innerHTML = svgMarkup.trim();
       return tpl.content.firstElementChild;
+    }
+
+    function sanitizeIp(value) {
+      return typeof value === "string" ? value.trim() : "";
+    }
+
+    function sanitizeMac(value) {
+      return typeof value === "string"
+        ? value.replace(/-/g, ":").trim().toUpperCase()
+        : "";
+    }
+
+    function normalizeRow(row) {
+      if (!row || typeof row !== "object") {
+        return { ip: "", mac: "", name: "IPC", is_bound: Boolean(row && row.is_bound) };
+      }
+      const ip = sanitizeIp(row.ip);
+      const mac = sanitizeMac(row.mac);
+      const name =
+        typeof row.name === "string" && row.name.trim()
+          ? row.name.trim()
+          : "IPC";
+      return {
+        ip,
+        mac,
+        name,
+        is_bound: Boolean(row.is_bound),
+      };
+    }
+
+    function compareIpValues(a, b) {
+      const parse = (value) => {
+        if (!value) return null;
+        const parts = value.split(".");
+        if (parts.length !== 4) return null;
+        const nums = parts.map((part) => {
+          const n = Number(part);
+          return Number.isInteger(n) && n >= 0 && n <= 255 ? n : null;
+        });
+        return nums.some((n) => n === null) ? null : nums;
+      };
+      const pa = parse(a);
+      const pb = parse(b);
+      if (pa && pb) {
+        for (let i = 0; i < pa.length; i += 1) {
+          if (pa[i] !== pb[i]) {
+            return pa[i] - pb[i];
+          }
+        }
+        return 0;
+      }
+      if (pa && !pb) return -1;
+      if (!pa && pb) return 1;
+      return (a || "").localeCompare(b || "");
+    }
+
+    let searchRows = [];
+    let boundRows = [];
+
+    function sortSearchRows() {
+      searchRows.sort((a, b) => {
+        if (a.is_bound !== b.is_bound) {
+          return a.is_bound ? 1 : -1;
+        }
+        const ipCmp = compareIpValues(a.ip, b.ip);
+        if (ipCmp !== 0) return ipCmp;
+        return (a.mac || "").localeCompare(b.mac || "");
+      });
+    }
+
+    function sortBoundRows() {
+      boundRows.sort((a, b) => {
+        const ipCmp = compareIpValues(a.ip, b.ip);
+        if (ipCmp !== 0) return ipCmp;
+        return (a.mac || "").localeCompare(b.mac || "");
+      });
+    }
+
+    function setSearchRows(rows) {
+      if (Array.isArray(rows)) {
+        searchRows = rows.map((row) => normalizeRow(row));
+        sortSearchRows();
+      } else {
+        searchRows = [];
+      }
+    }
+
+    function setBoundRows(rows) {
+      if (Array.isArray(rows)) {
+        boundRows = rows.map((row) => {
+          const normalized = normalizeRow(row);
+          normalized.is_bound = true;
+          return normalized;
+        });
+        sortBoundRows();
+      } else {
+        boundRows = [];
+      }
+    }
+
+    function upsertBoundRow(item) {
+      const normalized = normalizeRow({ ...item, is_bound: true });
+      if (!normalized.ip && !normalized.mac) {
+        return;
+      }
+      let updated = false;
+      boundRows = boundRows.map((row) => {
+        if (
+          (normalized.mac && row.mac === normalized.mac) ||
+          (!normalized.mac && normalized.ip && row.ip === normalized.ip)
+        ) {
+          updated = true;
+          return { ...normalized };
+        }
+        return row;
+      });
+      if (!updated) {
+        boundRows.push({ ...normalized });
+      }
+      sortBoundRows();
+      renderBoundRows();
+    }
+
+    function removeBoundRow(item) {
+      const normalized = normalizeRow(item);
+      const targetMac = normalized.mac;
+      const targetIp = normalized.ip;
+      boundRows = boundRows.filter((row) => {
+        if (targetMac && row.mac === targetMac) return false;
+        if (!targetMac && targetIp && row.ip === targetIp) return false;
+        return true;
+      });
+      sortBoundRows();
+      renderBoundRows();
+    }
+
+    function updateSearchBinding(item, isBound) {
+      const normalized = normalizeRow(item);
+      const targetMac = normalized.mac;
+      const targetIp = normalized.ip;
+      let found = false;
+      searchRows = searchRows.map((row) => {
+        const same =
+          (targetMac && row.mac === targetMac) ||
+          (!targetMac && targetIp && row.ip === targetIp);
+        if (!same) return row;
+        found = true;
+        const next = { ...row, is_bound: isBound };
+        if (isBound && normalized.name) {
+          next.name = normalized.name;
+        }
+        return next;
+      });
+      if (!found && isBound) {
+        const toAdd = { ...normalized, is_bound: true };
+        searchRows.push(toAdd);
+      }
+      sortSearchRows();
+      if (isBound) {
+        hasSearched = true;
+      }
+      renderSearchRows();
+    }
+
+    function applyBoundState(item, fallback) {
+      const merged = {
+        ip: (item && item.ip) || (fallback && fallback.ip) || "",
+        mac: (item && item.mac) || (fallback && fallback.mac) || "",
+        name:
+          (item && item.name) ||
+          (fallback && fallback.name) ||
+          (fallback && fallback.ipc_name) ||
+          "",
+        is_bound: true,
+      };
+      upsertBoundRow(merged);
+      updateSearchBinding(merged, true);
+    }
+
+    function applyUnboundState(item, fallback) {
+      const merged = {
+        ip: (item && item.ip) || (fallback && fallback.ip) || "",
+        mac: (item && item.mac) || (fallback && fallback.mac) || "",
+        is_bound: false,
+      };
+      removeBoundRow(merged);
+      updateSearchBinding(merged, false);
     }
 
     function buildStatusRow(message, { variant = "default" } = {}) {
@@ -539,9 +743,73 @@
       return tr;
     }
 
+    function buildBoundEmptyRow() {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 5;
+      td.className = "empty-state";
+      td.appendChild(createIconElement(ICON_STATUS_BOUND_EMPTY));
+      td.appendChild(document.createTextNode(" 尚未綁定任何攝影機"));
+      tr.appendChild(td);
+      return tr;
+    }
+
+    function buildBoundRow(row, index) {
+      const tr = document.createElement("tr");
+
+      const numTd = document.createElement("td");
+      numTd.className = "num";
+      numTd.textContent = String(index + 1);
+      tr.appendChild(numTd);
+
+      const ipTd = document.createElement("td");
+      const ipChip = document.createElement("span");
+      ipChip.className = "chip mono";
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.setAttribute("aria-hidden", "true");
+      ipChip.appendChild(dot);
+      ipChip.appendChild(
+        document.createTextNode(row.ip && row.ip.trim() ? row.ip : "—")
+      );
+      ipTd.appendChild(ipChip);
+      tr.appendChild(ipTd);
+
+      const macTd = document.createElement("td");
+      const macChip = document.createElement("span");
+      macChip.className = "chip mono";
+      macChip.textContent = row.mac && row.mac.trim() ? row.mac : "—";
+      macTd.appendChild(macChip);
+      tr.appendChild(macTd);
+
+      const nameTd = document.createElement("td");
+      nameTd.textContent = row.name && row.name.trim() ? row.name : "IPC";
+      tr.appendChild(nameTd);
+
+      const actionTd = document.createElement("td");
+      actionTd.className = "actions";
+      const btn = document.createElement("button");
+      btn.className = "action-btn danger";
+      btn.type = "button";
+      btn.innerHTML = ICON_TRASH + "刪除";
+      btn.addEventListener("click", () =>
+        delCam(row.mac || "", row.ip || "")
+      );
+      actionTd.appendChild(btn);
+      tr.appendChild(actionTd);
+
+      return tr;
+    }
+
     function renderSearchRows(rows, state = {}) {
       if (!searchTableBody) return;
       const { loading = false, error = "" } = state;
+      if (!loading && !error && Array.isArray(rows)) {
+        setSearchRows(rows);
+        if (rows.length) {
+          hasSearched = true;
+        }
+      }
       searchTableBody.innerHTML = "";
       if (loading) {
         searchTableBody.appendChild(
@@ -555,35 +823,63 @@
         );
         return;
       }
-      if (!rows.length) {
+      sortSearchRows();
+      if (!searchRows.length) {
         const message = hasSearched
           ? "未找到任何裝置"
           : "請按「搜尋攝影機」進行搜尋";
         searchTableBody.appendChild(buildStatusRow(message));
         return;
       }
-      rows.forEach((row, index) => {
+      searchRows.forEach((row, index) => {
         searchTableBody.appendChild(buildResultRow(row, index));
       });
     }
 
-    // 初始化表格內容（避免初始空狀態沒有正確訊息）
-    renderSearchRows(initialRows);
+    function renderBoundRows(rows) {
+      if (!boundTableBody) return;
+      if (Array.isArray(rows)) {
+        setBoundRows(rows);
+      }
+      boundTableBody.innerHTML = "";
+      if (!boundRows.length) {
+        boundTableBody.appendChild(buildBoundEmptyRow());
+        return;
+      }
+      sortBoundRows();
+      boundRows.forEach((row, index) => {
+        boundTableBody.appendChild(buildBoundRow(row, index));
+      });
+    }
 
-    // 若頁面上尚未提供全域 refreshSearch，就補上一個
+    setSearchRows(initialSearchRows);
+    setBoundRows(initialBoundRows);
+    hasSearched = hasSearched || searchRows.length > 0;
+    renderSearchRows();
+    renderBoundRows();
+
     if (typeof window.refreshSearch !== "function") {
       window.refreshSearch = function () {
         location.reload();
       };
     }
 
-    // 若頁面上尚未提供全域 addCam，就補上一個
     if (typeof window.addCam !== "function") {
       window.addCam = async function (ip, mac, name) {
+        const ipClean = sanitizeIp(ip);
+        const macClean = sanitizeMac(mac);
+        const nameClean = typeof name === "string" ? name.trim() : "";
+        const fallbackItem = {
+          ip: ipClean,
+          mac: macClean,
+          name: nameClean || "IPC",
+          is_bound: true,
+          ipc_name: nameClean,
+        };
         const payload = {
-          ip_address: ip,
-          mac_address: mac,
-          ipc_name: name,
+          ip_address: ipClean,
+          mac_address: macClean,
+          ipc_name: nameClean,
         };
         try {
           const res = await fetch("{% url 'api_cameras_bind' %}", {
@@ -597,10 +893,10 @@
           const j = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(j.error || "HTTP " + res.status);
           if (j.ok) {
-            refreshSearch();
+            applyBoundState(j.item, fallbackItem);
           } else if (j.code === "ALREADY_BOUND") {
+            applyBoundState(j.item, fallbackItem);
             alert("這台攝影機已經綁定在列表中。");
-            refreshSearch();
           } else {
             alert("新增失敗：" + (j.error || JSON.stringify(j)));
           }
@@ -645,10 +941,22 @@
       }
     };
 
-    // 若頁面上尚未提供全域 delCam，就補上一個
     if (typeof window.delCam !== "function") {
-      window.delCam = async function (mac) {
+      window.delCam = async function (mac, ip = "") {
         if (!confirm("確定要刪除這台攝影機嗎？")) return;
+        const macClean = sanitizeMac(mac);
+        const ipClean = sanitizeIp(ip);
+        const payload = {};
+        if (macClean) {
+          payload.mac_address = macClean;
+        }
+        if (ipClean && !payload.mac_address) {
+          payload.ip_address = ipClean;
+        }
+        const fallbackItem = {
+          ip: ipClean,
+          mac: macClean,
+        };
         try {
           const res = await fetch("{% url 'api_cameras_unbind' %}", {
             method: "POST",
@@ -656,12 +964,12 @@
               "Content-Type": "application/json",
               "X-CSRFToken": CSRF,
             },
-            body: JSON.stringify({ mac_address: mac }),
+            body: JSON.stringify(payload),
           });
           const j = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(j.error || "HTTP " + res.status);
           if (j.ok) {
-            refreshSearch();
+            applyUnboundState(j.item, fallbackItem);
           } else {
             alert("刪除失敗：" + (j.error || JSON.stringify(j)));
           }
