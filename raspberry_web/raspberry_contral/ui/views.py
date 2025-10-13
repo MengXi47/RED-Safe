@@ -808,6 +808,14 @@ def api_cameras_bind(request):
         ipc_account = data.get("ipc_account")
         ipc_password = data.get("ipc_password")
 
+        # normalize empty strings to None-like for consistent handling
+        if not ipc_name:
+            ipc_name = ""
+        if not ipc_account:
+            ipc_account = ""
+        if not ipc_password:
+            ipc_password = ""
+
         if not ip_address or not mac_address:
             return JsonResponse({"ok": False, "error": "Missing required fields"})
 
@@ -825,7 +833,24 @@ def api_cameras_bind(request):
                 (ip_address, mac_address),
             )
             if cur.fetchone():
-                return JsonResponse({"ok": False, "error": "攝影機已綁定", "code": "ALREADY_BOUND"})
+                # fetch the existing row for UI to reflect state without reload
+                try:
+                    cur.execute(
+                        "SELECT ip_address, mac_address, COALESCE(custom_name, ipc_name, mac_address) AS name FROM connected_ipc WHERE ip_address = %s OR mac_address = %s LIMIT 1",
+                        (ip_address, mac_address),
+                    )
+                    row = cur.fetchone()
+                except Exception:
+                    row = None
+                item = None
+                if row:
+                    item = {
+                        "ip": (row[0] or "").strip(),
+                        "mac": (row[1] or "").replace("-", ":").strip().upper(),
+                        "name": (row[2] or "IPC"),
+                        "is_bound": True
+                    }
+                return JsonResponse({"ok": False, "error": "攝影機已綁定", "code": "ALREADY_BOUND", "item": item})
 
             cur.execute(
                 """
@@ -842,11 +867,38 @@ def api_cameras_bind(request):
                 ),
             )
             conn.commit()
-            return JsonResponse({"ok": True})
+            return JsonResponse({
+                "ok": True,
+                "item": {
+                    "ip": ip_address,
+                    "mac": mac_address,
+                    "name": ipc_name or (ipc_account or "IPC"),
+                    "is_bound": True
+                }
+            })
         except errors.UniqueViolation:
             if conn:
                 conn.rollback()
-            return JsonResponse({"ok": False, "error": "攝影機已綁定", "code": "ALREADY_BOUND"})
+            # fetch the existing row for UI to reflect state without reload
+            try:
+                if cur is None:
+                    cur = conn.cursor()
+                cur.execute(
+                    "SELECT ip_address, mac_address, COALESCE(custom_name, ipc_name, mac_address) AS name FROM connected_ipc WHERE ip_address = %s OR mac_address = %s LIMIT 1",
+                    (ip_address, mac_address),
+                )
+                row = cur.fetchone()
+            except Exception:
+                row = None
+            item = None
+            if row:
+                item = {
+                    "ip": (row[0] or "").strip(),
+                    "mac": (row[1] or "").replace("-", ":").strip().upper(),
+                    "name": (row[2] or "IPC"),
+                    "is_bound": True
+                }
+            return JsonResponse({"ok": False, "error": "攝影機已綁定", "code": "ALREADY_BOUND", "item": item})
         except Exception as e:
             if conn:
                 conn.rollback()
@@ -865,16 +917,35 @@ def api_cameras_unbind(request):
     if request.method == "POST":
         data = json.loads(request.body.decode())
         mac_address = (data.get("mac_address") or "").replace("-", ":").strip().upper()
-        if not mac_address:
-            return JsonResponse({"ok": False, "error": "Missing MAC address"})
+        ip_address = (data.get("ip_address") or "").strip()
+        if not mac_address and not ip_address:
+            return JsonResponse({"ok": False, "error": "Missing MAC or IP address"})
         try:
             conn = psycopg2.connect(**DB_CONFIG)
             cur = conn.cursor()
-            cur.execute("DELETE FROM connected_ipc WHERE mac_address = %s", (mac_address,))
+            if mac_address:
+                cur.execute(
+                    "DELETE FROM connected_ipc WHERE mac_address = %s RETURNING ip_address, mac_address",
+                    (mac_address,)
+                )
+            else:
+                cur.execute(
+                    "DELETE FROM connected_ipc WHERE ip_address = %s RETURNING ip_address, mac_address",
+                    (ip_address,)
+                )
+            deleted = cur.fetchone()
             conn.commit()
             cur.close()
             conn.close()
-            return JsonResponse({"ok": True})
+            if not deleted:
+                return JsonResponse({"ok": False, "error": "NOT_FOUND"})
+            return JsonResponse({
+                "ok": True,
+                "item": {
+                    "ip": (deleted[0] or "").strip(),
+                    "mac": (deleted[1] or "").replace("-", ":").strip().upper()
+                }
+            })
         except Exception as e:
             print("DB delete error:", e)
             return JsonResponse({"ok": False, "error": str(e)})
@@ -888,3 +959,24 @@ def api_setupconfig_list(request: HttpRequest):
 
     data = list(EdgeConfig.objects.all().values("edge_id", "edge_password"))
     return JsonResponse({"items": data, "count": len(data)})
+
+
+# 新增：回傳目前已綁定清單（下方表單）給前端即時刷新用，避免整頁重新整理。
+@_require_auth
+@require_http_methods(["GET"])
+def api_cameras_bound_list(request: HttpRequest):
+    """
+    回傳目前已綁定清單（下方表單）給前端即時刷新用，避免整頁重新整理。
+    """
+    bound, _, _ = _load_bound_entries()
+    # 保持與搜尋清單相同的欄位結構
+    items = [
+        {
+            "ip": b.get("ip") or "",
+            "mac": (b.get("mac") or "").upper(),
+            "name": b.get("name") or "IPC",
+            "is_bound": True,
+        }
+        for b in bound
+    ]
+    return JsonResponse({"ok": True, "items": items, "count": len(items)})
