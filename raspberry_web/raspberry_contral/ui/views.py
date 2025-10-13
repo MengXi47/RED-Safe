@@ -533,12 +533,66 @@ def _normalize_search_rows(raw_rows):
     """整理 IPC 掃描結果，統一欄位格式並去除重複。"""
     normalized = []
     seen_pairs = set()
+    ip_candidate_keys = (
+        "ip",
+        "ip_address",
+        "ipv4",
+        "ipv4_address",
+        "ipAddr",
+        "ipaddr",
+        "address",
+    )
+    mac_candidate_keys = (
+        "mac",
+        "mac_address",
+        "macAddr",
+        "macaddr",
+        "macAddress",
+    )
+    name_candidate_keys = (
+        "name",
+        "ipc_name",
+        "custom_name",
+        "device_name",
+        "model",
+        "label",
+    )
+
     for item in raw_rows or []:
         if not isinstance(item, dict):
             continue
-        ip_value = (item.get("ip") or item.get("ip_address") or "").strip()
-        mac_value = (item.get("mac") or item.get("mac_address") or "").replace("-", ":").strip().upper()
-        name_value = item.get("name") or item.get("ipc_name") or item.get("custom_name") or item.get("device_name")
+
+        ip_value = ""
+        for key in ip_candidate_keys:
+            value = item.get(key)
+            if value is None:
+                continue
+            value = str(value).strip()
+            if value:
+                ip_value = value
+                break
+
+        mac_raw_value = ""
+        for key in mac_candidate_keys:
+            value = item.get(key)
+            if value is None:
+                continue
+            value = str(value).strip()
+            if value:
+                mac_raw_value = value
+                break
+        mac_value = mac_raw_value.replace("-", ":").upper()
+
+        name_value = ""
+        for key in name_candidate_keys:
+            value = item.get(key)
+            if value is None:
+                continue
+            value = str(value).strip()
+            if value:
+                name_value = value
+                break
+
         if not (ip_value or mac_value):
             continue
         key = (ip_value, mac_value)
@@ -551,6 +605,77 @@ def _normalize_search_rows(raw_rows):
             "name": (name_value or "IPC"),
         })
     return normalized
+
+
+def _load_bound_entries():
+    """讀取資料庫中的已綁定攝影機資訊並建立查找表。"""
+    bound = []
+    bound_map_by_ip = {}
+    bound_map_by_mac = {}
+    try:
+        rows = ConnectedIPC.objects.all()
+        for r in rows:
+            ip_value = (r.ip_address or "").strip()
+            mac_value = (r.mac_address or "").replace("-", ":").strip().upper()
+            name_value = (r.custom_name or r.ipc_name or r.mac_address or "IPC")
+            entry = {
+                "ip": ip_value,
+                "mac": mac_value,
+                "name": name_value,
+            }
+            bound.append(entry)
+            if ip_value:
+                bound_map_by_ip[ip_value] = entry
+            if mac_value:
+                bound_map_by_mac[mac_value] = entry
+    except Exception as exc:  # noqa: BLE001
+        print("ConnectedIPC query error:", exc)
+        bound = []
+        bound_map_by_ip = {}
+        bound_map_by_mac = {}
+
+    bound.sort(key=lambda item: (_ip_sort_key(item["ip"]), item["mac"]))
+    return bound, bound_map_by_ip, bound_map_by_mac
+
+
+def _merge_scan_with_bound(bound, bound_map_by_ip, bound_map_by_mac, raw_search_results):
+    """結合掃描結果與已綁定清單，補齊狀態並移除重複。"""
+    search_results = _normalize_search_rows(raw_search_results)
+    existing_pairs = set()
+    for item in search_results:
+        ip_value = item.get("ip")
+        mac_value = item.get("mac")
+        key = (ip_value, mac_value)
+        existing_pairs.add(key)
+        bound_info = None
+        if ip_value and ip_value in bound_map_by_ip:
+            bound_info = bound_map_by_ip[ip_value]
+        elif mac_value and mac_value in bound_map_by_mac:
+            bound_info = bound_map_by_mac[mac_value]
+        item["is_bound"] = bound_info is not None
+        if bound_info and bound_info.get("name"):
+            item["name"] = bound_info["name"]
+
+    for bound_entry in bound:
+        key = (bound_entry["ip"], bound_entry["mac"])
+        if key in existing_pairs:
+            continue
+        existing_pairs.add(key)
+        search_results.append({
+            "ip": bound_entry["ip"],
+            "mac": bound_entry["mac"],
+            "name": bound_entry["name"],
+            "is_bound": True,
+        })
+
+    search_results.sort(
+        key=lambda item: (
+            1 if item.get("is_bound") else 0,
+            _ip_sort_key(item.get("ip")),
+            item.get("mac") or "",
+        )
+    )
+    return search_results
 
 
 def _fetch_scan_rows():
@@ -587,71 +712,24 @@ def _fetch_scan_rows():
 @require_http_methods(["GET"])
 def cameras(request: HttpRequest):
     """攝影機管理頁面：上方為搜尋結果，下方為已綁定清單（讀取外部資料庫 connected_ipc）。"""
-    bound = []
-    bound_map_by_ip = {}
-    bound_map_by_mac = {}
-    try:
-        rows = ConnectedIPC.objects.all()
-        for r in rows:
-            ip_value = (r.ip_address or "").strip()
-            mac_value = (r.mac_address or "").replace("-", ":").strip().upper()
-            name_value = (r.custom_name or r.ipc_name or r.mac_address or "IPC")
-            entry = {
-                "ip": ip_value,
-                "mac": mac_value,
-                "name": name_value,
-            }
-            bound.append(entry)
-            if ip_value:
-                bound_map_by_ip[ip_value] = entry
-            if mac_value:
-                bound_map_by_mac[mac_value] = entry
-    except Exception as e:
-        print("ConnectedIPC query error:", e)
-        bound = []
-        bound_map_by_ip = {}
-        bound_map_by_mac = {}
-
-    bound.sort(key=lambda item: (_ip_sort_key(item["ip"]), item["mac"]))
-
-    raw_search_results = _fetch_scan_rows()
-    search_results = _normalize_search_rows(raw_search_results)
-
-    existing_pairs = {(item["ip"], item["mac"]) for item in search_results}
-    for item in search_results:
-        ip_value = item["ip"]
-        mac_value = item["mac"]
-        bound_info = None
-        if ip_value and ip_value in bound_map_by_ip:
-            bound_info = bound_map_by_ip[ip_value]
-        elif mac_value and mac_value in bound_map_by_mac:
-            bound_info = bound_map_by_mac[mac_value]
-        item["is_bound"] = bound_info is not None
-        if bound_info and bound_info.get("name"):
-            item["name"] = bound_info["name"]
-
-    for bound_entry in bound:
-        key = (bound_entry["ip"], bound_entry["mac"])
-        if key in existing_pairs:
-            continue
-        existing_pairs.add(key)
-        search_results.append({
-            "ip": bound_entry["ip"],
-            "mac": bound_entry["mac"],
-            "name": bound_entry["name"],
-            "is_bound": True,
-        })
-
-    search_results.sort(
-        key=lambda item: (
-            1 if item.get("is_bound") else 0,
-            _ip_sort_key(item.get("ip")),
-            item.get("mac") or "",
-        )
-    )
-
-    context = {"bound": bound, "search_results": search_results}
+    bound, _, _ = _load_bound_entries()
+    context = {"bound": bound, "search_results": []}
     return render(request, "ui/cameras_combined.html", context)
+
+
+@_require_auth
+@require_http_methods(["GET"])
+def api_cameras_scan(request: HttpRequest):
+    """提供即時掃描結果給前端查詢。"""
+    bound, bound_map_by_ip, bound_map_by_mac = _load_bound_entries()
+    raw_search_results = _fetch_scan_rows()
+    search_results = _merge_scan_with_bound(
+        bound,
+        bound_map_by_ip,
+        bound_map_by_mac,
+        raw_search_results,
+    )
+    return JsonResponse({"ok": True, "results": search_results})
 
 
 

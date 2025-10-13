@@ -7,7 +7,7 @@
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    min-width: 720px;x
+    min-width: 720px;
   }
   #cam-page .tbl th,
   #cam-page .tbl td {
@@ -40,13 +40,22 @@
     -webkit-backdrop-filter: blur(6px);
     font-size: 12px;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    /* keep headers on one line and avoid CJK splitting */
+    white-space: nowrap;
+    word-break: keep-all;
+    /* reduce spacing to avoid unintended wraps */
+    letter-spacing: 0.02em;
   }
   @media (prefers-color-scheme: dark) {
     #cam-page .tbl thead th {
       background: rgba(17, 24, 39, 0.55);
     }
   }
+
+#cam-page .tbl thead th,
+#cam-page .tbl thead th * {
+  overflow-wrap: normal;
+}
   #cam-page .tbl tbody tr:hover {
     background: rgba(255, 255, 255, 0.06);
   }
@@ -186,7 +195,9 @@
     <div class="cam-sections">
       <section class="glass">
         <div class="toolbar">
-          <button class="btn" onclick="refreshSearch()">搜尋攝影機</button>
+          <button class="btn" id="scan-button" onclick="scanCameras()">
+            搜尋攝影機
+          </button>
           <button class="btn btn-ghost" onclick="location.reload()">
             重新整理
           </button>
@@ -210,14 +221,13 @@
                 <th class="col-actions">操作</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="search-results-body">
               {% if search_results %} {% for r in search_results %}
               <tr class="{% if r.is_bound %}is-bound{% endif %}">
                 <td class="num">{{ forloop.counter }}</td>
                 <td>
                   <span class="chip mono"
-                    ><span class="dot" aria-hidden="true"></span>{{ r.ip
-                    }}</span
+                    ><span class="dot" aria-hidden="true"></span>{{ r.ip}}</span
                   >
                 </td>
                 <td><span class="chip mono">{{ r.mac }}</span></td>
@@ -294,13 +304,14 @@
                       opacity=".6"
                     />
                   </svg>
-                  未找到任何裝置
+                  請按「搜尋攝影機」進行搜尋。
                 </td>
               </tr>
               {% endif %}
             </tbody>
           </table>
         </div>
+        {{ search_results|json_script:"initial-search-results" }}
         <div class="hint">提示：按下「搜尋攝影機」可更新列表。</div>
       </section>
       <section class="glass">
@@ -329,8 +340,7 @@
                 <td class="num">{{ forloop.counter }}</td>
                 <td>
                   <span class="chip mono"
-                    ><span class="dot" aria-hidden="true"></span>{{ cam.ip
-                    }}</span
+                    ><span class="dot" aria-hidden="true"></span>{{ cam.ip}}</span
                   >
                 </td>
                 <td><span class="chip mono">{{ cam.mac }}</span></td>
@@ -416,6 +426,150 @@
     }
     const CSRF = getCookie("csrftoken");
 
+    const scanBtn = document.getElementById("scan-button");
+    const searchTableBody = document.getElementById("search-results-body");
+    const initialDataScript = document.getElementById("initial-search-results");
+    let initialRows = [];
+    if (initialDataScript) {
+      try {
+        initialRows = JSON.parse(initialDataScript.textContent) || [];
+      } catch (err) {
+        initialRows = [];
+      }
+    }
+    let hasSearched = initialRows.length > 0;
+    let isScanning = false;
+
+    const ICON_ADD =
+      '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    const ICON_CHECK =
+      '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="m5 12 4 4 10-10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    const ICON_STATUS_DEFAULT =
+      '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4a7 7 0 1 1 0 14 7 7 0 0 1 0-14Z" stroke="currentColor" stroke-width="1.4" opacity=".6"/><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg>';
+    const ICON_STATUS_ERROR =
+      '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="16.5" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.4" opacity=".6"/></svg>';
+
+    function createIconElement(svgMarkup) {
+      const tpl = document.createElement("template");
+      tpl.innerHTML = svgMarkup.trim();
+      return tpl.content.firstElementChild;
+    }
+
+    function buildStatusRow(message, { variant = "default" } = {}) {
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 5;
+      td.className = "empty-state";
+      if (variant === "error") {
+        td.dataset.error = "true";
+      }
+      const icon =
+        variant === "error"
+          ? createIconElement(ICON_STATUS_ERROR)
+          : createIconElement(ICON_STATUS_DEFAULT);
+      td.appendChild(icon);
+      td.appendChild(document.createTextNode(" " + message));
+      tr.appendChild(td);
+      return tr;
+    }
+
+    function buildResultRow(row, index) {
+      const tr = document.createElement("tr");
+      if (row.is_bound) {
+        tr.classList.add("is-bound");
+      }
+
+      const numTd = document.createElement("td");
+      numTd.className = "num";
+      numTd.textContent = String(index + 1);
+      tr.appendChild(numTd);
+
+      const ipTd = document.createElement("td");
+      const ipChip = document.createElement("span");
+      ipChip.className = "chip mono";
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.setAttribute("aria-hidden", "true");
+      ipChip.appendChild(dot);
+      ipChip.appendChild(
+        document.createTextNode(row.ip && row.ip.trim() ? row.ip : "—")
+      );
+      ipTd.appendChild(ipChip);
+      tr.appendChild(ipTd);
+
+      const macTd = document.createElement("td");
+      const macChip = document.createElement("span");
+      macChip.className = "chip mono";
+      macChip.textContent = row.mac && row.mac.trim() ? row.mac : "—";
+      macTd.appendChild(macChip);
+      tr.appendChild(macTd);
+
+      const nameTd = document.createElement("td");
+      nameTd.appendChild(
+        document.createTextNode(row.name && row.name.trim() ? row.name : "IPC")
+      );
+      if (row.is_bound) {
+        const badge = document.createElement("span");
+        badge.className = "status-badge";
+        badge.textContent = "已綁定";
+        nameTd.appendChild(badge);
+      }
+      tr.appendChild(nameTd);
+
+      const actionTd = document.createElement("td");
+      actionTd.className = "actions";
+      if (row.is_bound) {
+        const btn = document.createElement("button");
+        btn.className = "action-btn";
+        btn.disabled = true;
+        btn.innerHTML = ICON_CHECK + "已綁定";
+        actionTd.appendChild(btn);
+      } else {
+        const btn = document.createElement("button");
+        btn.className = "action-btn";
+        btn.type = "button";
+        btn.innerHTML = ICON_ADD + "添加";
+        btn.addEventListener("click", () =>
+          addCam(row.ip || "", row.mac || "", row.name || "")
+        );
+        actionTd.appendChild(btn);
+      }
+      tr.appendChild(actionTd);
+
+      return tr;
+    }
+
+    function renderSearchRows(rows, state = {}) {
+      if (!searchTableBody) return;
+      const { loading = false, error = "" } = state;
+      searchTableBody.innerHTML = "";
+      if (loading) {
+        searchTableBody.appendChild(
+          buildStatusRow("掃描中，請稍候…", { variant: "loading" })
+        );
+        return;
+      }
+      if (error) {
+        searchTableBody.appendChild(
+          buildStatusRow(error, { variant: "error" })
+        );
+        return;
+      }
+      if (!rows.length) {
+        const message = hasSearched
+          ? "未找到任何裝置"
+          : "請按「搜尋攝影機」進行搜尋";
+        searchTableBody.appendChild(buildStatusRow(message));
+        return;
+      }
+      rows.forEach((row, index) => {
+        searchTableBody.appendChild(buildResultRow(row, index));
+      });
+    }
+
+    // 初始化表格內容（避免初始空狀態沒有正確訊息）
+    renderSearchRows(initialRows);
+
     // 若頁面上尚未提供全域 refreshSearch，就補上一個
     if (typeof window.refreshSearch !== "function") {
       window.refreshSearch = function () {
@@ -455,6 +609,41 @@
         }
       };
     }
+
+    window.scanCameras = async function () {
+      if (isScanning) return;
+      isScanning = true;
+      hasSearched = true;
+      renderSearchRows([], { loading: true });
+      if (scanBtn) {
+        scanBtn.disabled = true;
+      }
+      try {
+        const res = await fetch("{% url 'api_cameras_scan' %}", {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+          },
+          credentials: "same-origin",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error("HTTP " + res.status);
+        }
+        if (!data.ok) {
+          throw new Error(data.error || "掃描失敗");
+        }
+        const rows = Array.isArray(data.results) ? data.results : [];
+        renderSearchRows(rows);
+      } catch (err) {
+        renderSearchRows([], { error: "掃描失敗：" + err.message });
+      } finally {
+        isScanning = false;
+        if (scanBtn) {
+          scanBtn.disabled = false;
+        }
+      }
+    };
 
     // 若頁面上尚未提供全域 delCam，就補上一個
     if (typeof window.delCam !== "function") {
