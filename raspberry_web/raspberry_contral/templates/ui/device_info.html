@@ -6,7 +6,22 @@
 <div class="card" style="max-width:640px;">
   <div style="margin-bottom:12px;">
       <div><strong>序號：</strong> {{ info.serial }}</div>
-      <strong>裝置密碼：</strong> {{ info.password }}
+      <div>
+        <strong>裝置密碼：</strong>
+        {% if info.has_password %}
+          <span id="devicePassword"
+                data-password="{{ info.password }}"
+                data-masked="{{ info.masked_password }}">{{ info.masked_password }}</span>
+          <button type="button"
+                  id="togglePassword"
+                  aria-label="顯示裝置密碼"
+                  style="margin-left:8px; border:none; background:none; cursor:pointer; font-size:16px;">
+            <span id="togglePasswordIcon">👁</span>
+          </button>
+        {% else %}
+          <span>未設定</span>
+        {% endif %}
+      </div>
       <div><strong>版本：</strong> {{ info.version }}</div>
       <div><strong>連接狀態：</strong>
         {% if info.status == 1 %}
@@ -39,6 +54,9 @@
   const wrap = document.getElementById("qrWrap");
   const img = document.getElementById("deviceQrImg");
   const dl = document.getElementById("downloadQr");
+  const togglePasswordBtn = document.getElementById("togglePassword");
+  const passwordSpan = document.getElementById("devicePassword");
+  const passwordIcon = document.getElementById("togglePasswordIcon");
 
   btn.addEventListener("click", function(){
     if (!wrap) return;
@@ -56,6 +74,27 @@
       if (dl) dl.style.display = "none";
     }
   });
+
+  if (togglePasswordBtn && passwordSpan) {
+    let isRevealed = false;
+    const masked = passwordSpan.dataset.masked || "";
+    const actual = passwordSpan.dataset.password || "";
+
+    passwordSpan.textContent = masked || "未設定";
+
+    togglePasswordBtn.addEventListener("click", function () {
+      if (!actual) return;
+      isRevealed = !isRevealed;
+      passwordSpan.textContent = isRevealed ? actual : (masked || "未設定");
+      if (passwordIcon) {
+        passwordIcon.textContent = isRevealed ? "🙈" : "👁";
+        togglePasswordBtn.setAttribute(
+          "aria-label",
+          isRevealed ? "隱藏裝置密碼" : "顯示裝置密碼"
+        );
+      }
+    });
+  }
 })();
 </script>
 {% endblock %}

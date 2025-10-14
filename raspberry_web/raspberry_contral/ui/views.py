@@ -463,12 +463,16 @@ def user_bound(request):
 def device_info(request):
     """顯示裝置基本資訊與預設 QR Code。"""
 
-    # 若未接實際裝置資料，先使用預設（題主要求）
-    serial = scan_ipc_dynamic()  # 預留：序號（目前固定為 12345678）
-    version = "v1.0.0"  # 預留：版本
+    config = _get_edge_config()
+    serial = config.edge_id if config and config.edge_id else "RED-UNKNOWN"
+    password = (config.edge_password or "") if config else ""
+
+    raw_version = str(DEFAULT_EDGE_VERSION or "1.0.0")
+    version = raw_version if raw_version.lower().startswith("v") else f"v{raw_version}"
     status = 1  # 1 = 已連線, 0 = 未連線
-    password = "12345678"  # 預留密碼（題主要求預設為 12345678）
     name = "裝置"
+    has_password = bool(password)
+    masked_password = "＊" * len(password) if has_password else ""
 
     # QR code 內容格式：JSON，包含 serial / password / name 三個欄位
     payload_dict = {"serial": serial, "password": password, "name": name}
@@ -502,6 +506,8 @@ def device_info(request):
         "status": status,
         "password": password,
         "name": name,
+        "masked_password": masked_password,
+        "has_password": has_password,
     }
     return render(request, "ui/device_info.html", {"info": info, "qrcode_data": qrcode_data})
 

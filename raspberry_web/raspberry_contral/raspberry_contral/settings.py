@@ -13,6 +13,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+try:
+    import whitenoise  # type: ignore[attr-defined]
+
+    _HAS_WHITENOISE = True
+except ImportError:
+    whitenoise = None  # type: ignore[assignment]
+    _HAS_WHITENOISE = False
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -39,12 +47,14 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+if _HAS_WHITENOISE:
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 ROOT_URLCONF = "raspberry_contral.urls"
 
@@ -116,7 +126,11 @@ TEMPLATES[0]["DIRS"] = [BASE_DIR / "templates"]
 
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = Path(os.environ.get("DJANGO_STATIC_ROOT", BASE_DIR / "staticfiles"))
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = (
+    "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    if _HAS_WHITENOISE
+    else "django.contrib.staticfiles.storage.StaticFilesStorage"
+)
 
 # SESSION_COOKIE_AGE = 60 * 60 * 24  # 一天 (不再使用固定天數)
 SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
