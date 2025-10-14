@@ -36,6 +36,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods,require_POST
 from ipcscan_client.ipcsacn import scan_ipc_dynamic
 
+from cloudclient.httpclient import get_bound_users
 from .models import ConnectedIPC, EdgeConfig
 
 
@@ -277,9 +278,44 @@ def network_ip(request):
 @_require_auth
 @require_http_methods(["GET"])
 def api_user_bound(request: HttpRequest):
-    """回傳綁定使用者清單，目前未提供資料則回傳空集合。"""
+    """回傳綁定使用者清單，資料來源為雲端 edge API。"""
 
-    return JsonResponse({"items": [], "count": 0})
+    edge_id = _edge_id()
+    if not edge_id or edge_id == "RED-UNKNOWN":
+        return JsonResponse(
+            {"items": [], "count": 0, "error": "edge_id_not_configured"},
+            status=400,
+        )
+
+    api_result = get_bound_users(edge_id)
+    if not isinstance(api_result, dict):
+        return JsonResponse(
+            {"items": [], "count": 0, "error": "unexpected_response"},
+            status=502,
+        )
+
+    if "error" in api_result:
+        status_code = api_result.get("status")
+        if not isinstance(status_code, int) or status_code < 400:
+            status_code = 502
+        detail = {k: v for k, v in api_result.items() if k != "error"}
+        return JsonResponse(
+            {"items": [], "count": 0, "error": api_result["error"], "detail": detail},
+            status=status_code,
+        )
+
+    users = api_result.get("users") or []
+    items = [
+        {
+            "email": user.get("email", ""),
+            "user_name": user.get("user_name", ""),
+            "bind_at": user.get("bind_at", ""),
+            "last_online": user.get("last_online", ""),
+        }
+        for user in users
+    ]
+
+    return JsonResponse({"items": items, "count": len(items)})
 
 
 @_require_auth

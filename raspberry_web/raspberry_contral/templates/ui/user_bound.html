@@ -12,62 +12,95 @@
           <th>User Name</th>
           <th>綁定時間</th>
           <th>上次上線</th>
-          <th>操作</th>
         </tr>
       </thead>
       <tbody id="user-table-body">
-        {% for user in users %}
-        <tr id="user-{{ user.id }}">
-          <td>{{ user.email }}</td>
-          <td>{{ user.user_name }}</td>
-          <td>{{ user.created_at }}</td>
-          <td>{{ user.last_seen }}</td>
-          <td>
-            <button class="btn btn-danger" onclick="removeUser({{ user.id }})">刪除</button>
-          </td>
+        <tr>
+          <td colspan="4">載入中...</td>
         </tr>
-        {% endfor %}
       </tbody>
     </table>
 
     <script>
-    function removeUser(userId) {
-        if (!confirm("確定要刪除此使用者？")) return;
+    document.addEventListener("DOMContentLoaded", () => {
+        const tableBody = document.getElementById("user-table-body");
+        const apiEndpoint = "{% url 'api_user_bound' %}";
 
-        fetch(`/api/user/remove/${userId}/`, {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": getCookie("csrftoken")
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === "success") {
-                document.getElementById(`user-${userId}`).remove();
-            } else {
-                alert("刪除失敗: " + data.message);
-            }
-        })
-        .catch(error => {
-            alert("錯誤: " + error);
-        });
-    }
+        const renderMessage = (text) => {
+            tableBody.innerHTML = "";
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = 4;
+            cell.textContent = text;
+            row.appendChild(cell);
+            tableBody.appendChild(row);
+        };
 
-    // Django 取得 CSRF Token 的方法
-    function getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
+        const formatValue = (value) => value ? value : "-";
+
+        const formatTimestamp = (value) => {
+            if (!value) {
+                return "-";
+            }
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) {
+                return value;
+            }
+            const formatter = new Intl.DateTimeFormat("zh-TW", {
+                timeZone: "Asia/Taipei",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+            });
+            return formatter.format(date);
+        };
+
+        fetch(apiEndpoint, { credentials: "same-origin" })
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (!ok) {
+                    const errorText = data && data.error ? data.error : "載入失敗";
+                    renderMessage(errorText);
+                    return;
                 }
-            }
-        }
-        return cookieValue;
-    }
+
+                const items = Array.isArray(data.items) ? data.items : [];
+                if (!items.length) {
+                    renderMessage("目前沒有綁定使用者");
+                    return;
+                }
+
+                tableBody.innerHTML = "";
+                items.forEach((user, index) => {
+                    const row = document.createElement("tr");
+
+                    const emailCell = document.createElement("td");
+                    emailCell.textContent = formatValue(user.email);
+                    row.appendChild(emailCell);
+
+                    const nameCell = document.createElement("td");
+                    nameCell.textContent = formatValue(user.user_name);
+                    row.appendChild(nameCell);
+
+                    const bindAtCell = document.createElement("td");
+                    bindAtCell.textContent = formatTimestamp(user.bind_at);
+                    row.appendChild(bindAtCell);
+
+                    const lastOnlineCell = document.createElement("td");
+                    lastOnlineCell.textContent = formatTimestamp(user.last_online);
+                    row.appendChild(lastOnlineCell);
+
+                    tableBody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error("Failed to load bound users:", error);
+                renderMessage("載入失敗，請稍後再試");
+            });
+    });
     </script>
 </div>
 {% endblock %}

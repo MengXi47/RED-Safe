@@ -163,6 +163,14 @@ def do_list_edges():
     api_get("/user/list/edge_id", token=token)
 
 
+def do_list_edge_users():
+    edge_id = input("Edge ID: ").strip()
+    if not edge_id:
+        print("❌ Edge ID 不可為空")
+        return
+    api_get(f"/edge/user/list?edge_id={edge_id}")
+
+
 def do_update_edge_name():
     token, _ = load_tokens()
     if not token:
@@ -278,6 +286,7 @@ def main():
         print("13) send edge command")
         print("14) create OTP secret")
         print("15) signin with OTP")
+        print("16) list users by edge")
         choice = input("選擇操作: ").strip()
         if choice == "1":
             do_signup()
@@ -309,6 +318,8 @@ def main():
             do_create_otp()
         elif choice == "15":
             do_signin_with_otp()
+        elif choice == "16":
+            do_list_edge_users()
         else:
             print("無效選項")
 

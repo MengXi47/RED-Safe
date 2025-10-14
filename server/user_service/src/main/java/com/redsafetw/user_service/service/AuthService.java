@@ -176,6 +176,7 @@ public class AuthService {
 
         var user = auth.getUser();
         user.setLast_login_at(OffsetDateTime.now());
+        users.save(user);
 
         logger.info("Refresh: {\"refresh_token\":\"{}\"} Refresh successful user_id: {}",
                 req.getRefreshToken(),
