@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -56,6 +57,7 @@ public class BindService {
         userEdgeBindDomain.setUserId(userId);
         userEdgeBindDomain.setEdgeId(edgeId);
         userEdgeBindDomain.setDisplayName(bindRequest.getEdgeName());
+        userEdgeBindDomain.setBindAt(OffsetDateTime.now());
         userEdgeBindRepository.save(userEdgeBindDomain);
 
         logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} Bind successful", userId, edgeId);

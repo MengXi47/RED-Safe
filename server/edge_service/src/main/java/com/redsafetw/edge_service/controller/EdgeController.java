@@ -43,4 +43,7 @@ public class EdgeController {
     public ErrorCodeResponse reportOnline(@Valid @RequestBody EdgeOnlineRequest request) {
         return edgeOnlineService.handleOnline(request);
     }
+
+    @GetMapping("/user/list")
+
 }
