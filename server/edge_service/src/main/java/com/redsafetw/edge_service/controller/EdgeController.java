@@ -3,8 +3,11 @@ package com.redsafetw.edge_service.controller;
 import com.redsafetw.edge_service.dto.*;
 import com.redsafetw.edge_service.service.EdgeOnlineService;
 import com.redsafetw.edge_service.service.EdgeRegisterService;
+import com.redsafetw.edge_service.service.EdgeUserBindService;
 import com.redsafetw.edge_service.service.EdgeVerify;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
@@ -24,6 +27,7 @@ public class EdgeController {
     private final EdgeRegisterService edgeRegisterService;
     private final EdgeVerify edgeVerify;
     private final EdgeOnlineService edgeOnlineService;
+    private final EdgeUserBindService edgeUserBindService;
 
     @PostMapping("/reg")
     public ErrorCodeResponse registerEdge(@Valid @RequestBody EdgeRegisterRequest edgeRegisterRequest) {
@@ -45,5 +49,10 @@ public class EdgeController {
     }
 
     @GetMapping("/user/list")
-
+    public EdgeUserBindListResponse getUserList(
+            @RequestParam("edge_id")
+            @NotBlank(message = "125")
+            @Pattern(regexp = "^RED-[0-9A-F]{8}$", message = "120") String edgeId) {
+        return edgeUserBindService.getUserList(edgeId);
+    }
 }
