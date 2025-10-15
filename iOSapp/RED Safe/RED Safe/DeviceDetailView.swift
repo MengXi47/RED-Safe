@@ -50,8 +50,6 @@ struct DeviceDetailView: View {
                         Image(systemName: "network")
                         Text("網路配置")
                         Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.tertiary)
                     }
                     .font(.body.weight(.semibold))
                     .padding(.vertical, 8)
@@ -66,8 +64,6 @@ struct DeviceDetailView: View {
                         Image(systemName: "camera.on.rectangle")
                         Text("IP Camera配置")
                         Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(.tertiary)
                     }
                     .font(.body.weight(.semibold))
                     .padding(.vertical, 8)
