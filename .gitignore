@@ -2,6 +2,7 @@
 .DS_Store
 node_modules/
 edge_web/static/frontend/
+edge_web/staticfiles/
 
 # 忽略所有 build 目錄
 build/
