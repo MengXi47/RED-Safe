@@ -1,5 +1,7 @@
 # macOS 隱藏檔
 .DS_Store
+node_modules/
+edge_web/static/frontend/
 
 # 忽略所有 build 目錄
 build/

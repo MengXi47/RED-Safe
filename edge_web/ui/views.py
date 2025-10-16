@@ -287,13 +287,15 @@ def network_ip(request):
     except Exception as e:
         print("Network info error:", e)
 
-    context = {
-        "ip_address": ip_address,
-        "netmask": netmask,
-        "gateway": gateway,
-        "dns": dns,
+    initial_state = {
+        "network": {
+            "ip_address": ip_address,
+            "netmask": netmask,
+            "gateway": gateway,
+            "dns": dns,
+        }
     }
-    return render(request, "ui/network_ip.html", context)
+    return render(request, "ui/network_ip.html", {"initial_state": initial_state})
 
 
 @_require_auth
@@ -497,7 +499,11 @@ def device_change_password(request):
             except requests.RequestException as exc:
                 errors["new_password2"] = f"遠端連線失敗：{exc}"
 
-    return render(request, "ui/device_change_password.html", {"errors": errors})
+    return render(
+        request,
+        "ui/device_change_password.html",
+        {"initial_state": {"formErrors": errors}},
+    )
 
 
 @_require_auth
@@ -555,7 +561,8 @@ def api_network_port(request: HttpRequest):
 def user_bound(request):
     """顯示綁定使用者頁面，目前以空清單呈現。"""
 
-    return render(request, "ui/user_bound.html", {"users": []})
+    initial_state = {"users": []}
+    return render(request, "ui/user_bound.html", {"initial_state": initial_state})
 
 
 # 替換現有 device_info view 為下面版本
@@ -600,16 +607,18 @@ def device_info(request):
         qrcode_data = None
         print("QR generation error:", e)
 
-    info = {
-        "serial": serial,
-        "version": version,
-        "status": status,
-        "password": password,
-        "name": name,
-        "masked_password": masked_password,
-        "has_password": has_password,
+    initial_state = {
+        "device": {
+            "serial": serial,
+            "version": version,
+            "status": status,
+            "password": password,
+            "masked_password": masked_password,
+            "has_password": has_password,
+            "qrcode": qrcode_data,
+        }
     }
-    return render(request, "ui/device_info.html", {"info": info, "qrcode_data": qrcode_data})
+    return render(request, "ui/device_info.html", {"initial_state": initial_state})
 
 
 # ====== QR Image Endpoint ======
@@ -1246,8 +1255,13 @@ def api_cameras_preview_webrtc_hangup(request: HttpRequest):
 def cameras(request: HttpRequest):
     """攝影機管理頁面：上方為搜尋結果，下方為已綁定清單（讀取外部資料庫 connected_ipc）。"""
     bound, _, _ = _load_bound_entries()
-    context = {"bound": bound, "search_results": []}
-    return render(request, "ui/cameras_combined.html", context)
+    initial_state = {
+        "cameras": {
+            "bound": bound,
+            "searchResults": [],
+        }
+    }
+    return render(request, "ui/cameras_combined.html", {"initial_state": initial_state})
 
 
 @_require_auth
