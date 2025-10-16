@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-8">
-    <header>
+    <header class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">裝置資訊</h2>
       <p class="mt-1 text-sm text-ink-muted">快速檢視裝置序號、版本與預設登入資訊。</p>
     </header>
@@ -25,13 +25,13 @@
         </div>
         <div class="rounded-xl bg-surface-subtle p-4">
           <dt class="text-xs text-ink-muted">連線狀態</dt>
-          <dd class="mt-1 text-base font-semibold" :class="info.status === 1 ? 'text-green-600' : 'text-danger'">
+          <dd class="mt-1 text-base font-semibold" :class="info.status === 1 ? 'text-success' : 'text-danger'">
             {{ info.status === 1 ? '已連線' : '未連線' }}
           </dd>
         </div>
       </dl>
       <div v-if="qrcode" class="mt-6 flex flex-col items-center gap-3">
-        <img :src="qrcode" alt="device qr" class="h-64 w-64 rounded-3xl border border-slate-200 shadow-soft" />
+        <img :src="qrcode" alt="device qr" class="h-64 w-64 rounded-3xl border border-border shadow-elev-sm" />
         <BaseButton variant="ghost" @click="downloadQr">下載 QRCode</BaseButton>
       </div>
     </BaseCard>

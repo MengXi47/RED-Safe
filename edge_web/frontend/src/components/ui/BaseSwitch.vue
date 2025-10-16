@@ -39,13 +39,13 @@ const emit = defineEmits<{
 }>();
 
 const switchClass = computed(() => [
-  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-200',
-  props.modelValue ? 'bg-brand-500' : 'bg-slate-300',
+  'relative inline-flex h-6 w-11 items-center rounded-full border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500',
+  props.modelValue ? 'bg-brand-500 border-brand-500' : 'bg-surface-subtle border-border',
   props.disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
 ]);
 
 const thumbClass = computed(() => [
-  'inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow',
+  'inline-block h-5 w-5 transform rounded-full bg-surface-default transition-transform shadow-elev-sm',
   props.modelValue ? 'translate-x-5' : 'translate-x-1'
 ]);
 

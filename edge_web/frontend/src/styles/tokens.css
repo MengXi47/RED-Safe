@@ -1,34 +1,130 @@
 :root {
   color-scheme: light;
 
-  --color-brand-50: #f6f9ff;
-  --color-brand-100: #e4edff;
-  --color-brand-500: #2563eb;
+  /* Typography */
+  --font-sans: "Inter", "Noto Sans TC", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --size-0: 0px;
+  --size-1: 0.25rem;
+  --size-2: 0.5rem;
+  --size-3: 0.75rem;
+  --size-4: 1rem;
+  --size-5: 1.5rem;
+  --size-6: 2rem;
+  --leading: 1.65;
+  --tracking: 0.01em;
+
+  /* Light theme palette */
+  --color-bg: #f5f1eb;
+  --color-surface: #ffffff;
+  --color-muted-surface: #f0ede7;
+  --color-text: #1f232a;
+  --color-muted: #5d646f;
+  --color-accent: #2563eb;
+  --color-accent-contrast: #f6f9ff;
+  --color-border: rgba(34, 40, 54, 0.12);
+  --color-ring: rgba(37, 99, 235, 0.35);
+
+  --color-brand-50: #f4f7ff;
+  --color-brand-100: #dfebff;
+  --color-brand-500: var(--color-accent);
   --color-brand-600: #1d4ed8;
-  --color-brand-700: #1e40af;
+  --color-brand-700: #163fae;
 
-  --color-danger: #dc2626;
-  --color-success: #16a34a;
-  --color-warning: #d97706;
+  --color-danger: #d93c3c;
+  --color-danger-soft: rgba(217, 60, 60, 0.12);
+  --color-success: #168f47;
+  --color-success-soft: rgba(22, 143, 71, 0.14);
+  --color-warning: #d18321;
+  --color-warning-soft: rgba(209, 131, 33, 0.16);
+  /* Danger tokens for interactive states (logout hover/focus) */
+  --danger-fg: #d93c3c;
+  --danger-bg: rgba(217, 60, 60, 0.12);
+  --danger-hover-bg: rgba(217, 60, 60, 0.18);
+  --danger-ring: rgba(217, 60, 60, 0.45);
+  --logout-bg: #d93c3c;
+  --logout-text: #ffffff;
+  --logout-hover: #ba2f2f;
+  --logout-ring: rgba(217, 60, 60, 0.45);
 
-  --surface-default: #ffffff;
-  --surface-subtle: #f9fafb;
+  --surface-default: var(--color-surface);
+  --surface-subtle: var(--color-muted-surface);
 
-  --ink-primary: #111827;
-  --ink-muted: #4b5563;
-  --ink-inverse: #ffffff;
+  --ink-primary: var(--color-text);
+  --ink-muted: var(--color-muted);
+  --ink-inverse: #0f1115;
 
-  --gradient-page: linear-gradient(180deg, #ffffff 0%, #f4f6fb 100%);
+  --gradient-page: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(245, 241, 235, 1) 100%);
 
+  /* Radii & shadows */
+  --radius-sm: 8px;
   --radius-md: 16px;
   --radius-lg: 24px;
+  --radius-xl: 36px;
   --radius-full: 9999px;
 
-  --elevation-soft: 0 16px 40px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 2px 10px rgba(24, 28, 36, 0.08);
+  --shadow-md: 0 14px 34px rgba(24, 28, 36, 0.12);
+  --shadow-lg: 0 28px 65px rgba(24, 28, 36, 0.18);
+
+  --border-1: 1px solid var(--color-border);
+  --glass-alpha: 0.82;
+
+  --elevation-soft: var(--shadow-md);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    color-scheme: light;
+    color-scheme: dark;
+
+    --color-bg: #0f1115;
+    --color-surface: #171c24;
+    --color-muted-surface: #202632;
+    --color-text: #e6ebf4;
+    --color-muted: #9aa2b6;
+    --color-accent: #4c8dff;
+    --color-accent-contrast: #0e162d;
+    --color-border: rgba(133, 145, 166, 0.38);
+    --color-ring: rgba(76, 141, 255, 0.55);
+
+    --color-brand-50: #15213b;
+    --color-brand-100: #1f2f58;
+    --color-brand-500: var(--color-accent);
+    --color-brand-600: #3d7af5;
+    --color-brand-700: #3166d6;
+
+    --color-danger: #ff6b6b;
+    --color-danger-soft: rgba(255, 107, 107, 0.18);
+    --color-success: #4ade80;
+    --color-success-soft: rgba(74, 222, 128, 0.14);
+    --color-warning: #fbbf24;
+    --color-warning-soft: rgba(251, 191, 36, 0.18);
+  /* Danger tokens for interactive states (logout hover/focus) */
+  --danger-fg: #ff6b6b;
+  --danger-bg: rgba(255, 107, 107, 0.18);
+  --danger-hover-bg: rgba(255, 107, 107, 0.26);
+  --danger-ring: rgba(255, 107, 107, 0.6);
+    --logout-bg: #ff6b6b;
+    --logout-text: #0b0d12;
+    --logout-hover: #ff5252;
+    --logout-ring: rgba(255, 107, 107, 0.6);
+
+    --surface-default: var(--color-surface);
+    --surface-subtle: color-mix(in srgb, var(--color-surface) 80%, var(--color-bg) 20%);
+
+    --ink-primary: var(--color-text);
+    --ink-muted: var(--color-muted);
+    --ink-inverse: #0b0d12;
+
+    --gradient-page: linear-gradient(180deg, rgba(20, 25, 32, 1) 0%, rgba(11, 15, 21, 0.92) 100%);
+
+    --shadow-sm: 0 2px 12px rgba(6, 11, 24, 0.45);
+    --shadow-md: 0 16px 38px rgba(6, 11, 24, 0.5);
+    --shadow-lg: 0 28px 70px rgba(6, 11, 24, 0.58);
+
+    --border-1: 1px solid color-mix(in srgb, var(--color-border) 90%, transparent);
+    --glass-alpha: 0.68;
+
+    --elevation-soft: var(--shadow-md);
   }
 }

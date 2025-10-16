@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-8">
-    <section>
+    <section class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">系統效能監控</h2>
       <p class="mt-1 text-sm text-ink-muted">即時掌握 Edge 裝置的 CPU、記憶體與磁碟使用情形。</p>
     </section>

@@ -1,12 +1,12 @@
 <template>
   <div class="space-y-8">
-    <header>
+    <header class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">網路設定 - Port 狀態</h2>
       <p class="mt-1 text-sm text-ink-muted">定期輪詢常用服務的連接埠狀態，協助排查網路問題。</p>
     </header>
     <BaseCard title="服務連接埠" :description="`偵測主機：${status?.host ?? '--'}`">
       <ul class="grid gap-4 md:grid-cols-3">
-        <li v-for="port in portItems" :key="port.label" class="rounded-2xl border border-slate-200 p-4">
+        <li v-for="port in portItems" :key="port.label" class="rounded-2xl border border-border bg-surface-default p-4 shadow-elev-sm">
           <div class="flex items-center justify-between">
             <p class="text-sm font-semibold text-ink">{{ port.label }}</p>
             <span :class="statusBadge(port.state)">{{ port.state }}</span>
@@ -49,14 +49,14 @@ const portItems = computed(() => {
 });
 
 const statusBadge = (state: string) => {
-  const base = 'rounded-full px-3 py-1 text-xs font-medium';
+  const base = 'badge';
   if (state === '運作中') {
-    return `${base} bg-green-100 text-green-700`;
+    return `${base} badge-success`;
   }
   if (state === '未啟用') {
-    return `${base} bg-slate-100 text-ink-muted`;
+    return `${base} badge-muted`;
   }
-  return `${base} bg-amber-100 text-amber-700`;
+  return `${base} badge-warning`;
 };
 
 const load = async () => {

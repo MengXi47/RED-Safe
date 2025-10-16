@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-8">
-    <header>
+    <header class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">已綁定的使用者</h2>
       <p class="mt-1 text-sm text-ink-muted">檢視與管理目前已綁定 Edge 裝置的帳號。</p>
     </header>

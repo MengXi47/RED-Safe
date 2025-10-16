@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-surface-subtle px-6 py-10 text-center">
+  <div class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-surface-subtle px-6 py-10 text-center">
     <div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-brand-50 text-brand-600">
       <slot name="icon">
         <span v-if="icon === 'alert'">⚠️</span>

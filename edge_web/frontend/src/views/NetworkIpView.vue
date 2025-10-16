@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-8">
-    <header>
+    <header class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">網路設定 - IP</h2>
       <p class="mt-1 text-sm text-ink-muted">檢視裝置目前的網路參數，方便排查與設定。</p>
     </header>

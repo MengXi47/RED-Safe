@@ -56,13 +56,13 @@ const buttonClasses = computed(() => {
 
   const variantClass = {
     primary:
-      'bg-brand-500 text-white shadow-soft hover:bg-brand-600 focus-visible:outline-brand-500 active:bg-brand-700',
+      'bg-brand-500 text-white shadow-elev-sm hover:bg-brand-600 focus-visible:outline-brand-500 active:bg-brand-700',
     secondary:
-      'bg-surface-default text-ink border border-slate-200 hover:border-brand-500 hover:text-brand-600 focus-visible:outline-brand-500',
+      'bg-surface-default text-ink border border-border shadow-elev-sm hover:border-brand-500 hover:text-brand-600 focus-visible:outline-brand-500 active:bg-brand-50/60 disabled:bg-surface-subtle disabled:text-ink-muted',
     ghost:
-      'bg-transparent text-ink hover:bg-brand-50 focus-visible:outline-brand-500 active:bg-brand-100',
+      'bg-transparent text-ink hover:bg-brand-50/70 focus-visible:outline-brand-500 active:bg-brand-100/70',
     danger:
-      'bg-danger text-white hover:bg-red-600 focus-visible:outline-red-600 active:bg-red-700'
+      'bg-danger text-white shadow-elev-sm hover:bg-danger/90 focus-visible:ring-2 focus-visible:ring-danger/50 focus-visible:outline-none active:bg-danger/80'
   }[props.variant];
 
   return [base, sizeClass, variantClass].join(' ');

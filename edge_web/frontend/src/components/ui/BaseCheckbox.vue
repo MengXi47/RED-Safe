@@ -8,7 +8,7 @@
       @change="onChange"
     />
     <span
-      class="flex h-5 w-5 items-center justify-center rounded border border-slate-300 bg-white transition peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-brand-200 peer-disabled:opacity-60"
+      class="flex h-5 w-5 items-center justify-center rounded border border-border bg-surface-default transition peer-checked:border-brand-500 peer-checked:bg-brand-500 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-brand-500 peer-disabled:opacity-60"
       aria-hidden="true"
     >
       <svg v-if="modelValue" class="h-3 w-3 text-white" viewBox="0 0 24 24" fill="none">

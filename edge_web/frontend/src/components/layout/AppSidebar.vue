@@ -1,19 +1,23 @@
 <template>
   <aside
-    class="hidden w-72 flex-col border-r border-slate-200 bg-white px-6 py-8 shadow-soft md:flex"
+    :class="[
+      'app-sidebar hidden w-72 flex-col border-r border-border bg-surface-default px-6 pb-8 pt-8 shadow-elev-md md:flex',
+      { 'sidebar--collapsed': collapsed }
+    ]"
+    :data-collapsed="collapsed"
   >
-    <RouterLink to="/" class="mb-8 flex items-center gap-3">
+    <RouterLink to="/" class="app-sidebar__brand mb-8 flex items-center gap-3">
       <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white">
         RS
       </div>
-      <div>
+      <div class="app-sidebar__brand-text">
         <p class="text-sm font-semibold text-ink">RED Safe</p>
         <p class="text-xs text-ink-muted">Edge 控制台</p>
       </div>
     </RouterLink>
-    <nav class="flex-1 space-y-6">
+    <nav class="app-sidebar__nav flex-1 space-y-6">
       <div v-for="group in navGroups" :key="group.label">
-        <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        <p class="app-sidebar__section mb-2 text-xs font-semibold uppercase tracking-wide text-ink-muted">
           {{ group.label }}
         </p>
         <ul class="space-y-1">
@@ -29,14 +33,40 @@
         </ul>
       </div>
     </nav>
-    <footer class="border-t border-slate-200 pt-6">
-      <p class="text-xs text-ink-muted">&copy; {{ year }} RED Safe</p>
-    </footer>
+    <div class="app-sidebar__bottom">
+      <a class="sidebar-logout flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-ink-muted" href="/logout/" aria-label="登出">
+        <span class="sidebar-logout__icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M9 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4M16 17l5-5-5-5M21 12H9"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </span>
+        <span class="sidebar-logout__label">登出</span>
+      </a>
+      <footer class="app-sidebar__footer border-t border-border pt-6">
+        <p class="text-xs text-ink-muted">&copy; {{ year }} RED Safe</p>
+      </footer>
+    </div>
   </aside>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+
+const props = withDefaults(
+  defineProps<{
+    collapsed?: boolean;
+  }>(),
+  { collapsed: false }
+);
+
+const collapsed = computed(() => Boolean(props.collapsed));
 
 const navGroups = [
   {

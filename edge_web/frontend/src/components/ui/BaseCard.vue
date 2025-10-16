@@ -1,5 +1,5 @@
 <template>
-  <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-soft">
+  <section class="rounded-3xl border border-border bg-surface-default p-6 shadow-elev-sm">
     <header v-if="title || $slots.header" class="mb-4 flex items-start justify-between gap-4">
       <div>
         <h2 v-if="title" class="text-lg font-semibold text-ink">{{ title }}</h2>

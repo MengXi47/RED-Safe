@@ -30,11 +30,11 @@ const { dismissToast } = uiStore;
 const toasts = toastQueue;
 
 const toastClass = (variant: 'success' | 'danger' | 'info' = 'info') => {
-  const base = 'w-full rounded-2xl px-4 py-3 shadow-lg backdrop-blur-md text-white';
+  const base = 'w-full rounded-2xl px-4 py-3 shadow-elev-lg backdrop-blur-md text-white';
   const map = {
-    info: 'bg-brand-600/95',
-    success: 'bg-green-600/95',
-    danger: 'bg-red-600/95'
+    info: 'bg-brand-600/90',
+    success: 'bg-success/90',
+    danger: 'bg-danger/90'
   };
   return `${base} ${map[variant]}`;
 };

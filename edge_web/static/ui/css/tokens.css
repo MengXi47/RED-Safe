@@ -46,6 +46,11 @@
   --success-soft: rgba(22, 163, 74, 0.12);
   --warning: #d97706;
   --warning-soft: rgba(217, 119, 6, 0.12);
+
+  --logout-bg: #dc2626;
+  --logout-text: #ffffff;
+  --logout-hover: #b91c1c;
+  --logout-ring: rgba(220, 38, 38, 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,5 +63,10 @@
     --accent-soft: rgba(29, 78, 216, 0.12);
     --shadow-sm: 0 6px 18px rgba(17, 24, 39, 0.08);
     --shadow-md: 0 18px 40px rgba(17, 24, 39, 0.1);
+
+    --logout-bg: #ff6b6b;
+    --logout-text: #0b0d12;
+    --logout-hover: #ff5252;
+    --logout-ring: rgba(255, 107, 107, 0.55);
   }
 }

@@ -26,7 +26,7 @@ module.exports = {
         warning: "var(--color-warning)"
       },
       boxShadow: {
-        soft: "0 10px 30px rgba(15, 23, 42, 0.08)"
+        soft: "var(--shadow-md)"
       },
       fontFamily: {
         sans: ["'Inter'", "'Noto Sans TC'", ...defaultTheme.fontFamily.sans],

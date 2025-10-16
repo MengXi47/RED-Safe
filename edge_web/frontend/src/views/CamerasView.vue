@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-8">
-    <header>
+    <header class="page-hero">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 class="text-2xl font-semibold text-ink">攝影機管理</h2>

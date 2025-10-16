@@ -10,7 +10,7 @@
       >
         <div class="flex-1 bg-black/30" @click="$emit('close')" />
         <aside
-          class="relative h-full w-full max-w-md bg-white px-6 py-8 shadow-soft focus:outline-none"
+          class="relative h-full w-full max-w-md border-l border-border bg-surface-default px-6 py-8 shadow-elev-lg focus:outline-none"
           tabindex="-1"
           ref="panel"
         >

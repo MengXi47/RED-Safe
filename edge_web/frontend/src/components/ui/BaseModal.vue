@@ -10,7 +10,7 @@
       >
         <div
           ref="dialogRef"
-          class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-soft focus:outline-none"
+          class="w-full max-w-lg rounded-2xl bg-surface-default p-6 shadow-elev-lg focus:outline-none"
           tabindex="-1"
         >
           <header class="mb-4 flex items-start justify-between gap-4">

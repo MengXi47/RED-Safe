@@ -1,7 +1,7 @@
 <template>
-  <div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft">
+  <div class="relative overflow-hidden rounded-2xl border border-border bg-surface-default shadow-elev-sm">
     <div class="max-h-[70vh] overflow-auto">
-      <table class="min-w-full divide-y divide-slate-200">
+      <table class="min-w-full divide-y divide-border">
         <thead class="sticky top-0 bg-surface-subtle">
           <tr>
             <th
@@ -30,7 +30,7 @@
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-100">
+        <tbody class="divide-y divide-border">
           <tr v-if="loading">
             <td :colspan="columns.length" class="px-4 py-10 text-center text-ink-muted">
               <BaseLoadingSpinner />
@@ -47,7 +47,16 @@
               <BaseEmpty title="目前沒有資料" description="請稍後再試或調整篩選條件。" />
             </td>
           </tr>
-          <tr v-else v-for="item in items" :key="itemKey(item)" class="hover:bg-brand-50">
+          <tr
+            v-else
+            v-for="(item, index) in items"
+            :key="itemKey(item)"
+            :class="[
+              'transition-colors',
+              index % 2 === 0 ? 'bg-surface-subtle/50' : 'bg-surface-default',
+              'hover:bg-brand-50/60'
+            ]"
+          >
             <td v-for="column in columns" :key="column.key" class="px-4 py-3 text-sm text-ink">
               <slot :name="`cell:${column.key}`" :item="item">
                 {{ item[column.key as keyof typeof item] }}
@@ -57,7 +66,7 @@
         </tbody>
       </table>
     </div>
-    <footer v-if="showPagination" class="flex items-center justify-between border-t border-slate-200 p-4">
+    <footer v-if="showPagination" class="flex items-center justify-between border-t border-border p-4">
       <span class="text-sm text-ink-muted">
         顯示第 {{ pageStart }} - {{ pageEnd }} 筆，共 {{ totalItems }} 筆
       </span>

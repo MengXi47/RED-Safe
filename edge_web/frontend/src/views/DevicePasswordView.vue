@@ -1,6 +1,6 @@
 <template>
   <div class="mx-auto max-w-lg space-y-8">
-    <header>
+    <header class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">修改登入密碼</h2>
       <p class="mt-1 text-sm text-ink-muted">更新裝置密碼後需重新登入確認。</p>
     </header>

@@ -1,6 +1,6 @@
 <template>
   <BaseModal :open="open" :title="camera?.name ?? '攝影機預覽'" :description="camera?.ip" @close="onClose">
-    <div class="aspect-video w-full overflow-hidden rounded-2xl border border-slate-200 bg-black">
+    <div class="aspect-video w-full overflow-hidden rounded-2xl border border-border bg-black">
       <video ref="videoEl" autoplay muted playsinline class="h-full w-full object-contain" />
       <div
         v-if="loading"
@@ -9,10 +9,7 @@
         <BaseLoadingSpinner />
         <p class="text-sm">正在建立預覽...</p>
       </div>
-      <div
-        v-if="error"
-        class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-red-600/80 text-white"
-      >
+      <div v-if="error" class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-danger/85 text-white">
         <p class="text-sm">{{ error }}</p>
       </div>
     </div>

@@ -5,6 +5,8 @@
   <meta charset="utf-8">
   <title>登入 | DevicePanel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f7f8">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f1115">
   <link rel="stylesheet" href="{% static 'ui/css/pages/auth.css' %}">
 </head>
 <body class="auth-page">
@@ -15,29 +17,65 @@
       </div>
       <h1 class="auth-title">輸入密碼以登入系統</h1>
 
-      {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
+      {% if error %}
+      <div class="auth-error" role="alert" aria-live="assertive">{{ error }}</div>
+      {% endif %}
 
       <form method="post" action="" class="form-stack">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 
         <div class="form-field">
           <label for="pwd">密碼</label>
-          <input
-            id="pwd"
-            type="password"
-            name="password"
-            placeholder="請輸入密碼"
-            required minlength="6"
-            pattern="[A-Za-z0-9]{6,}"
-            title="密碼需至少 6 碼，且僅能使用英文或數字"
-          />
+          <div class="input-control">
+            <input
+              id="pwd"
+              type="password"
+              name="password"
+              placeholder="請輸入密碼"
+              autocomplete="current-password"
+              required
+              minlength="6"
+              pattern="[A-Za-z0-9]{6,}"
+              title="密碼需至少 6 碼，且僅能使用英文或數字"
+            />
+          </div>
         </div>
 
         <div class="auth-actions">
-          <button class="btn" type="submit">登入</button>
+          <button class="btn btn--primary" type="submit" data-submit>
+            <span class="btn__spinner" aria-hidden="true"></span>
+            <span class="btn__label">登入</span>
+          </button>
         </div>
       </form>
+
+      <footer class="auth-footer">
+        <p>&copy; {% now "Y" %} RED Safe. <a class="auth-link" href="mailto:support@redsafe.ai">聯絡支援</a></p>
+      </footer>
     </div>
   </div>
+
+  <script>
+    (() => {
+      const form = document.querySelector('.form-stack');
+      if (!form) return;
+
+      const passwordInput = document.getElementById('pwd');
+      const submitButton = form.querySelector('[data-submit]');
+
+      form.addEventListener('submit', (event) => {
+        if (!passwordInput?.value.trim()) {
+          event.preventDefault();
+          passwordInput?.focus();
+          return;
+        }
+
+        if (submitButton) {
+          submitButton.disabled = true;
+          submitButton.dataset.loading = 'true';
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

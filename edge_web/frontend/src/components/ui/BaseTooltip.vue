@@ -4,7 +4,7 @@
     <transition name="fade">
       <span
         v-if="visible"
-        class="absolute bottom-full mb-2 w-max max-w-xs rounded-md bg-ink text-xs text-white shadow-soft"
+        class="absolute bottom-full mb-2 w-max max-w-xs rounded-md bg-ink text-xs text-white shadow-elev-sm"
         role="tooltip"
       >
         <span class="block px-2 py-1">{{ text }}</span>

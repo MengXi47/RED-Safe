@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-8">
-    <header>
+    <header class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">系統設定</h2>
       <p class="mt-1 text-sm text-ink-muted">集中管理 Edge 裝置的系統參數與整合設定。</p>
     </header>

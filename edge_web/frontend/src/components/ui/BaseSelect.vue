@@ -7,7 +7,7 @@
         :value="modelValue"
         :disabled="disabled"
         @change="onChange"
-        class="w-full appearance-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-base text-ink shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-slate-100"
+        class="w-full appearance-none rounded-lg border border-border bg-surface-default px-3 py-2 text-base text-ink shadow-elev-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-surface-subtle"
         :aria-describedby="helpText ? helpId : undefined"
       >
         <slot />
