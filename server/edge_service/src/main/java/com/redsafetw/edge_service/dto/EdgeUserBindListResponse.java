@@ -28,6 +28,9 @@ public class EdgeUserBindListResponse {
     @AllArgsConstructor
     @Builder
     public static class UserItem {
+        @JsonProperty("user_id")
+        private String userId;
+
         @JsonProperty("email")
         private String email;
 

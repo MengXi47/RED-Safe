@@ -19,7 +19,7 @@ urlpatterns = [
     # 新增：User
     path("user/bound/", views.user_bound, name="user_bound"),
     path("api/user/bound/", views.api_user_bound, name="api_user_bound"),
-    path("api/user/remove/<int:user_id>/", views.api_user_remove, name="api_user_remove"),
+    path("api/user/remove/", views.api_user_remove, name="api_user_remove"),
     path("device/device_change-password/", views.device_change_password, name="device_change_password"),
 
     # 新增：裝置

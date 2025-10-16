@@ -6,6 +6,7 @@ import com.redsafetw.edge_service.service.EdgeVerify;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.grpc.server.service.GrpcService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -17,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @GrpcService
 @RequiredArgsConstructor
+@Slf4j
 public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
     private final EdgeRepository edgeRepository;
     private final EdgeVerify edgeVerify;
@@ -26,6 +28,7 @@ public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
             CheckEdgeIdExistsRequest request,
             StreamObserver<CheckEdgeIdExistsResponse> responseStreamObserver) {
         String edgeId = request.getEdgeId();
+        log.info("gRPC EdgeService.CheckEdgeIdExists edge_id={}", edgeId);
 
         boolean edgeIdExists = edgeRepository.existsById(edgeId); // 存在 -> TRUE
 
@@ -33,6 +36,7 @@ public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
                 .setExists(edgeIdExists).build();
 
         responseStreamObserver.onNext(reply);
+        log.info("gRPC EdgeService.CheckEdgeIdExists edge_id={} exists={}", edgeId, edgeIdExists);
         responseStreamObserver.onCompleted();
     }
 
@@ -40,6 +44,7 @@ public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
     public void verifyEdgeCredentials(
             VerifyEdgeCredentialsRequest request,
             StreamObserver<VerifyEdgeCredentialsResponse> responseObserver) {
+        log.info("gRPC EdgeService.VerifyEdgeCredentials edge_id={}", request.getEdgeId());
         boolean valid = edgeVerify.verifyCredentials(request.getEdgeId(), request.getPassword());
 
         VerifyEdgeCredentialsResponse reply = VerifyEdgeCredentialsResponse.newBuilder()
@@ -47,6 +52,7 @@ public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
                 .build();
 
         responseObserver.onNext(reply);
+        log.info("gRPC EdgeService.VerifyEdgeCredentials edge_id={} valid={}", request.getEdgeId(), valid);
         responseObserver.onCompleted();
     }
 
@@ -55,6 +61,7 @@ public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
             UpdateEdgePasswordRequest request,
             StreamObserver<UpdateEdgePasswordResponse> responseObserver) {
         try {
+            log.info("gRPC EdgeService.UpdateEdgePassword edge_id={}", request.getEdgeId());
             edgeVerify.updatePassword(request.getEdgeId(), request.getEdgePassword(), request.getNewEdgePassword());
 
             UpdateEdgePasswordResponse reply = UpdateEdgePasswordResponse.newBuilder()
@@ -62,8 +69,11 @@ public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
                     .build();
 
             responseObserver.onNext(reply);
+            log.info("gRPC EdgeService.UpdateEdgePassword success edge_id={}", request.getEdgeId());
             responseObserver.onCompleted();
         } catch (ResponseStatusException ex) {
+            log.warn("gRPC EdgeService.UpdateEdgePassword failed edge_id={} status={} reason={}",
+                    request.getEdgeId(), ex.getStatusCode(), ex.getReason());
             String errorCode = mapToErrorCode(ex);
             UpdateEdgePasswordResponse reply = UpdateEdgePasswordResponse.newBuilder()
                     .setErrorCode(errorCode)

@@ -2,6 +2,7 @@ package com.redsafetw.edge_service.service;
 
 import com.grpc.user.ListEdgeUsersResponse;
 import com.redsafetw.edge_service.dto.EdgeUserBindListResponse;
+import com.redsafetw.edge_service.dto.ErrorCodeResponse;
 import com.redsafetw.edge_service.grpc.UserGrpcClient;
 import com.redsafetw.edge_service.repository.EdgeRepository;
 import io.grpc.Status;
@@ -45,6 +46,7 @@ public class EdgeUserBindService {
         String lastOnline = formatDate(device.getLastOnlineAt());
         List<EdgeUserBindListResponse.UserItem> users = grpcResponse.getUsersList().stream()
                 .map(user -> EdgeUserBindListResponse.UserItem.builder()
+                        .userId(user.getUserId())
                         .email(user.getEmail())
                         .userName(user.getUserName())
                         .bindAt(user.getBindAt())
@@ -55,6 +57,23 @@ public class EdgeUserBindService {
         return EdgeUserBindListResponse.builder()
                 .users(users)
                 .build();
+    }
+
+    public ErrorCodeResponse unbindUser(String edgeId, String userId, String email) {
+        // 確認 edge 存在
+        edgeRepository.findByEdgeId(edgeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "123"));
+
+        try {
+            var response = userGrpcClient.unbindEdgeUser(edgeId, userId, email);
+            return ErrorCodeResponse.builder()
+                    .errorCode(response.getErrorCode())
+                    .build();
+        } catch (StatusRuntimeException ex) {
+            log.error("Failed to unbind user via gRPC, edge_id={}, user_id={}, email={}, status={}",
+                    edgeId, userId, email, ex.getStatus(), ex);
+            throw translateGrpcError(ex);
+        }
     }
 
     private ResponseStatusException translateGrpcError(StatusRuntimeException ex) {

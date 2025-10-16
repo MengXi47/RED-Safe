@@ -55,4 +55,9 @@ public class EdgeController {
             @Pattern(regexp = "^RED-[0-9A-F]{8}$", message = "120") String edgeId) {
         return edgeUserBindService.getUserList(edgeId);
     }
+
+    @PostMapping("/user/unbind")
+    public ErrorCodeResponse unbindUser(@Valid @RequestBody EdgeUserUnbindRequest request) {
+        return edgeUserBindService.unbindUser(request.getEdgeId(), null, request.getEmail());
+    }
 }

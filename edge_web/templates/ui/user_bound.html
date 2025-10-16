@@ -12,11 +12,12 @@
           <th>User Name</th>
           <th>綁定時間</th>
           <th>上次上線</th>
+          <th>操作</th>
         </tr>
       </thead>
       <tbody id="user-table-body">
         <tr>
-          <td colspan="4">載入中...</td>
+          <td colspan="5">載入中...</td>
         </tr>
       </tbody>
     </table>
@@ -25,12 +26,13 @@
     document.addEventListener("DOMContentLoaded", () => {
         const tableBody = document.getElementById("user-table-body");
         const apiEndpoint = "{% url 'api_user_bound' %}";
+        const deleteEndpoint = "{% url 'api_user_remove' %}";
 
         const renderMessage = (text) => {
             tableBody.innerHTML = "";
             const row = document.createElement("tr");
             const cell = document.createElement("td");
-            cell.colSpan = 4;
+            cell.colSpan = 5;
             cell.textContent = text;
             row.appendChild(cell);
             tableBody.appendChild(row);
@@ -92,6 +94,53 @@
                     const lastOnlineCell = document.createElement("td");
                     lastOnlineCell.textContent = formatTimestamp(user.last_online);
                     row.appendChild(lastOnlineCell);
+
+                    const actionCell = document.createElement("td");
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.type = "button";
+                    deleteBtn.className = "btn btn-danger btn-sm";
+                    deleteBtn.textContent = "刪除";
+                    deleteBtn.addEventListener("click", () => {
+                        if (!user.email) {
+                            alert("缺少使用者 Email，無法刪除。");
+                            return;
+                        }
+                        if (!confirm(`確定要解除 ${user.email || "此使用者"} 的綁定嗎？`)) {
+                            return;
+                        }
+                        deleteBtn.disabled = true;
+                        deleteBtn.textContent = "處理中...";
+                        fetch(deleteEndpoint, {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: {
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({ email: user.email }),
+                        })
+                            .then(resp => resp.json().then(data => ({ ok: resp.ok, data })))
+                            .then(({ ok, data }) => {
+                                if (!ok || !data || data.status !== "ok") {
+                                    const msg = data && data.message ? data.message : "刪除失敗";
+                                    alert(msg);
+                                    deleteBtn.disabled = false;
+                                    deleteBtn.textContent = "刪除";
+                                    return;
+                                }
+                                row.remove();
+                                if (!tableBody.children.length) {
+                                    renderMessage("目前沒有綁定使用者");
+                                }
+                            })
+                            .catch(err => {
+                                console.error("Failed to unbind user:", err);
+                                alert("刪除失敗，請稍後再試");
+                                deleteBtn.disabled = false;
+                                deleteBtn.textContent = "刪除";
+                            });
+                    });
+                    actionCell.appendChild(deleteBtn);
+                    row.appendChild(actionCell);
 
                     tableBody.appendChild(row);
                 });

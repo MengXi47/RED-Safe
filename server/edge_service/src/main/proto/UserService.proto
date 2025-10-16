@@ -9,6 +9,8 @@ option java_generic_services = true;
 service UserService {
   // 依照 edge_id 取得綁定的使用者資訊
   rpc ListEdgeUsers (ListEdgeUsersRequest) returns (ListEdgeUsersResponse);
+  // 解除指定使用者與 edge 的綁定
+  rpc UnbindEdgeUser (UnbindEdgeUserRequest) returns (UnbindEdgeUserResponse);
 }
 
 message ListEdgeUsersRequest {
@@ -24,4 +26,15 @@ message EdgeUserBind {
   string user_name = 2;
   string bind_at = 3;
   string last_online = 4;
+  string user_id = 5;
+}
+
+message UnbindEdgeUserRequest {
+  string edge_id = 1;
+  string user_id = 2;
+  string email = 3;
+}
+
+message UnbindEdgeUserResponse {
+  string error_code = 1;
 }

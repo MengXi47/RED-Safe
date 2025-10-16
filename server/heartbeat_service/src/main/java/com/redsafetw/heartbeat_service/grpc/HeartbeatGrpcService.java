@@ -25,6 +25,7 @@ public class HeartbeatGrpcService extends HeartbeatServiceGrpc.HeartbeatServiceI
     public void registerEdgeHeartbeat(RegisterEdgeHeartbeatRequest request,
                                       StreamObserver<Empty> responseObserver) {
         String edgeId = request.getEdgeId();
+        log.info("gRPC Heartbeat.RegisterEdgeHeartbeat edge_id={}", edgeId);
         if (!EDGE_ID_PATTERN.matcher(edgeId).matches()) {
             responseObserver.onError(Status.INVALID_ARGUMENT
                     .withDescription("edge_id must match RED-[0-9A-F]{8}")
@@ -35,6 +36,7 @@ public class HeartbeatGrpcService extends HeartbeatServiceGrpc.HeartbeatServiceI
         try {
             edgeHeartbeatManager.registerEdge(edgeId);
             responseObserver.onNext(Empty.getDefaultInstance());
+            log.info("gRPC Heartbeat.RegisterEdgeHeartbeat success edge_id={}", edgeId);
             responseObserver.onCompleted();
         } catch (Exception ex) {
             log.error("Failed to register heartbeat stream for edge {}", edgeId, ex);

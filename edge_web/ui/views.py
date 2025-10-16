@@ -36,7 +36,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods,require_POST
 from ipcscan_client.ipcsacn import scan_ipc_dynamic
 
-from cloudclient.httpclient import get_bound_users
+from cloudclient.httpclient import get_bound_users, remove_bound_user
 from .models import ConnectedIPC, EdgeConfig
 
 
@@ -357,13 +357,56 @@ def api_network_ip(request: HttpRequest):
 @csrf_exempt
 @_require_auth
 @require_http_methods(["POST"])
-def api_user_remove(request, user_id):
-    """目前未支援刪除綁定使用者，統一回傳錯誤。"""
+def api_user_remove(request: HttpRequest):
+    """解除綁定指定使用者。"""
 
-    return JsonResponse(
-        {"status": "error", "message": "目前未支援綁定使用者管理"},
-        status=400,
-    )
+    edge_id = _edge_id()
+    if not edge_id or edge_id == "RED-UNKNOWN":
+        return JsonResponse(
+            {"status": "error", "message": "edge_id_not_configured"},
+            status=400,
+        )
+
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"status": "error", "message": "invalid_json"},
+            status=400,
+        )
+
+    email = str(payload.get("email", "")).strip()
+    if not email:
+        return JsonResponse(
+            {"status": "error", "message": "email_required"},
+            status=400,
+        )
+
+    api_result = remove_bound_user(edge_id, email)
+    if not isinstance(api_result, dict):
+        return JsonResponse(
+            {"status": "error", "message": "unexpected_response"},
+            status=502,
+        )
+
+    if "error" in api_result:
+        status_code = api_result.get("status")
+        if not isinstance(status_code, int) or status_code < 400:
+            status_code = 502
+        detail = {k: v for k, v in api_result.items() if k != "error"}
+        return JsonResponse(
+            {"status": "error", "message": api_result["error"], "detail": detail},
+            status=status_code,
+        )
+
+    error_code = str(api_result.get("error_code", ""))
+    if error_code != "0":
+        return JsonResponse(
+            {"status": "error", "message": error_code or "unknown_error"},
+            status=400,
+        )
+
+    return JsonResponse({"status": "ok"})
 
 
 @_require_auth
@@ -676,7 +719,9 @@ def _load_bound_entries():
         for r in rows:
             ip_value = (r.ip_address or "").strip()
             mac_value = (r.mac_address or "").replace("-", ":").strip().upper()
-            name_value = (r.custom_name or r.ipc_name or r.mac_address or "IPC")
+            custom_name_value = (r.custom_name or "").strip()
+            ipc_name_value = (r.ipc_name or "").strip()
+            name_value = custom_name_value or ipc_name_value or mac_value or "IPC"
             entry = {
                 "ip": ip_value,
                 "mac": mac_value,
@@ -846,17 +891,25 @@ def api_cameras_bind(request):
 
         ip_address = (data.get("ip_address") or "").strip()
         mac_address = (data.get("mac_address") or "").replace("-", ":").strip().upper()
-        ipc_name = data.get("ipc_name")
-        ipc_account = data.get("ipc_account")
-        ipc_password = data.get("ipc_password")
+        ipc_name = (data.get("ipc_name") or "").strip()
+        custom_name = (data.get("custom_name") or "").strip()
+        ipc_account = (data.get("ipc_account") or "").strip()
+        ipc_password_raw = data.get("ipc_password")
+        ipc_password = ""
+        if isinstance(ipc_password_raw, str):
+            ipc_password = ipc_password_raw
+        elif ipc_password_raw is not None:
+            ipc_password = str(ipc_password_raw)
 
-        # normalize empty strings to None-like for consistent handling
+        if not custom_name:
+            custom_name = ipc_name
+        if not custom_name:
+            custom_name = "IPC"
         if not ipc_name:
-            ipc_name = ""
-        if not ipc_account:
-            ipc_account = ""
-        if not ipc_password:
-            ipc_password = ""
+            ipc_name = custom_name
+
+        account_value = ipc_account or None
+        password_value = ipc_password if ipc_password else None
 
         if not ip_address or not mac_address:
             return JsonResponse({"ok": False, "error": "Missing required fields"})
@@ -878,7 +931,15 @@ def api_cameras_bind(request):
                 # fetch the existing row for UI to reflect state without reload
                 try:
                     cur.execute(
-                        "SELECT ip_address, mac_address, COALESCE(custom_name, ipc_name, mac_address) AS name FROM connected_ipc WHERE ip_address = %s OR mac_address = %s LIMIT 1",
+                        """
+                        SELECT
+                            ip_address,
+                            mac_address,
+                            COALESCE(NULLIF(custom_name, ''), NULLIF(ipc_name, ''), mac_address) AS name
+                        FROM connected_ipc
+                        WHERE ip_address = %s OR mac_address = %s
+                        LIMIT 1
+                        """,
                         (ip_address, mac_address),
                     )
                     row = cur.fetchone()
@@ -903,9 +964,9 @@ def api_cameras_bind(request):
                     ip_address,
                     mac_address,
                     ipc_name,
-                    ipc_name,
-                    ipc_account,
-                    ipc_password,
+                    custom_name,
+                    account_value,
+                    password_value,
                 ),
             )
             conn.commit()
@@ -914,7 +975,7 @@ def api_cameras_bind(request):
                 "item": {
                     "ip": ip_address,
                     "mac": mac_address,
-                    "name": ipc_name or (ipc_account or "IPC"),
+                    "name": custom_name,
                     "is_bound": True
                 }
             })
@@ -926,7 +987,15 @@ def api_cameras_bind(request):
                 if cur is None:
                     cur = conn.cursor()
                 cur.execute(
-                    "SELECT ip_address, mac_address, COALESCE(custom_name, ipc_name, mac_address) AS name FROM connected_ipc WHERE ip_address = %s OR mac_address = %s LIMIT 1",
+                    """
+                    SELECT
+                        ip_address,
+                        mac_address,
+                        COALESCE(NULLIF(custom_name, ''), NULLIF(ipc_name, ''), mac_address) AS name
+                    FROM connected_ipc
+                    WHERE ip_address = %s OR mac_address = %s
+                    LIMIT 1
+                    """,
                     (ip_address, mac_address),
                 )
                 row = cur.fetchone()

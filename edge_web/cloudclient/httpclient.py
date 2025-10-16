@@ -63,3 +63,35 @@ def get_bound_users(edge_id: str) -> Dict[str, Any]:
         }
 
     return data
+
+
+def remove_bound_user(edge_id: str, email: str) -> Dict[str, Any]:
+    """解除指定使用者與 edge 的綁定，回傳遠端 API 的 JSON 結果。"""
+    url = _compose_url("/edge/user/unbind")
+    payload = {"edge_id": edge_id, "email": email}
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+    except requests.exceptions.RequestException as exc:
+        print("Request error:", exc)
+        return {"error": "request_failed", "edge_id": edge_id, "email": email}
+
+    try:
+        data = response.json()
+    except ValueError:
+        return {
+            "error": "invalid_json_response",
+            "status": response.status_code,
+            "edge_id": edge_id,
+            "email": email,
+        }
+
+    if not response.ok:
+        return {
+            "error": "http_error",
+            "status": response.status_code,
+            "edge_id": edge_id,
+            "email": email,
+            "data": data,
+        }
+
+    return data
