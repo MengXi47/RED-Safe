@@ -33,7 +33,7 @@ endif ()
 include(cmake/Target.cmake)
 include(cmake/CLangFormat.cmake)
 
-find_package(Boost 1.82 REQUIRED COMPONENTS system thread)
+find_package(Boost 1.82 REQUIRED COMPONENTS)
 find_package(OpenSSL REQUIRED)
 if (APPLE)
   find_package(Protobuf CONFIG REQUIRED)

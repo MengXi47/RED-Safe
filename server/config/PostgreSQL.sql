@@ -3,7 +3,6 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE edge_devices (
     edge_id             VARCHAR(12) PRIMARY KEY, 
     edge_password_hash  TEXT    NOT NULL,
-	edge_name           TEXT,
     version             VARCHAR(32) NOT NULL,
     registered_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	last_online_at    TIMESTAMPTZ,
@@ -25,14 +24,6 @@ CREATE TABLE users (
     CHECK (
         email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
     )
-);
-
-CREATE TABLE ios_devices (
-    ios_device_id UUID      PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id       UUID      REFERENCES users(user_id) ON DELETE CASCADE,
-    apns_token    TEXT      UNIQUE NOT NULL,
-    device_name   TEXT,
-    last_seen_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE user_edge_bind (

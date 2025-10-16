@@ -60,8 +60,7 @@ target_add_lib(RED_SAFE_EDGE_CORE_lib
     gRPC::grpc++
     gRPC::grpc++_reflection
     protobuf::libprotobuf
-    Boost::system
-    Boost::thread
+    ${Boost_LIBRARIES}
     OpenSSL::SSL
     OpenSSL::Crypto
     Threads::Threads

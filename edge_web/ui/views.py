@@ -1,11 +1,18 @@
 """UI 應用的主要視圖與 API。"""
 
+import asyncio
 import base64
 import io
 import json
+import logging
 import re
+import secrets
 import subprocess
+import threading
+from collections.abc import Coroutine
 from ipaddress import IPv4Address, IPv6Address, IPv4Network, ip_address, ip_network
+from typing import Any, Dict, Optional
+from urllib.parse import quote
 def _current_ipv4_network() -> IPv4Network | None:
     """取出預設介面的 IPv4 網段（如 192.168.1.0/24）。失敗回傳 None。"""
     try:
@@ -39,6 +46,18 @@ from ipcscan_client.ipcsacn import scan_ipc_dynamic
 from cloudclient.httpclient import get_bound_users, remove_bound_user
 from .models import ConnectedIPC, EdgeConfig
 
+try:
+    from aiortc import RTCPeerConnection, RTCSessionDescription
+    from aiortc.contrib.media import MediaPlayer, MediaRelay
+
+    AIORTC_AVAILABLE = True
+except ImportError:  # pragma: no cover - optional dependency
+    RTCPeerConnection = None  # type: ignore[assignment]
+    RTCSessionDescription = None  # type: ignore[assignment]
+    MediaPlayer = None  # type: ignore[assignment]
+    MediaRelay = None  # type: ignore[assignment]
+    AIORTC_AVAILABLE = False
+
 
 def show_users(request):
     """顯示 config 表中的所有資料列供前端檢視。"""
@@ -53,6 +72,8 @@ SESSION_KEY = "setup_authed"
 PASSWORD_REGEX = re.compile(r'^[A-Za-z0-9]{6,}$')
 
 DEFAULT_EDGE_VERSION = getattr(settings, "EDGE_VERSION", "1.0.0")
+
+logger = logging.getLogger(__name__)
 
 
 def _get_edge_config() -> EdgeConfig | None:
@@ -837,6 +858,387 @@ def _fetch_scan_rows():
                 candidates.append({"ip": segments[0], "mac": segments[1] if len(segments) > 1 else ""})
 
     return candidates
+
+
+class PreviewStreamError(Exception):
+    """Raised when RTSP 預覽初始化失敗。"""
+
+    def __init__(self, message: str, *, stderr: str = "", code: str | None = None):
+        super().__init__(message)
+        self.stderr = stderr
+        self.code = code
+
+
+def _describe_preview_error(
+    stderr: str,
+    *,
+    default_message: str = "無法連接攝影機",
+    code: str | None = None,
+) -> tuple[str, str]:
+    """將 ffmpeg 錯誤訊息轉為使用者可理解的描述。"""
+
+    lowered = (stderr or "").lower()
+    auth_tokens = ("unauthorized", "authentication", "password", "auth", "401")
+    timeout_tokens = ("timed out", "timeout", "10060", "10061")
+    connect_tokens = (
+        "connection refused",
+        "no route",
+        "network is unreachable",
+        "host is unreachable",
+        "failed to resolve",
+        "name or service not known",
+        "connection failure",
+        "unable to connect",
+        "refused",
+        "not found",
+    )
+    encoder_missing_tokens = (
+        "unknown encoder 'libx264'",
+        "encoder 'libx264' not found",
+        "libx264 not found",
+    )
+
+    if code is None:
+        if any(token in lowered for token in auth_tokens):
+            return "需要輸入攝影機帳號或密碼", "AUTH_REQUIRED"
+        if any(token in lowered for token in timeout_tokens):
+            return "攝影機連線逾時", "TIMEOUT"
+        if any(token in lowered for token in connect_tokens):
+            return "無法連接攝影機", "CONNECTION_FAILED"
+        if any(token in lowered for token in encoder_missing_tokens):
+            return "系統缺少 H.264 編碼器 (libx264)。", "ENCODER_MISSING"
+
+    if code == "MISSING_DEP":
+        return "系統找不到 ffmpeg，無法建立預覽。", code
+    if code == "WEBRTC_DISABLED":
+        return "WebRTC 模組未啟用。", code
+    if code == "ENCODER_MISSING":
+        return "系統缺少 H.264 編碼器 (libx264)。", code
+    if code == "TIMEOUT":
+        return "攝影機連線逾時", code
+    if code == "AUTH_REQUIRED":
+        return "需要輸入攝影機帳號或密碼", code
+    if code == "BAD_OFFER":
+        return "無效的 SDP 參數", code
+    if code:
+        clean_default = default_message.strip() if default_message else "無法連接攝影機"
+        return clean_default, code
+
+    clean_message = default_message.strip() if default_message else "無法連接攝影機"
+    return clean_message, "STREAM_ERROR"
+
+
+def _preview_error_status(code: str | None) -> int:
+    if code in {"MISSING_DEP", "ENCODER_MISSING", "WEBRTC_DISABLED"}:
+        return 500
+    if code == "BAD_OFFER":
+        return 400
+    if code == "AUTH_REQUIRED":
+        return 401
+    if code == "TIMEOUT":
+        return 504
+    return 502
+
+
+def _build_rtsp_url(ip_value: str, account: str, password: str) -> str:
+    """依輸入參數組出 rtsp:// URL，必要時進行驗證。"""
+
+    ip_clean = (ip_value or "").strip()
+    if not ip_clean:
+        raise ValueError("缺少攝影機 IP 位址")
+    try:
+        addr = ip_address(ip_clean)
+    except ValueError as exc:
+        raise ValueError("IP 位址格式不正確") from exc
+
+    host = ip_clean
+    if isinstance(addr, IPv6Address):
+        host = f"[{addr.compressed}]"
+
+    account_value = account or ""
+    password_value = password or ""
+    credentials = ""
+    if account_value or password_value:
+        credentials = f"{quote(account_value, safe='')}:{quote(password_value, safe='')}@"
+
+    return f"rtsp://{credentials}{host}:554/stream1"
+
+
+_preview_loop: Optional[asyncio.AbstractEventLoop] = None
+_preview_thread: Optional[threading.Thread] = None
+_preview_sessions: Dict[str, Dict[str, Any]] = {}
+_preview_media_relay: Optional[MediaRelay] = MediaRelay() if AIORTC_AVAILABLE else None
+_preview_session_ttl_seconds = 180
+
+
+def _ensure_preview_backend() -> None:
+    if not AIORTC_AVAILABLE:
+        raise PreviewStreamError("WebRTC 模組未啟用", code="WEBRTC_DISABLED")
+
+    global _preview_loop, _preview_thread
+    if _preview_loop is not None:
+        return
+
+    loop = asyncio.new_event_loop()
+
+    def _run_loop() -> None:
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
+    thread = threading.Thread(target=_run_loop, name="webrtc-preview-loop", daemon=True)
+    thread.start()
+
+    _preview_loop = loop
+    _preview_thread = thread
+
+
+def _run_in_preview_loop(coro: Coroutine[Any, Any, Any]) -> Any:
+    _ensure_preview_backend()
+    assert _preview_loop is not None
+    future = asyncio.run_coroutine_threadsafe(coro, _preview_loop)
+    return future.result()
+
+
+async def _close_preview_session(session_id: str) -> bool:
+    session = _preview_sessions.pop(session_id, None)
+    if not session:
+        return False
+
+    pc: Optional[RTCPeerConnection] = session.get("pc") if AIORTC_AVAILABLE else None
+    player = session.get("player")
+
+    if player and hasattr(player, "stop"):
+        try:
+            await player.stop()
+        except Exception:  # pragma: no cover - best effort cleanup
+            logger.debug("Failed to stop media player for session %s", session_id, exc_info=True)
+
+    if pc:
+        try:
+            await pc.close()
+        except Exception:  # pragma: no cover
+            logger.debug("Failed to close peer connection for session %s", session_id, exc_info=True)
+
+    return True
+
+
+async def _session_watchdog(session_id: str, ttl: int) -> None:
+    try:
+        await asyncio.sleep(ttl)
+        await _close_preview_session(session_id)
+    except Exception:  # pragma: no cover - watchdog best effort
+        logger.debug("Watchdog cleanup failed for session %s", session_id, exc_info=True)
+
+
+async def _create_webrtc_session(rtsp_url: str) -> tuple[str, RTCPeerConnection]:
+    if not AIORTC_AVAILABLE or RTCPeerConnection is None or MediaPlayer is None:
+        raise PreviewStreamError("WebRTC 模組未啟用", code="WEBRTC_DISABLED")
+
+    session_id = secrets.token_urlsafe(12)
+    pc = RTCPeerConnection()
+
+    media_options = {
+        "rtsp_transport": "tcp",
+        "stimeout": "5000000",
+        "fflags": "nobuffer",
+        "flags": "low_delay",
+    }
+
+    try:
+        player = MediaPlayer(rtsp_url, format="rtsp", options=media_options)
+    except Exception as exc:  # pragma: no cover - depends on camera availability
+        await pc.close()
+        raise PreviewStreamError("無法建立攝影機串流", stderr=str(exc)) from exc
+
+    video_track = getattr(player, "video", None)
+    if video_track is None:
+        await player.stop()
+        await pc.close()
+        raise PreviewStreamError("攝影機未提供視訊串流")
+
+    relay = _preview_media_relay or MediaRelay()
+    pc.addTrack(relay.subscribe(video_track))
+
+    @pc.on("connectionstatechange")
+    async def _on_connection_change() -> None:
+        if pc.connectionState in {"failed", "closed"}:
+            await _close_preview_session(session_id)
+
+    _preview_sessions[session_id] = {"pc": pc, "player": player}
+
+    asyncio.ensure_future(_session_watchdog(session_id, _preview_session_ttl_seconds))
+
+    return session_id, pc
+
+
+async def _handle_preview_offer(rtsp_url: str, offer_dict: Dict[str, str]) -> tuple[str, RTCSessionDescription]:
+    session_id, pc = await _create_webrtc_session(rtsp_url)
+
+    try:
+        offer = RTCSessionDescription(sdp=offer_dict["sdp"], type=offer_dict["type"])
+    except Exception as exc:
+        await _close_preview_session(session_id)
+        raise PreviewStreamError("無效的 SDP 參數", stderr=str(exc), code="BAD_OFFER") from exc
+
+    ice_complete = asyncio.Event()
+
+    @pc.on("icegatheringstatechange")
+    async def _on_ice_state_change() -> None:
+        if pc.iceGatheringState == "complete":
+            ice_complete.set()
+
+    try:
+        await pc.setRemoteDescription(offer)
+        answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+
+        if pc.iceGatheringState != "complete":
+            try:
+                await asyncio.wait_for(ice_complete.wait(), timeout=3.0)
+            except asyncio.TimeoutError:
+                pass
+    except Exception as exc:
+        await _close_preview_session(session_id)
+        raise PreviewStreamError("無法建立 WebRTC 連線", stderr=str(exc)) from exc
+
+    assert pc.localDescription is not None
+    return session_id, pc.localDescription
+
+
+@_require_auth
+@require_http_methods(["POST"])
+def api_cameras_preview_probe(request: HttpRequest):
+    """先行檢查 RTSP 串流是否可連線，失敗時回傳提示訊息。"""
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    ip_value = (payload.get("ip") or "").strip()
+    account_value = payload.get("account") or ""
+    password_value = payload.get("password") or ""
+
+    try:
+        rtsp_url = _build_rtsp_url(ip_value, account_value, password_value)
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "error": str(exc), "code": "BAD_INPUT"}, status=400)
+
+    command = [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel", "error",
+        "-rtsp_transport", "tcp",
+        "-i", rtsp_url,
+        "-frames:v", "1",
+        "-f", "null",
+        "-",
+    ]
+
+    try:
+        completed = subprocess.run(
+            command,
+            check=False,
+            capture_output=True,
+            timeout=8,
+        )
+    except FileNotFoundError:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "系統找不到 ffmpeg，無法建立預覽。",
+                "code": "MISSING_DEP",
+            },
+            status=500,
+        )
+    except subprocess.TimeoutExpired:
+        return JsonResponse(
+            {"ok": False, "error": "攝影機連線逾時", "code": "TIMEOUT"},
+            status=504,
+        )
+
+    if completed.returncode != 0:
+        stderr_text = completed.stderr.decode("utf-8", errors="ignore")
+        message, code = _describe_preview_error(stderr_text)
+        status_code = 401 if code == "AUTH_REQUIRED" else 504 if code == "TIMEOUT" else 502
+        return JsonResponse({"ok": False, "error": message, "code": code}, status=status_code)
+
+    return JsonResponse({"ok": True})
+
+
+@_require_auth
+@require_http_methods(["POST"])
+def api_cameras_preview_webrtc_offer(request: HttpRequest):
+    if not AIORTC_AVAILABLE:
+        return JsonResponse(
+            {
+                "ok": False,
+                "error": "此環境尚未安裝 WebRTC 模組 (aiortc)。",
+                "code": "WEBRTC_DISABLED",
+            },
+            status=500,
+        )
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    ip_value = (payload.get("ip") or "").strip()
+    account_value = payload.get("account") or ""
+    password_value = payload.get("password") or ""
+    offer_data = payload.get("offer") or {}
+
+    if not isinstance(offer_data, dict) or "sdp" not in offer_data or "type" not in offer_data:
+        return JsonResponse({"ok": False, "error": "Missing SDP offer"}, status=400)
+
+    try:
+        rtsp_url = _build_rtsp_url(ip_value, account_value, password_value)
+    except ValueError as exc:
+        return JsonResponse({"ok": False, "error": str(exc), "code": "BAD_INPUT"}, status=400)
+
+    try:
+        session_id, local_desc = _run_in_preview_loop(_handle_preview_offer(rtsp_url, offer_data))
+    except PreviewStreamError as exc:
+        message, code = _describe_preview_error(exc.stderr, default_message=str(exc), code=exc.code)
+        status_code = _preview_error_status(code)
+        return JsonResponse({"ok": False, "error": message, "code": code}, status=status_code)
+    except Exception as exc:  # pragma: no cover - defensive path
+        logger.exception("WebRTC offer handling failed")
+        return JsonResponse({"ok": False, "error": str(exc) or "SERVER_ERROR", "code": "SERVER_ERROR"}, status=500)
+
+    answer_payload = {"type": local_desc.type, "sdp": local_desc.sdp}
+    return JsonResponse({"ok": True, "session_id": session_id, "answer": answer_payload})
+
+
+@_require_auth
+@require_http_methods(["POST"])
+def api_cameras_preview_webrtc_hangup(request: HttpRequest):
+    if not AIORTC_AVAILABLE:
+        return JsonResponse({"ok": True, "detail": "WEBRTC_DISABLED"})
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        payload = {}
+
+    session_id = (payload.get("session_id") or "").strip()
+    if not session_id:
+        return JsonResponse({"ok": False, "error": "Missing session_id"}, status=400)
+
+    try:
+        closed = _run_in_preview_loop(_close_preview_session(session_id))
+    except PreviewStreamError as exc:
+        message, code = _describe_preview_error(exc.stderr, default_message=str(exc), code=exc.code)
+        status_code = _preview_error_status(code)
+        return JsonResponse({"ok": False, "error": message, "code": code}, status=status_code)
+    except Exception as exc:  # pragma: no cover
+        logger.exception("WebRTC hangup failed")
+        return JsonResponse({"ok": False, "error": str(exc) or "SERVER_ERROR"}, status=500)
+
+    if not closed:
+        return JsonResponse({"ok": True, "detail": "SESSION_NOT_FOUND"})
+    return JsonResponse({"ok": True})
 
 
 @_require_auth

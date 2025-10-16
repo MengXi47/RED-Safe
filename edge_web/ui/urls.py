@@ -32,4 +32,7 @@ urlpatterns = [
     path("api/cameras/scan", views.api_cameras_scan, name="api_cameras_scan"),
     path("api/cameras/bind", views.api_cameras_bind, name="api_cameras_bind"),
     path("api/cameras/unbind", views.api_cameras_unbind, name="api_cameras_unbind"),
+    path("api/cameras/preview/probe", views.api_cameras_preview_probe, name="api_cameras_preview_probe"),
+    path("api/cameras/preview/webrtc/offer", views.api_cameras_preview_webrtc_offer, name="api_cameras_preview_webrtc_offer"),
+    path("api/cameras/preview/webrtc/hangup", views.api_cameras_preview_webrtc_hangup, name="api_cameras_preview_webrtc_hangup"),
 ]

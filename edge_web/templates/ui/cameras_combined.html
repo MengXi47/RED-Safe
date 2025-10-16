@@ -102,7 +102,7 @@
     gap: 8px;
   }
   #cam-page .col-actions {
-    width: 160px;
+    width: 220px;
   }
   #cam-page .tbl .actions {
     justify-content: flex-start;
@@ -189,7 +189,9 @@
   #cam-page .cam-sections section.glass {
     width: 100%;
   }
-  #cam-modal-backdrop {
+  #cam-modal-backdrop,
+  #cam-preview-backdrop,
+  #cam-preview-auth-backdrop {
     position: fixed;
     inset: 0;
     display: none;
@@ -201,7 +203,9 @@
     -webkit-backdrop-filter: blur(4px);
     z-index: 200;
   }
-  #cam-modal-backdrop.is-active {
+  #cam-modal-backdrop.is-active,
+  #cam-preview-backdrop.is-active,
+  #cam-preview-auth-backdrop.is-active {
     display: flex;
   }
   .cam-modal {
@@ -216,6 +220,93 @@
     .cam-modal {
       background: #111827;
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+    }
+  }
+  .cam-preview-modal {
+    max-width: 760px;
+  }
+  .cam-preview-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 16px;
+  }
+  .cam-preview-meta {
+    font-size: 13px;
+    color: rgba(55, 65, 81, 0.75);
+    word-break: break-all;
+  }
+  @media (prefers-color-scheme: dark) {
+    .cam-preview-meta {
+      color: rgba(226, 232, 240, 0.7);
+    }
+  }
+  .cam-preview-body {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .cam-preview-stage {
+    position: relative;
+    width: min(100%, 640px);
+    aspect-ratio: 4 / 3;
+    background: #0f172a;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cam-preview-stage video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+    display: block;
+  }
+  .cam-preview-loading,
+  .cam-preview-error {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    text-align: center;
+  }
+  .cam-preview-loading {
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  .cam-preview-loading .spinner {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid rgba(148, 163, 184, 0.35);
+    border-top-color: #60a5fa;
+    animation: cam-spin 1s linear infinite;
+  }
+  .cam-preview-error {
+    color: #fee2e2;
+    background: rgba(220, 38, 38, 0.78);
+  }
+  .cam-preview-auth-desc {
+    font-size: 14px;
+    color: rgba(55, 65, 81, 0.8);
+    margin: -4px 0 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .cam-preview-auth-desc {
+      color: rgba(226, 232, 240, 0.75);
+    }
+  }
+  @keyframes cam-spin {
+    to {
+      transform: rotate(360deg);
     }
   }
   .cam-modal h3 {
@@ -375,6 +466,88 @@
       </form>
     </div>
   </div>
+  <div
+    id="cam-preview-backdrop"
+    aria-hidden="true"
+  >
+    <div
+      class="cam-modal cam-preview-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cam-preview-title"
+    >
+      <div class="cam-preview-header">
+        <h3 id="cam-preview-title">攝影機預覽</h3>
+        <div class="cam-preview-meta" id="cam-preview-meta"></div>
+      </div>
+      <div class="cam-preview-body">
+        <div class="cam-preview-stage">
+          <div class="cam-preview-loading" id="cam-preview-loading">
+            <span class="spinner" aria-hidden="true"></span>
+            <span>正在建立預覽…</span>
+          </div>
+          <div class="cam-preview-error" id="cam-preview-inline-error" hidden>
+            無法連接攝影機
+          </div>
+          <video
+            id="cam-preview-video"
+            autoplay
+            muted
+            playsinline
+            preload="auto"
+          ></video>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" id="cam-preview-close">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div
+    id="cam-preview-auth-backdrop"
+    aria-hidden="true"
+  >
+    <div
+      class="cam-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cam-preview-auth-title"
+    >
+      <h3 id="cam-preview-auth-title">需要攝影機帳號密碼</h3>
+      <p class="cam-preview-auth-desc">
+        無法直接預覽此攝影機，請輸入登入帳號與密碼後再試一次。
+      </p>
+      <form id="cam-preview-auth-form" autocomplete="off">
+        <div class="field">
+          <label for="cam-preview-auth-account">帳號</label>
+          <input
+            id="cam-preview-auth-account"
+            type="text"
+            name="account"
+            autocomplete="username"
+            maxlength="255"
+          />
+        </div>
+        <div class="field">
+          <label for="cam-preview-auth-password">密碼</label>
+          <input
+            id="cam-preview-auth-password"
+            type="password"
+            name="password"
+            autocomplete="current-password"
+            maxlength="255"
+          />
+        </div>
+        <div class="error-message" id="cam-preview-auth-error" hidden></div>
+        <div class="actions">
+          <button type="button" id="cam-preview-auth-cancel">取消</button>
+          <button type="submit" class="primary" id="cam-preview-auth-submit">
+            重新嘗試
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
   <div class="content-container">
     <div class="cam-sections">
       <section class="glass">
@@ -394,7 +567,7 @@
               <col style="width: 25%" />
               <col style="width: 30%" />
               <col />
-              <col class="col-actions" style="width: 160px" />
+              <col class="col-actions" style="width: 220px" />
             </colgroup>
             <thead>
               <tr>
@@ -421,6 +594,36 @@
                   >{% endif %}
                 </td>
                 <td class="actions">
+                  <button
+                    class="action-btn"
+                    type="button"
+                    onclick="previewCam('{{ r.ip|escapejs }}','{{ r.mac|escapejs }}','{{ r.name|escapejs }}')"
+                  >
+                    <svg
+                      class="icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                    >
+                      <path
+                        d="M12 6c5.25 0 9.75 6 9.75 6s-4.5 6-9.75 6S2.25 12 2.25 12s4.5-6 9.75-6Z"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      <circle
+                        cx="12"
+                        cy="12"
+                        r="2.6"
+                        stroke="currentColor"
+                        stroke-width="1.6"
+                      />
+                    </svg>
+                    預覽
+                  </button>
                   {% if r.is_bound %}
                   <button class="action-btn" disabled>
                     <svg
@@ -507,7 +710,7 @@
               <col style="width: 25%" />
               <col style="width: 30%" />
               <col />
-              <col class="col-actions" style="width: 160px" />
+              <col class="col-actions" style="width: 220px" />
             </colgroup>
             <thead>
               <tr>
@@ -631,6 +834,26 @@
     const camModalSubmitDefault =
       camModalSubmitBtn ? camModalSubmitBtn.textContent : "確定新增";
     const camModalSubmitProcessingText = "處理中…";
+    const previewBackdrop = document.getElementById("cam-preview-backdrop");
+    const previewTitle = document.getElementById("cam-preview-title");
+    const previewMeta = document.getElementById("cam-preview-meta");
+    const previewVideoEl = document.getElementById("cam-preview-video");
+    const previewLoadingBox = document.getElementById("cam-preview-loading");
+    const previewInlineError = document.getElementById("cam-preview-inline-error");
+    const previewCloseBtn = document.getElementById("cam-preview-close");
+    const previewAuthBackdrop = document.getElementById("cam-preview-auth-backdrop");
+    const previewAuthForm = document.getElementById("cam-preview-auth-form");
+    const previewAuthAccountInput = document.getElementById("cam-preview-auth-account");
+    const previewAuthPasswordInput = document.getElementById("cam-preview-auth-password");
+    const previewAuthErrorBox = document.getElementById("cam-preview-auth-error");
+    const previewAuthCancelBtn = document.getElementById("cam-preview-auth-cancel");
+    const previewAuthSubmitBtn = document.getElementById("cam-preview-auth-submit");
+    const previewAuthSubmitDefault =
+      previewAuthSubmitBtn ? previewAuthSubmitBtn.textContent : "重新嘗試";
+    const previewAuthSubmitLoadingText = "重新嘗試中…";
+    const PREVIEW_PROBE_URL = "{% url 'api_cameras_preview_probe' %}";
+    const PREVIEW_WEBRTC_OFFER_URL = "{% url 'api_cameras_preview_webrtc_offer' %}";
+    const PREVIEW_WEBRTC_HANGUP_URL = "{% url 'api_cameras_preview_webrtc_hangup' %}";
 
     let initialSearchRows = [];
     if (initialDataScript) {
@@ -655,6 +878,517 @@
 
     let camModalSubmitting = false;
     let camModalState = { deviceName: "" };
+    const previewState = {
+      ip: "",
+      mac: "",
+      name: "",
+      account: "",
+      password: "",
+      streamUrl: "",
+      streamActive: false,
+      firstFrameLoaded: false,
+      dismissedByUser: false,
+      peerConnection: null,
+      sessionId: "",
+    };
+    let previewAuthSubmitting = false;
+
+    function stopPreviewStream(options = {}) {
+      const { notifyServer = true } = options;
+      const currentPc = previewState.peerConnection;
+      const sessionId = previewState.sessionId;
+      previewState.streamActive = false;
+      previewState.streamUrl = "";
+      previewState.firstFrameLoaded = false;
+      previewState.peerConnection = null;
+      previewState.sessionId = "";
+
+      if (currentPc) {
+        try {
+          currentPc.oniceconnectionstatechange = null;
+          currentPc.onconnectionstatechange = null;
+          currentPc.ontrack = null;
+        } catch (err) {
+          // ignore cleanup errors
+        }
+        try {
+          currentPc.getSenders().forEach((sender) => {
+            if (sender.track) {
+              sender.track.stop();
+            }
+          });
+        } catch (err) {
+          // ignore sender cleanup errors
+        }
+        try {
+          currentPc.getReceivers().forEach((receiver) => {
+            if (receiver.track) {
+              receiver.track.stop();
+            }
+          });
+        } catch (err) {
+          // ignore receiver cleanup errors
+        }
+        try {
+          currentPc.close();
+        } catch (err) {
+          // ignore close errors
+        }
+      }
+
+      if (notifyServer && sessionId) {
+        fetch(PREVIEW_WEBRTC_HANGUP_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": CSRF,
+          },
+          body: JSON.stringify({ session_id: sessionId }),
+        }).catch(() => {
+          /* swallow network errors */
+        });
+      }
+
+      if (previewVideoEl) {
+        try {
+          previewVideoEl.pause();
+        } catch (err) {
+          // ignore pause errors when element is detached
+        }
+        previewVideoEl.srcObject = null;
+        previewVideoEl.removeAttribute("src");
+        previewVideoEl.load();
+      }
+      showPreviewLoading();
+    }
+
+    function closePreviewModal({ dismissedByUser = false } = {}) {
+      stopPreviewStream();
+      if (dismissedByUser) {
+        previewState.dismissedByUser = true;
+      }
+      if (previewBackdrop) {
+        previewBackdrop.classList.remove("is-active");
+        previewBackdrop.setAttribute("aria-hidden", "true");
+      }
+    }
+
+    function setPreviewInlineError(message = "") {
+      if (!previewInlineError) {
+        return;
+      }
+      if (message) {
+        previewInlineError.textContent = message;
+        previewInlineError.hidden = false;
+        previewInlineError.style.display = "flex";
+      } else {
+        previewInlineError.textContent = "";
+        previewInlineError.hidden = true;
+        previewInlineError.style.display = "none";
+      }
+    }
+
+    function openPreviewModal() {
+      if (!previewBackdrop) {
+        alert("目前無法顯示預覽視窗。");
+        return;
+      }
+      stopPreviewStream();
+      previewState.dismissedByUser = false;
+      if (previewTitle) {
+        previewTitle.textContent = previewState.name || "攝影機預覽";
+      }
+      if (previewMeta) {
+        previewMeta.textContent = previewState.ip || "";
+      }
+      showPreviewLoading();
+      setPreviewInlineError();
+      previewBackdrop.classList.add("is-active");
+      previewBackdrop.setAttribute("aria-hidden", "false");
+    }
+
+    function markPreviewReady() {
+      if (!previewState.streamActive || previewState.firstFrameLoaded) {
+        return;
+      }
+      previewState.firstFrameLoaded = true;
+      hidePreviewLoading();
+      setPreviewInlineError();
+    }
+
+    function showPreviewLoading() {
+      if (!previewLoadingBox) {
+        return;
+      }
+      previewLoadingBox.hidden = false;
+      previewLoadingBox.classList.remove("is-hidden");
+      previewLoadingBox.style.display = "";
+    }
+
+    function hidePreviewLoading() {
+      if (!previewLoadingBox) {
+        return;
+      }
+      previewLoadingBox.hidden = true;
+      previewLoadingBox.classList.add("is-hidden");
+      previewLoadingBox.style.display = "none";
+    }
+
+    function waitForIceGathering(pc, timeoutMs = 3000) {
+      if (pc.iceGatheringState === "complete") {
+        return Promise.resolve();
+      }
+      return new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          pc.removeEventListener("icegatheringstatechange", checkState);
+          resolve();
+        }, timeoutMs);
+
+        function checkState() {
+          if (pc.iceGatheringState === "complete") {
+            clearTimeout(timer);
+            pc.removeEventListener("icegatheringstatechange", checkState);
+            resolve();
+          }
+        }
+
+        pc.addEventListener("icegatheringstatechange", checkState);
+      });
+    }
+
+    async function startPreviewWebRTC() {
+      if (!previewVideoEl || !previewState.ip) {
+        return;
+      }
+
+      if (typeof RTCPeerConnection === "undefined") {
+        setPreviewInlineError("此瀏覽器不支援 WebRTC 預覽");
+        hidePreviewLoading();
+        return;
+      }
+
+      stopPreviewStream({ notifyServer: false });
+
+      previewState.streamActive = true;
+      previewState.firstFrameLoaded = false;
+      previewState.dismissedByUser = false;
+      setPreviewInlineError();
+      showPreviewLoading();
+
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          {
+            urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"],
+          },
+        ],
+      });
+
+      previewState.peerConnection = pc;
+
+      try {
+        if (typeof pc.addTransceiver === "function") {
+          pc.addTransceiver("video", { direction: "recvonly" });
+        }
+      } catch (err) {
+        // ignore transceiver errors on older browsers
+      }
+
+      pc.addEventListener("track", (event) => {
+        if (!event.streams || !event.streams[0]) {
+          return;
+        }
+        if (previewVideoEl.srcObject !== event.streams[0]) {
+          previewVideoEl.srcObject = event.streams[0];
+        }
+        try {
+          const playPromise = previewVideoEl.play();
+          if (playPromise && typeof playPromise.catch === "function") {
+            playPromise.catch(() => {
+              /* allow muted autoplay fallback */
+            });
+          }
+        } catch (err) {
+          // ignore autoplay errors
+        }
+        markPreviewReady();
+      });
+
+      const handleConnectionChange = () => {
+        if (!previewState.streamActive) {
+          return;
+        }
+        const state = pc.iceConnectionState || pc.connectionState;
+        if (state === "connected") {
+          if (!previewState.firstFrameLoaded) {
+            showPreviewLoading();
+          }
+        } else if (state === "failed") {
+          stopPreviewStream({ notifyServer: true });
+          setPreviewInlineError("預覽連線失敗");
+        } else if (state === "disconnected") {
+          setPreviewInlineError("預覽連線中斷");
+          hidePreviewLoading();
+        }
+      };
+
+      pc.addEventListener("iceconnectionstatechange", handleConnectionChange);
+      pc.addEventListener("connectionstatechange", handleConnectionChange);
+
+      try {
+        const offer = await pc.createOffer({ offerToReceiveVideo: true });
+        await pc.setLocalDescription(offer);
+        await waitForIceGathering(pc);
+
+        const payload = {
+          ip: previewState.ip,
+          account: previewState.account,
+          password: previewState.password,
+          offer: {
+            type: pc.localDescription?.type,
+            sdp: pc.localDescription?.sdp,
+          },
+        };
+
+        const res = await fetch(PREVIEW_WEBRTC_OFFER_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": CSRF,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok || !data.answer) {
+          throw new Error(data.error || "無法連接攝影機");
+        }
+
+        previewState.sessionId = data.session_id || "";
+
+        const answerInit = {
+          type: data.answer.type,
+          sdp: data.answer.sdp,
+        };
+        const answerDesc =
+          typeof RTCSessionDescription === "function"
+            ? new RTCSessionDescription(answerInit)
+            : answerInit;
+        await pc.setRemoteDescription(answerDesc);
+
+        if (previewState.firstFrameLoaded) {
+          hidePreviewLoading();
+        }
+      } catch (err) {
+        stopPreviewStream({ notifyServer: true });
+        const message = err && err.message ? err.message : "無法連接攝影機";
+        if (previewBackdrop?.classList.contains("is-active") && !previewState.dismissedByUser) {
+          setPreviewInlineError(message);
+        }
+        if (!previewState.dismissedByUser) {
+          console.warn("WebRTC preview failed:", err);
+        }
+      }
+    }
+
+    function resetPreviewAuthError(message = "") {
+      if (!previewAuthErrorBox) {
+        return;
+      }
+      if (message) {
+        previewAuthErrorBox.textContent = message;
+        previewAuthErrorBox.hidden = false;
+      } else {
+        previewAuthErrorBox.textContent = "";
+        previewAuthErrorBox.hidden = true;
+      }
+    }
+
+    function setPreviewAuthLoading(isLoading) {
+      previewAuthSubmitting = isLoading;
+      if (previewAuthSubmitBtn) {
+        previewAuthSubmitBtn.disabled = isLoading;
+        previewAuthSubmitBtn.textContent = isLoading
+          ? previewAuthSubmitLoadingText
+          : previewAuthSubmitDefault;
+      }
+      if (previewAuthAccountInput) {
+        previewAuthAccountInput.disabled = isLoading;
+      }
+      if (previewAuthPasswordInput) {
+        previewAuthPasswordInput.disabled = isLoading;
+      }
+    }
+
+    function closePreviewAuthModal() {
+      if (!previewAuthBackdrop) {
+        return;
+      }
+      previewAuthBackdrop.classList.remove("is-active");
+      previewAuthBackdrop.setAttribute("aria-hidden", "true");
+      setPreviewAuthLoading(false);
+      resetPreviewAuthError();
+    }
+
+    function openPreviewAuthModal(options = {}) {
+      const { message = "", focusPassword = false } = options;
+      if (!previewAuthBackdrop) {
+        const accountInput =
+          window.prompt("請輸入攝影機帳號", previewState.account || "") || "";
+        const passwordInput =
+          window.prompt("請輸入攝影機密碼", previewState.password || "") || "";
+        attemptPreviewWithCredentials(
+          {
+            account: (accountInput || "").trim(),
+            password: passwordInput || "",
+          },
+          { promptOnAuthFailure: false }
+        );
+        return;
+      }
+
+      setPreviewAuthLoading(false);
+      resetPreviewAuthError(message);
+
+      if (previewAuthAccountInput) {
+        previewAuthAccountInput.disabled = false;
+        previewAuthAccountInput.value = previewState.account || "";
+      }
+      if (previewAuthPasswordInput) {
+        previewAuthPasswordInput.disabled = false;
+        previewAuthPasswordInput.value = previewState.password || "";
+      }
+
+      previewAuthBackdrop.classList.add("is-active");
+      previewAuthBackdrop.setAttribute("aria-hidden", "false");
+      setTimeout(() => {
+        if (focusPassword && previewAuthPasswordInput) {
+          previewAuthPasswordInput.focus();
+          previewAuthPasswordInput.select();
+        } else if (previewAuthAccountInput) {
+          previewAuthAccountInput.focus();
+          previewAuthAccountInput.select();
+        }
+      }, 10);
+    }
+
+    async function attemptPreviewWithCredentials(creds, options = {}) {
+      const {
+        promptOnAuthFailure = false,
+        alertOnFailure = true,
+      } = options;
+      const ip = previewState.ip;
+      if (!ip) {
+        return { ok: false, code: "BAD_INPUT", message: "缺少攝影機 IP 位址" };
+      }
+
+      const account =
+        typeof creds.account === "string" ? creds.account.trim() : "";
+      const password =
+        typeof creds.password === "string" ? creds.password : "";
+
+      previewState.account = account;
+      previewState.password = password;
+
+      const payload = {
+        ip,
+        account,
+        password,
+      };
+
+      let res;
+      try {
+        res = await fetch(PREVIEW_PROBE_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": CSRF,
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        const message =
+          err && err.message ? err.message : "無法連接攝影機";
+        if (previewBackdrop?.classList.contains("is-active")) {
+          hidePreviewLoading();
+          setPreviewInlineError(message);
+        }
+        if (alertOnFailure && !promptOnAuthFailure) {
+          alert(message);
+        }
+        return { ok: false, code: "NETWORK", message };
+      }
+
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (err) {
+        data = {};
+      }
+
+      if (!res.ok || !data.ok) {
+        const code = data.code || "STREAM_ERROR";
+        const message = data.error || "無法連接攝影機";
+        if (code === "AUTH_REQUIRED" && promptOnAuthFailure) {
+          if (previewBackdrop?.classList.contains("is-active")) {
+            closePreviewModal();
+          }
+          openPreviewAuthModal({ message, focusPassword: Boolean(account) });
+        } else if (alertOnFailure) {
+          alert(message);
+          if (previewBackdrop?.classList.contains("is-active")) {
+            hidePreviewLoading();
+            setPreviewInlineError(message);
+          }
+        } else if (previewBackdrop?.classList.contains("is-active")) {
+          hidePreviewLoading();
+          setPreviewInlineError(message);
+        }
+        return { ok: false, code, message };
+      }
+
+      if (
+        previewAuthBackdrop &&
+        previewAuthBackdrop.classList.contains("is-active")
+      ) {
+        closePreviewAuthModal();
+      }
+      if (!previewBackdrop?.classList.contains("is-active")) {
+        if (previewState.dismissedByUser) {
+          return { ok: true };
+        }
+        openPreviewModal();
+      } else {
+        showPreviewLoading();
+        setPreviewInlineError();
+      }
+      startPreviewWebRTC();
+      return { ok: true };
+    }
+
+    function requestPreview(ip, mac, name) {
+      const ipClean = sanitizeIp(ip);
+      if (!ipClean) {
+        alert("缺少攝影機 IP，無法預覽。");
+        return;
+      }
+      previewState.ip = ipClean;
+      previewState.mac = sanitizeMac(mac);
+      previewState.name =
+        typeof name === "string" && name.trim() ? name.trim() : "IPC";
+      previewState.account = "";
+      previewState.password = "";
+      previewState.streamUrl = "";
+      previewState.streamActive = false;
+      previewState.firstFrameLoaded = false;
+      previewState.dismissedByUser = false;
+
+      openPreviewModal();
+
+      attemptPreviewWithCredentials(
+        { account: "", password: "" },
+        { promptOnAuthFailure: true, alertOnFailure: true }
+      );
+    }
 
     function resetCamModalError(message = "") {
       if (!camModalErrorBox) {
@@ -766,10 +1500,102 @@
     }
 
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && camModalBackdrop?.classList.contains("is-active")) {
+      if (event.key !== "Escape") {
+        return;
+      }
+      if (previewAuthBackdrop?.classList.contains("is-active") && !previewAuthSubmitting) {
+        closePreviewAuthModal();
+        return;
+      }
+      if (previewBackdrop?.classList.contains("is-active")) {
+        closePreviewModal({ dismissedByUser: true });
+        return;
+      }
+      if (camModalBackdrop?.classList.contains("is-active")) {
         closeCamModal();
       }
     });
+
+    if (previewCloseBtn) {
+      previewCloseBtn.addEventListener("click", () => {
+        closePreviewModal({ dismissedByUser: true });
+      });
+    }
+
+    if (previewBackdrop) {
+      previewBackdrop.addEventListener("click", (event) => {
+        if (event.target === previewBackdrop) {
+          closePreviewModal({ dismissedByUser: true });
+        }
+      });
+    }
+
+    if (previewVideoEl) {
+      const handleStreamReady = () => {
+        markPreviewReady();
+      };
+
+      previewVideoEl.addEventListener("loadeddata", handleStreamReady);
+      previewVideoEl.addEventListener("playing", handleStreamReady);
+
+      const handleBuffering = () => {
+        if (!previewState.streamActive || previewState.firstFrameLoaded) {
+          return;
+        }
+        showPreviewLoading();
+      };
+
+      previewVideoEl.addEventListener("waiting", handleBuffering);
+      previewVideoEl.addEventListener("stalled", handleBuffering);
+
+      previewVideoEl.addEventListener("error", () => {
+        if (!previewState.streamActive) {
+          return;
+        }
+        stopPreviewStream();
+        hidePreviewLoading();
+        setPreviewInlineError("無法連接攝影機");
+      });
+    }
+
+    if (previewAuthCancelBtn) {
+      previewAuthCancelBtn.addEventListener("click", () => {
+        closePreviewAuthModal();
+      });
+    }
+
+    if (previewAuthBackdrop) {
+      previewAuthBackdrop.addEventListener("click", (event) => {
+        if (event.target === previewAuthBackdrop && !previewAuthSubmitting) {
+          closePreviewAuthModal();
+        }
+      });
+    }
+
+    if (previewAuthForm) {
+      previewAuthForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (previewAuthSubmitting) {
+          return;
+        }
+        const account = previewAuthAccountInput
+          ? previewAuthAccountInput.value.trim()
+          : "";
+        const password = previewAuthPasswordInput
+          ? previewAuthPasswordInput.value
+          : "";
+        setPreviewAuthLoading(true);
+        resetPreviewAuthError();
+        const result = await attemptPreviewWithCredentials(
+          { account, password },
+          { promptOnAuthFailure: false, alertOnFailure: false }
+        );
+        setPreviewAuthLoading(false);
+        if (!result.ok) {
+          resetPreviewAuthError(result.message || "無法連接攝影機");
+        }
+      });
+    }
 
     async function performCameraBind({
       ip,
@@ -893,6 +1719,8 @@
 
     const ICON_ADD =
       '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+    const ICON_PREVIEW =
+      '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M12 6c5.25 0 9.75 6 9.75 6s-4.5 6-9.75 6S2.25 12 2.25 12s4.5-6 9.75-6Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.6" stroke="currentColor" stroke-width="1.6"/></svg>';
     const ICON_CHECK =
       '<svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="m5 12 4 4 10-10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     const ICON_TRASH =
@@ -1161,6 +1989,14 @@
 
       const actionTd = document.createElement("td");
       actionTd.className = "actions";
+      const previewBtn = document.createElement("button");
+      previewBtn.className = "action-btn";
+      previewBtn.type = "button";
+      previewBtn.innerHTML = ICON_PREVIEW + "預覽";
+      previewBtn.addEventListener("click", () =>
+        requestPreview(row.ip || "", row.mac || "", row.name || "")
+      );
+      actionTd.appendChild(previewBtn);
       if (row.is_bound) {
         const btn = document.createElement("button");
         btn.className = "action-btn";
@@ -1296,6 +2132,12 @@
     hasSearched = hasSearched || searchRows.length > 0;
     renderSearchRows();
     renderBoundRows();
+
+    if (typeof window.previewCam !== "function") {
+      window.previewCam = function (ip, mac, name) {
+        requestPreview(ip, mac, name);
+      };
+    }
 
     if (typeof window.refreshSearch !== "function") {
       window.refreshSearch = function () {
