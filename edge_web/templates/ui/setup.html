@@ -1,44 +1,54 @@
+{% load static %}
 <!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
   <title>初始設定 | DevicePanel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="/static/css/setup.css" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'ui/css/pages/auth.css' %}">
 </head>
-<body>
-  <div class="center-wrap">
-    <div class="card">
-      <!-- Logo -->
-      <div class="logo">
-        <img src="/static/RED_Safe_icon1.png" alt="Logo">
+<body class="auth-page">
+  <div class="auth-shell">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <img src="{% static 'RED_Safe_icon1.png' %}" alt="RED Safe">
       </div>
-      <div class="title">首次使用：設定密碼</div>
+      <h1 class="auth-title">首次使用：設定密碼</h1>
 
-      {% if error %}<div class="error">{{ error }}</div>{% endif %}
+      {% if error %}<div class="auth-error">{{ error }}</div>{% endif %}
 
-      <form method="post" action="">
+      <form method="post" action="" class="form-stack">
         <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 
-        <div class="field">
+        <div class="form-field">
           <label for="pwd">設定密碼</label>
-          <input id="pwd" class="input" type="password" name="password"
-                 placeholder="至少 6 碼（僅限英文或數字）"
-                 required minlength="6"
-                 pattern="[A-Za-z0-9]{6,}"
-                 title="密碼需至少 6 碼，且僅能使用英文或數字">
+          <input
+            id="pwd"
+            type="password"
+            name="password"
+            placeholder="至少 6 碼（僅限英文或數字）"
+            required minlength="6"
+            pattern="[A-Za-z0-9]{6,}"
+            title="密碼需至少 6 碼，且僅能使用英文或數字"
+          />
         </div>
 
-        <div class="field">
+        <div class="form-field">
           <label for="pwd2">再次輸入密碼</label>
-          <input id="pwd2" class="input" type="password" name="confirm"
-                 placeholder="再次輸入確認"
-                 required minlength="6"
-                 pattern="[A-Za-z0-9]{6,}"
-                 title="密碼需至少 6 碼，且僅能使用英文或數字">
+          <input
+            id="pwd2"
+            type="password"
+            name="confirm"
+            placeholder="再次輸入確認"
+            required minlength="6"
+            pattern="[A-Za-z0-9]{6,}"
+            title="密碼需至少 6 碼，且僅能使用英文或數字"
+          />
         </div>
 
-        <button class="btn" type="submit">繼續</button>
+        <div class="auth-actions">
+          <button class="btn" type="submit">繼續</button>
+        </div>
       </form>
     </div>
   </div>

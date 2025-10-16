@@ -1,0 +1,15 @@
+@import "./tokens.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: theme("fontFamily.sans");
+  background: var(--gradient-page);
+  color: var(--ink-primary);
+}
+
+#app {
+  min-height: 100vh;
+  min-height: 100dvh;
+}

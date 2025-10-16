@@ -1,19 +1,4 @@
 {% extends "ui/base.html" %}
-{% block title %}IP 設定{% endblock %}
-{% block header %}網路設定 - IP{% endblock %}
-
-{% block content %}
-<div class="card">
-  <h3>網路資訊</h3>
-  <p><strong>IP Address：</strong> {{ ip_address }}</p>
-  <p><strong>子網路遮罩：</strong> {{ netmask }}</p>
-  <p><strong>路由器：</strong> {{ gateway }}</p>
-  <p><strong>DNS：</strong>
-    {% if dns %}
-      {{ dns|join:", " }}
-    {% else %}
-      N/A
-    {% endif %}
-  </p>
-</div>
+{% block initial_state %}
+  {{ initial_state|json_script:"edge-initial-state" }}
 {% endblock %}

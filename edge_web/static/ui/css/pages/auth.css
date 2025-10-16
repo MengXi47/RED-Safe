@@ -1,0 +1,89 @@
+:root {
+  --font-sans: 'Inter', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --text-base: 15px;
+  --line-height: 1.6;
+  --text-primary: #111827;
+  --text-muted: #4b5563;
+  --bg-gradient: linear-gradient(180deg, #ffffff 0%, #f4f6fb 100%);
+  --bg-elevated: #ffffff;
+  --border-muted: #e5e7eb;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --shadow-md: 0 16px 40px rgba(15, 23, 42, 0.08);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.12);
+}
+
+body.auth-page {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--line-height);
+  color: var(--text-primary);
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.auth-shell {
+  min-height: inherit;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+}
+
+.auth-card {
+  width: min(420px, 100%);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-logo {
+  display: flex;
+  justify-content: center;
+}
+
+.auth-logo img {
+  width: 64px;
+  height: auto;
+}
+
+.auth-title {
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth-error {
+  background: var(--danger-soft);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--danger);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.auth-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
