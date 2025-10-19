@@ -41,3 +41,19 @@ CREATE TABLE auth (
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
     revoked BOOLEAN NOT NULL DEFAULT FALSE
 );
+
+// EDGE
+
+CREATE TABLE connected_ipc (
+    ip_address INET NOT NULL PRIMARY KEY, 
+    mac_address VARCHAR(17) NOT NULL,
+    ipc_name TEXT, 
+    custom_name TEXT,
+    ipc_account TEXT,
+    ipc_password TEXT
+);
+
+CREATE TABLE config (
+    edge_id VARCHAR(12) PRIMARY KEY, 
+    edge_password TEXT
+);
