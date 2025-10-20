@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 set(CMAKE_OSX_DEPLOYMENT_TARGET "26.0" CACHE STRING "" FORCE)
 
 if(POLICY CMP0167)
-  cmake_policy(SET CMP0167 NEW)
+  cmake_policy(SET CMP0167 OLD)
 endif()
 
 if (NOT DEFINED CMAKE_BUILD_TYPE AND NOT DEFINED CMAKE_CONFIGURATION_TYPES)
@@ -14,6 +14,8 @@ project(RED_SAFE_EDGE_CORE VERSION 1.0
     DESCRIPTION "CORE"
     LANGUAGES CXX)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_ROOT}/Modules")
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -23,16 +25,10 @@ set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
-if (WIN32)
-  add_compile_definitions(
-      _WIN32_WINNT=0x0601
-      WIN32_LEAN_AND_MEAN
-  )
-endif ()
-
 include(cmake/Target.cmake)
 include(cmake/CLangFormat.cmake)
 
+find_package(folly REQUIRED)
 find_package(Boost 1.82 REQUIRED COMPONENTS)
 find_package(OpenSSL REQUIRED)
 if (APPLE)
