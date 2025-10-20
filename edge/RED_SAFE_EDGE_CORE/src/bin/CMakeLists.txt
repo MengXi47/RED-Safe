@@ -1,0 +1,1 @@
+target_add_bin(RED_SAFE_EDGE_CORE main.cc RED_SAFE_EDGE_CORE_lib)

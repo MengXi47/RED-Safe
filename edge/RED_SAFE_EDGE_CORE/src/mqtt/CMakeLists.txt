@@ -1,0 +1,13 @@
+target_add_lib(RED_SAFE_EDGE_CORE_mqtt
+    RED_SAFE_EDGE_UTIL
+    RED_SAFE_EDGE_CORE_http
+    RED_SAFE_EDGE_CORE_grpc
+    RED_SAFE_EDGE_CORE_ipcscan
+    RSEC_protos
+    gRPC::grpc++
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    ${Boost_LIBRARIES}
+    Threads::Threads
+    nlohmann_json::nlohmann_json
+)

@@ -1,0 +1,1 @@
+target_add_lib(RED_SAFE_EDGE_UTIL)

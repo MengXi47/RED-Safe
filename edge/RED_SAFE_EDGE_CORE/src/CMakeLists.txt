@@ -1,72 +1,8 @@
-set(PROTO_DIR "${CMAKE_SOURCE_DIR}/proto")
-
-file(GLOB PROTO_FILES "${PROTO_DIR}/*.proto")
-
-foreach(PROTO_FILE ${PROTO_FILES})
-  get_filename_component(PROTO_NAME ${PROTO_FILE} NAME_WE)
-
-  set(PB_CC   "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.pb.cc")
-  set(PB_H    "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.pb.h")
-  set(GRPC_CC "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.grpc.pb.cc")
-  set(GRPC_H  "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_NAME}.grpc.pb.h")
-
-  add_custom_command(
-      OUTPUT ${PB_CC} ${PB_H}
-      COMMAND protobuf::protoc
-      ARGS
-      --cpp_out "${CMAKE_CURRENT_BINARY_DIR}"
-      -I "${PROTO_DIR}"
-      "${PROTO_FILE}"
-      DEPENDS "${PROTO_FILE}"
-      COMMENT "Generating protobuf sources for ${PROTO_NAME}"
-      VERBATIM
-  )
-
-  add_custom_command(
-      OUTPUT ${GRPC_CC} ${GRPC_H}
-      COMMAND protobuf::protoc
-      ARGS
-      --grpc_out "${CMAKE_CURRENT_BINARY_DIR}"
-      --plugin=protoc-gen-grpc=$<TARGET_FILE:gRPC::grpc_cpp_plugin>
-      -I "${PROTO_DIR}"
-      "${PROTO_FILE}"
-      DEPENDS "${PROTO_FILE}"
-      COMMENT "Generating gRPC sources for ${PROTO_NAME}"
-      VERBATIM
-  )
-
-  list(APPEND GENERATED_SOURCES ${PB_CC} ${GRPC_CC})
-  list(APPEND GENERATED_HEADERS ${PB_H} ${GRPC_H})
-endforeach()
-
-set_source_files_properties(${GENERATED_SOURCES} ${GENERATED_HEADERS} PROPERTIES GENERATED TRUE)
-
-add_library(RSEC_protos STATIC ${GENERATED_SOURCES} ${GENERATED_HEADERS})
-
-target_include_directories(RSEC_protos
-    PUBLIC
-    "${CMAKE_CURRENT_BINARY_DIR}"
-)
-
-target_link_libraries(RSEC_protos
-    PUBLIC
-    protobuf::libprotobuf
-    gRPC::grpc++
-    gRPC::grpc
-)
-
-target_add_lib(RED_SAFE_EDGE_CORE_lib
-    RSEC_protos
-    gRPC::grpc++
-    gRPC::grpc++_reflection
-    protobuf::libprotobuf
-    ${Boost_LIBRARIES}
-    OpenSSL::SSL
-    OpenSSL::Crypto
-    Threads::Threads
-    nlohmann_json::nlohmann_json
-    CURL::libcurl
-    PkgConfig::LIBPQXX
-)
-
-target_add_bin(RED_SAFE_EDGE_CORE main.cc RED_SAFE_EDGE_CORE_lib)
+add_subdirectory(util)
+add_subdirectory(sql)
+add_subdirectory(ipcscan)
+add_subdirectory(grpc)
+add_subdirectory(http)
+add_subdirectory(mqtt)
+add_subdirectory(core)
+add_subdirectory(bin)
