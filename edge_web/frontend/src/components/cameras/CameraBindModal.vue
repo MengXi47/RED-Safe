@@ -29,6 +29,12 @@ import BaseInput from '@/components/ui/BaseInput.vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
 import type { Camera } from '@/types/camera';
 
+/**
+  * 組件用途：引導使用者填寫攝影機綁定資料，維持原流程的確認步驟。
+  * 輸入參數：open 控制顯示、camera 提供預設資訊、loading 顯示送出狀態。
+  * 與其他模組關聯：CamerasView 會透過 submit 事件呼叫 cameraService。
+  */
+
 const props = defineProps<{
   open: boolean;
   camera: Camera | null;
@@ -40,12 +46,14 @@ const emit = defineEmits<{
   (e: 'submit', payload: { custom_name: string; ipc_account?: string; ipc_password?: string }): void;
 }>();
 
+// 表單狀態：綁定前預填攝影機名稱並保留可修改欄位
 const form = reactive({
   custom_name: '',
   ipc_account: '',
   ipc_password: ''
 });
 
+// 監看選擇攝影機變化，預先填入名稱並清除帳密
 watch(
   () => props.camera,
   (next) => {
@@ -57,6 +65,7 @@ watch(
   { immediate: true }
 );
 
+// 送出表單並透過事件將資料交還外層
 const submit = () => {
   emit('submit', { ...form });
 };

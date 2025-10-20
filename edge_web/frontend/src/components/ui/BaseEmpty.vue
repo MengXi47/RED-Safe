@@ -15,6 +15,12 @@
 </template>
 
 <script setup lang="ts">
+/**
+  * 組件用途：顯示無資料或待建置狀態的提示。
+  * 輸入參數：title、description、icon 控制顯示文字與圖示。
+  * 與其他模組關聯：設定頁、日誌頁與 BaseTable 無資料時共用。
+  */
+
 withDefaults(
   defineProps<{
     title: string;

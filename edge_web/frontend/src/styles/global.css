@@ -3,6 +3,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * 層級說明：
+ * - Reset：由 Tailwind base 提供瀏覽器預設重置。
+ * - Base：於 @layer base 設定字體、背景與焦點樣式。
+ * - Utilities：於 @layer components 補充語意化類別供畫面使用。
+ */
+
 @layer base {
   html {
     font-family: var(--font-sans);

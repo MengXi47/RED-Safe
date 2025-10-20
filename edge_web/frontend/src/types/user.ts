@@ -9,3 +9,8 @@ export interface BoundUserResponse {
   items: BoundUser[];
   error?: string;
 }
+
+export interface RemoveBoundUserResponse {
+  status: string;
+  message?: string;
+}

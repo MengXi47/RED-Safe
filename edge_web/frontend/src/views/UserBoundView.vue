@@ -32,11 +32,21 @@ import BaseButton from '@/components/ui/BaseButton.vue';
 import { fetchBoundUsers, removeBoundUser } from '@/lib/services/userService';
 import type { BoundUser } from '@/types/user';
 import { useUiStore } from '@/store/ui';
+import { useInitialState } from '@/lib/useInitialState';
+
+/**
+  * 組件用途：列出已綁定的使用者並提供解除綁定操作。
+  * 輸入參數：無，透過 userService 取得與更新資料。
+  * 與其他模組關聯：使用 uiStore 提示操作結果、BaseTable 呈現表格。
+  */
 
 const uiStore = useUiStore();
-const initial = (window as Window & { __EDGE_INITIAL_STATE__?: any }).__EDGE_INITIAL_STATE__?.users ?? [];
+const initialUsers = useInitialState<BoundUser[]>(
+  (state) => state.users ?? [],
+  () => []
+);
 
-const users = ref<BoundUser[]>(initial);
+const users = ref<BoundUser[]>(initialUsers);
 const loading = ref(false);
 const removing = ref(false);
 const error = ref('');
@@ -49,20 +59,28 @@ const columns: ColumnDefinition<BoundUser & { actions: string }>[] = [
   { key: 'actions', label: '操作' }
 ];
 
+// 取回綁定使用者列表並處理錯誤提示
 const load = async () => {
   loading.value = true;
   error.value = '';
   try {
     const response = await fetchBoundUsers();
+    if (response.error) {
+      error.value = response.error;
+      uiStore.pushToast(response.error, 'danger');
+      return;
+    }
     users.value = response.items ?? [];
   } catch (err) {
     console.error(err);
     error.value = '無法載入使用者資料';
+    uiStore.pushToast('無法載入使用者資料', 'danger');
   } finally {
     loading.value = false;
   }
 };
 
+// 向後端發送解除綁定請求，成功後從列表移除
 const unbound = async (email: string) => {
   if (!email) return;
   removing.value = true;
@@ -82,6 +100,7 @@ const unbound = async (email: string) => {
   }
 };
 
+// 將時間字串格式化為使用者可讀的本地時間
 const formatDate = (value?: string) => {
   if (!value) return '-';
   return new Intl.DateTimeFormat('zh-TW', {

@@ -11,7 +11,7 @@
           v-model="form.new_password1"
           label="新密碼"
           type="password"
-          help-text="至少 6 碼，僅限英數"
+          help="至少 6 碼，僅限英數"
           :error="errors.new_password1"
         />
         <BaseInput
@@ -34,18 +34,30 @@ import BaseCard from '@/components/ui/BaseCard.vue';
 import BaseInput from '@/components/ui/BaseInput.vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
 import { useUiStore } from '@/store/ui';
+import { useInitialState } from '@/lib/useInitialState';
 
-const initial = (window as Window & { __EDGE_INITIAL_STATE__?: any }).__EDGE_INITIAL_STATE__ ?? {};
+/**
+  * 組件用途：提供裝置管理員修改登入密碼的表單。
+  * 輸入參數：無，透過 fetch 與 Django 互動以取得驗證結果。
+  * 與其他模組關聯：使用 uiStore 發出成功或失敗的 Toast 通知。
+  */
 
+const initialFormErrors = useInitialState<Record<string, string>>(
+  (state) => state.formErrors ?? {},
+  () => ({})
+);
+
+// 表單欄位維持雙向綁定
 const form = reactive({
   old_password: '',
   new_password1: '',
   new_password2: ''
 });
-const errors = reactive<{ [key: string]: string }>({ ...(initial.formErrors ?? {}) });
+const errors = reactive<Record<string, string>>({ ...initialFormErrors });
 const submitting = ref(false);
 const uiStore = useUiStore();
 
+// 提交密碼更新請求，並解析回傳的表單錯誤
 const submit = async () => {
   submitting.value = true;
   Object.keys(errors).forEach((key) => delete errors[key]);
@@ -77,11 +89,13 @@ const submit = async () => {
   }
 };
 
+// 從 cookie 擷取 CSRF token
 const getCsrfToken = () => {
   const match = document.cookie.match(/csrftoken=([^;]+)/);
   return match ? match[1] : '';
 };
 
+// 解析伺服器回傳的頁面，擷取注入的錯誤訊息
 const parseErrors = (html: string) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');

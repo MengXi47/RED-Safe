@@ -19,16 +19,28 @@
 import { computed } from 'vue';
 import BaseCard from '@/components/ui/BaseCard.vue';
 import type { NetworkInterfaceInfo } from '@/types/network';
+import { useInitialState } from '@/lib/useInitialState';
 
-const initial = (window as Window & { __EDGE_INITIAL_STATE__?: any }).__EDGE_INITIAL_STATE__?.network ?? {};
+/**
+  * 組件用途：顯示裝置目前的 IP、子網路與 DNS 設定。
+  * 輸入參數：無，從伺服器注入的初始資料建立狀態。
+  * 與其他模組關聯：透過 BaseCard 呈現重點資訊。
+  */
 
+const initialNetwork = useInitialState<Partial<NetworkInterfaceInfo>>(
+  (state) => state.network ?? {},
+  () => ({})
+);
+
+// 統一補齊缺漏欄位，避免畫面顯示空值與 undefined
 const info = computed<NetworkInterfaceInfo>(() => ({
-  ip_address: initial.ip_address ?? '--',
-  netmask: initial.netmask ?? '--',
-  gateway: initial.gateway ?? '--',
-  dns: initial.dns ?? []
+  ip_address: initialNetwork.ip_address ?? '--',
+  netmask: initialNetwork.netmask ?? '--',
+  gateway: initialNetwork.gateway ?? '--',
+  dns: initialNetwork.dns ?? []
 }));
 
+// 將網路資訊轉換成陣列，方便以 v-for 呈現
 const networkItems = computed(() => [
   { label: 'IP Address', value: info.value.ip_address },
   { label: '子網路遮罩', value: info.value.netmask },

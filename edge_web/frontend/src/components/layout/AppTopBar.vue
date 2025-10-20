@@ -20,10 +20,17 @@ import { useRoute } from 'vue-router';
 import { computed } from 'vue';
 import { useUiStore } from '@/store/ui';
 
+/**
+  * 組件用途：顯示頂部標題與行動裝置選單按鈕。
+  * 與其他模組關聯：讀取路由 meta 標題並呼叫 uiStore 切換側邊欄。
+  */
+
 const uiStore = useUiStore();
 const route = useRoute();
 
+// 動態讀取 meta.title，若無則回到預設站名
 const currentTitle = computed(() => String(route.meta.title ?? 'RED Safe'));
 
+// 行動版菜單按鈕，切換側邊欄開啟狀態
 const toggleSidebar = () => uiStore.toggleSidebar();
 </script>

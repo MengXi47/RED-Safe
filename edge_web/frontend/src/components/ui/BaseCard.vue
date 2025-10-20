@@ -17,6 +17,12 @@
 </template>
 
 <script setup lang="ts">
+/**
+  * 組件用途：提供統一的卡片樣式容器，可放置標題、描述與自訂區塊。
+  * 輸入參數：title、description 控制標題文字，另外接受 header/footer slot。
+  * 與其他模組關聯：各頁資訊面板共用此元件維持視覺一致。
+  */
+
 defineProps<{
   title?: string;
   description?: string;

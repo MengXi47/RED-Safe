@@ -93,6 +93,12 @@ import { computed } from 'vue';
 import BaseLoadingSpinner from './BaseLoadingSpinner.vue';
 import BaseEmpty from './BaseEmpty.vue';
 
+/**
+  * 組件用途：建立表格骨架並處理載入、錯誤與分頁狀態。
+  * 輸入參數：columns 定義欄位、items 資料來源，另提供排序與分頁事件。
+  * 與其他模組關聯：攝影機列表與已綁定清單共用此表格實作。
+  */
+
 export interface ColumnDefinition<T> {
   key: keyof T | string;
   label: string;
@@ -127,8 +133,11 @@ const props = withDefaults(
 
 defineEmits(['update:page', 'sort']);
 
+// 計算總頁數，至少為 1 以避免除以零
 const totalPages = computed(() => Math.max(1, Math.ceil(props.totalItems / props.pageSize)));
+// 控制是否顯示分頁區塊
 const showPagination = computed(() => props.totalItems > props.pageSize);
+// 目前頁面的起始/結束筆數，用於 footer 文案
 const pageStart = computed(() => (props.page - 1) * props.pageSize + 1);
 const pageEnd = computed(() => Math.min(props.totalItems, props.page * props.pageSize));
 </script>

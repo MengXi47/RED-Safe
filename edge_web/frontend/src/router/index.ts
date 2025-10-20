@@ -1,6 +1,30 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 
+/**
+ * 檔案用途：定義前端路由表與共用守門邏輯，維持頁面路徑與標題一致。
+ * 存取規則：
+ * - meta.authLayout：登入/註冊使用 AuthLayout，僅供未登入狀態進入。
+ * - meta.requiresAuth：需經過權限驗證並套用 AppShell 佈局。
+ * 與其他模組關聯：所有頁面透過動態匯入避免初次載入負擔。
+ */
+
 const routes: RouteRecordRaw[] = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/LoginView.vue'),
+    meta: { title: '登入系統', authLayout: true }
+  },
+  {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/RegisterView.vue'),
+    meta: { title: '首次使用：設定密碼', authLayout: true }
+  },
+  {
+    path: '/setup',
+    redirect: { name: 'Register' }
+  },
   {
     path: '/',
     name: 'dashboard',
@@ -58,15 +82,15 @@ const routes: RouteRecordRaw[] = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes
 });
 
+// 進入路由前更新網頁標題並保留未來驗證流程掛載點
 router.beforeEach((to, _from, next) => {
   document.title = to.meta.title ? `RED Safe | ${String(to.meta.title)}` : 'RED Safe';
-  // Placeholder for auth guard integration.
   if (to.meta.requiresAuth) {
-    // TODO: integrate with backend session status
+    // TODO：待與後端 Session 機制串接後補上實際驗證流程
   }
   next();
 });

@@ -19,13 +19,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import BaseCard from '@/components/ui/BaseCard.vue';
 import { fetchPortStatus } from '@/lib/services/networkService';
 import type { PortStatusResponse } from '@/types/network';
+import { useUiStore } from '@/store/ui';
 
+/**
+  * 組件用途：輪詢常見服務連接埠的狀態並以卡片顯示。
+  * 輸入參數：無，靠後端 API 提供最新狀態。
+  * 與其他模組關聯：使用 BaseCard、badge 樣式呈現狀態。
+  */
+
+const uiStore = useUiStore();
 const status = ref<PortStatusResponse>();
+const pollingTimer = ref<number | null>(null);
+const hasNotifiedError = ref(false);
 
+// 將後端狀態轉成簡潔的顯示資訊
 const portItems = computed(() => {
   if (!status.value) {
     return [
@@ -48,6 +59,7 @@ const portItems = computed(() => {
   ];
 });
 
+// 依據狀態選擇不同的 badge 樣式
 const statusBadge = (state: string) => {
   const base = 'badge';
   if (state === '運作中') {
@@ -59,17 +71,29 @@ const statusBadge = (state: string) => {
   return `${base} badge-warning`;
 };
 
+// 呼叫 API 取得最新的連接埠狀態
 const load = async () => {
   try {
     status.value = await fetchPortStatus();
+    hasNotifiedError.value = false;
   } catch (error) {
     console.error(error);
+    if (!hasNotifiedError.value) {
+      uiStore.pushToast('無法取得連接埠狀態，請稍後再試', 'danger');
+      hasNotifiedError.value = true;
+    }
   }
 };
 
 onMounted(() => {
   load();
-  const timer = window.setInterval(load, 3000);
-  return () => window.clearInterval(timer);
+  pollingTimer.value = window.setInterval(load, 3000);
+});
+
+onBeforeUnmount(() => {
+  if (pollingTimer.value !== null) {
+    window.clearInterval(pollingTimer.value);
+    pollingTimer.value = null;
+  }
 });
 </script>

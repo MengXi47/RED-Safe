@@ -10,4 +10,9 @@
 
 <script setup lang="ts">
 import BaseEmpty from '@/components/ui/BaseEmpty.vue';
+
+/**
+  * 組件用途：預留系統日誌視覺化區域，於功能尚未完成時顯示佔位訊息。
+  * 與其他模組關聯：引用 BaseEmpty 呈現統一的無資料樣式。
+  */
 </script>

@@ -18,6 +18,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+/**
+  * 組件用途：提供全站一致的載入動畫 SVG。
+  * 輸入參數：size 控制尺寸，可搭配按鈕或區塊使用。
+  * 與其他模組關聯：BaseButton、CameraPreviewModal 等載入狀態皆引用。
+  */
+
 type Size = 'sm' | 'md' | 'lg';
 
 const props = withDefaults(
@@ -29,6 +35,7 @@ const props = withDefaults(
   }
 );
 
+// 選擇不同尺寸對應的 class，並套用基礎旋轉動畫
 const spinnerClass = computed(() => {
   const base = 'animate-spin text-brand-500';
   const sizeMap = {

@@ -68,42 +68,86 @@
       :session-id="previewSessionId"
       @start="startPreview"
       @stop="stopPreview"
-      @close="previewOpen = false"
+      @close="closePreview"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { ref } from 'vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
 import BaseCard from '@/components/ui/BaseCard.vue';
 import BaseTable, { type ColumnDefinition } from '@/components/ui/BaseTable.vue';
 import CameraBindModal from '@/components/cameras/CameraBindModal.vue';
 import CameraPreviewModal from '@/components/cameras/CameraPreviewModal.vue';
-import { scanCameras, bindCamera, unbindCamera, previewProbe, previewOffer, previewHangup } from '@/lib/services/cameraService';
-import type { Camera, CameraBindPayload } from '@/types/camera';
+import type { Camera } from '@/types/camera';
 import { useUiStore } from '@/store/ui';
-import { HttpError } from '@/lib/http';
+import { useInitialState } from '@/lib/useInitialState';
+import {
+  useCameraBinding,
+  useCameraDiscovery,
+  useCameraPreview
+} from '@/composables/useCameraManagement';
+import type { CamerasBootstrapState } from '@/types/bootstrap';
+
+/**
+  * 組件用途：整合攝影機掃描、綁定與 WebRTC 預覽的管理頁面。
+  * 輸入參數：無外部 props，透過服務層呼叫後端 API 與展示結果。
+  * 與其他模組關聯：使用 BaseTable 呈現列表，並搭配 CameraBindModal、CameraPreviewModal。
+  */
 
 const uiStore = useUiStore();
 
-const initialState = (window as Window & { __EDGE_INITIAL_STATE__?: any }).__EDGE_INITIAL_STATE__?.cameras ?? {};
+const initialState = useInitialState<CamerasBootstrapState>(
+  (state) => state.cameras ?? {},
+  () => ({})
+);
 
-const searchResults = ref<Camera[]>(initialState.searchResults ?? []);
-const boundCameras = ref<Camera[]>(initialState.bound ?? []);
+const notify = (message: string, variant: 'success' | 'danger' | 'info' = 'info') => {
+  uiStore.pushToast(message, variant);
+};
 
-const scanning = ref(false);
-const searchError = ref('');
-const bindModalOpen = ref(false);
-const bindLoading = ref(false);
-const unbindLoading = ref(false);
 const selectedCamera = ref<Camera | null>(null);
 
-const previewOpen = ref(false);
-const previewSessionId = ref('');
-const previewConnection = ref<RTCPeerConnection | null>(null);
+const {
+  searchResults,
+  scanning,
+  searchError,
+  performScan
+} = useCameraDiscovery({
+  initialResults: initialState.searchResults ?? [],
+  notify
+});
+
+const {
+  boundCameras,
+  bindModalOpen,
+  bindLoading,
+  unbindLoading,
+  prepareBind,
+  confirmBind,
+  removeBind
+} = useCameraBinding({
+  initialBound: initialState.bound ?? [],
+  searchResults,
+  selectedCamera,
+  notify
+});
+
 const previewRef = ref<InstanceType<typeof CameraPreviewModal>>();
-const previewCredentials = ref<{ account: string; password: string }>({ account: '', password: '' });
+const {
+  previewOpen,
+  previewSessionId,
+  openPreview,
+  startPreview,
+  stopPreview,
+  closePreview
+} = useCameraPreview({
+  selectedCamera,
+  notify,
+  onStream: (stream) => previewRef.value?.attachStream(stream),
+  onError: (message) => previewRef.value?.handleError(message)
+});
 
 const searchColumns: ColumnDefinition<Camera & { actions: string }>[] = [
   { key: 'ip', label: 'IP 位址' },
@@ -119,198 +163,5 @@ const boundColumns: ColumnDefinition<Camera & { actions: string }>[] = [
   { key: 'actions', label: '操作' }
 ];
 
-const performScan = async () => {
-  scanning.value = true;
-  searchError.value = '';
-  try {
-    const response = await scanCameras();
-    if (!response.ok) {
-      searchError.value = response.error ?? '掃描失敗';
-      return;
-    }
-    searchResults.value = response.results;
-  } catch (error) {
-    console.error(error);
-    searchError.value = '掃描失敗，請稍後再試';
-  } finally {
-    scanning.value = false;
-  }
-};
-
-const prepareBind = (camera: Camera) => {
-  selectedCamera.value = camera;
-  bindModalOpen.value = true;
-};
-
-const confirmBind = async (payload: { custom_name: string; ipc_account?: string; ipc_password?: string }) => {
-  if (!selectedCamera.value) return;
-  bindLoading.value = true;
-  try {
-    const requestPayload: CameraBindPayload = {
-      ip_address: selectedCamera.value.ip,
-      mac_address: selectedCamera.value.mac,
-      ipc_name: selectedCamera.value.name,
-      custom_name: payload.custom_name || selectedCamera.value.name,
-      ipc_account: payload.ipc_account,
-      ipc_password: payload.ipc_password
-    };
-    const response = await bindCamera(requestPayload);
-    if (response.ok && response.item) {
-      updateBoundList(response.item);
-      uiStore.pushToast('綁定成功', 'success');
-      bindModalOpen.value = false;
-    } else if (response.code === 'ALREADY_BOUND') {
-      uiStore.pushToast('此攝影機已綁定', 'info');
-      bindModalOpen.value = false;
-    } else {
-      uiStore.pushToast(response.error ?? '綁定失敗', 'danger');
-    }
-  } catch (error) {
-    console.error(error);
-    uiStore.pushToast('綁定失敗，請稍後再試', 'danger');
-  } finally {
-    bindLoading.value = false;
-  }
-};
-
-const updateBoundList = (camera: Camera) => {
-  const index = boundCameras.value.findIndex((item) => item.mac === camera.mac);
-  if (index >= 0) {
-    boundCameras.value.splice(index, 1, camera);
-  } else {
-    boundCameras.value.push(camera);
-  }
-  searchResults.value = searchResults.value.map((item) =>
-    item.mac === camera.mac ? { ...item, is_bound: true } : item,
-  );
-};
-
-const removeBind = async (camera: Camera) => {
-  unbindLoading.value = true;
-  try {
-    const payload = camera.mac ? { mac_address: camera.mac } : { ip_address: camera.ip };
-    const response = await unbindCamera(payload);
-    if (response.ok) {
-      boundCameras.value = boundCameras.value.filter((item) => item.mac !== camera.mac);
-      searchResults.value = searchResults.value.map((item) =>
-        item.mac === camera.mac ? { ...item, is_bound: false } : item,
-      );
-      uiStore.pushToast('已解除綁定', 'success');
-    } else {
-      uiStore.pushToast(response.error ?? '解除失敗', 'danger');
-    }
-  } catch (error) {
-    console.error(error);
-    uiStore.pushToast('解除失敗，請稍後再試', 'danger');
-  } finally {
-    unbindLoading.value = false;
-  }
-};
-
 const refresh = () => window.location.reload();
-
-const openPreview = async (camera: Camera) => {
-  selectedCamera.value = camera;
-  previewOpen.value = true;
-};
-
-const createPeerConnection = () => {
-  const pc = new RTCPeerConnection({
-    iceServers: [
-      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
-    ]
-  });
-  if (pc.addTransceiver) {
-    pc.addTransceiver('video', { direction: 'recvonly' });
-  }
-  pc.addEventListener('track', (event) => {
-    if (event.streams?.[0]) {
-      previewRef.value?.attachStream(event.streams[0]);
-    }
-  });
-  pc.addEventListener('iceconnectionstatechange', () => {
-    if (pc.iceConnectionState === 'failed') {
-      previewRef.value?.handleError('預覽連線失敗');
-      stopPreview();
-    }
-  });
-  return pc;
-};
-
-const promptCredentials = () => {
-  const account = window.prompt('請輸入攝影機帳號', previewCredentials.value.account) ?? '';
-  const password = window.prompt('請輸入攝影機密碼', previewCredentials.value.password) ?? '';
-  previewCredentials.value = { account, password };
-};
-
-const startPreview = async (camera: Camera) => {
-  previewCredentials.value = { account: '', password: '' };
-  try {
-    await previewProbe({ ip: camera.ip, account: '', password: '' });
-  } catch (error: any) {
-    if (error instanceof HttpError && (error.payload as any)?.code === 'AUTH_REQUIRED') {
-      promptCredentials();
-      if (!previewCredentials.value.account && !previewCredentials.value.password) {
-        previewRef.value?.handleError('需要輸入攝影機帳號與密碼');
-        return;
-      }
-      try {
-        await previewProbe({
-          ip: camera.ip,
-          account: previewCredentials.value.account,
-          password: previewCredentials.value.password
-        });
-      } catch (innerError: any) {
-        previewRef.value?.handleError(innerError?.message ?? '驗證失敗');
-        return;
-      }
-    } else {
-      previewRef.value?.handleError(error?.message ?? '無法建立連線');
-      return;
-    }
-  }
-
-  try {
-    const pc = createPeerConnection();
-    previewConnection.value = pc;
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-
-    const payload = {
-      ip: camera.ip,
-      account: previewCredentials.value.account,
-      password: previewCredentials.value.password,
-      offer: {
-        type: offer.type,
-        sdp: offer.sdp
-      }
-    };
-
-    const response = await previewOffer(payload);
-    previewSessionId.value = response.session_id;
-    await pc.setRemoteDescription(response.answer);
-  } catch (error: any) {
-    previewRef.value?.handleError(error?.message ?? '預覽失敗');
-    stopPreview();
-  }
-};
-
-const stopPreview = async () => {
-  previewConnection.value?.getSenders().forEach((sender) => sender.track?.stop());
-  previewConnection.value?.getReceivers().forEach((receiver) => receiver.track?.stop());
-  previewConnection.value?.close();
-  previewConnection.value = null;
-  if (previewSessionId.value) {
-    try {
-      await previewHangup({ session_id: previewSessionId.value });
-    } catch (error) {
-      console.warn(error);
-    }
-  }
-};
-
-onBeforeUnmount(() => {
-  stopPreview();
-});
 </script>

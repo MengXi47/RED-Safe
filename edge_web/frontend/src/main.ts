@@ -3,15 +3,20 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
 import './styles/global.css';
+import type { EdgeInitialState } from '@/types/bootstrap';
+
+/**
+  * 檔案用途：初始化 Vue 應用、還原伺服器注入的狀態並掛載全域插件。
+  * 與其他模組關聯：注入 Pinia 與 Router，讓所有元件取得狀態與路由資訊。
+  */
 
 const initialElement = document.getElementById('edge-initial-state');
 if (initialElement?.textContent) {
   try {
-    (window as Window & { __EDGE_INITIAL_STATE__?: any }).__EDGE_INITIAL_STATE__ = JSON.parse(
-      initialElement.textContent,
-    );
+    const parsed = JSON.parse(initialElement.textContent) as EdgeInitialState;
+    window.__EDGE_INITIAL_STATE__ = parsed;
   } catch (error) {
-    console.warn('Failed to parse initial state', error);
+    console.warn('無法解析伺服器注入的初始狀態', error);
   }
 }
 

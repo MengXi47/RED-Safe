@@ -24,6 +24,11 @@ import AppTopBar from './AppTopBar.vue';
 import BaseToast from '@/components/ui/BaseToast.vue';
 import { useUiStore } from '@/store/ui';
 
+/**
+  * 組件用途：建立應用的主框架，整合側邊欄、頂部工具列與內容區。
+  * 與其他模組關聯：透過 uiStore 控制行動側邊欄；BaseToast 顯示全域訊息。
+  */
+
 const uiStore = useUiStore();
 </script>
 

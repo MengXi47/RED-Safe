@@ -1,0 +1,331 @@
+import { onScopeDispose, reactive, ref, shallowRef, type Ref } from 'vue';
+import {
+  bindCamera,
+  previewHangup,
+  previewOffer,
+  previewProbe,
+  scanCameras,
+  unbindCamera
+} from '@/lib/services/cameraService';
+import type {
+  Camera,
+  CameraBindPayload,
+  CameraBindResponse,
+  CameraPreviewOfferPayload,
+  CameraPreviewOfferResponse,
+  CameraPreviewProbePayload,
+  CameraUnbindResponse
+} from '@/types/camera';
+import { HttpError } from '@/lib/http';
+
+type ToastVariant = 'success' | 'danger' | 'info';
+
+interface Notifier {
+  (message: string, variant?: ToastVariant): void;
+}
+
+interface CameraDiscoveryOptions {
+  initialResults?: Camera[];
+  notify?: Notifier;
+}
+
+interface CameraBindingOptions {
+  initialBound?: Camera[];
+  searchResults: Ref<Camera[]>;
+  selectedCamera: Ref<Camera | null>;
+  notify: Notifier;
+}
+
+interface CameraPreviewOptions {
+  selectedCamera: Ref<Camera | null>;
+  notify: Notifier;
+  onStream: (stream: MediaStream) => void;
+  onError: (message: string) => void;
+}
+
+const isAuthRequiredError = (error: unknown): error is HttpError<{ code?: string }> =>
+  error instanceof HttpError && error.code === 'AUTH_REQUIRED';
+
+/**
+ * Hook 用途：管理攝影機掃描行為與錯誤提示。
+ */
+export const useCameraDiscovery = (options: CameraDiscoveryOptions = {}) => {
+  const searchResults = ref<Camera[]>([...(options.initialResults ?? [])]);
+  const scanning = ref(false);
+  const searchError = ref('');
+
+  const performScan = async () => {
+    scanning.value = true;
+    searchError.value = '';
+    try {
+      const response = await scanCameras();
+      if (!response.ok) {
+        const message = response.error ?? '掃描失敗';
+        searchError.value = message;
+        options.notify?.(message, 'danger');
+        return;
+      }
+      searchResults.value = response.results;
+    } catch (error) {
+      console.error(error);
+      const message = '掃描失敗，請稍後再試';
+      searchError.value = message;
+      options.notify?.(message, 'danger');
+    } finally {
+      scanning.value = false;
+    }
+  };
+
+  return {
+    searchResults,
+    scanning,
+    searchError,
+    performScan
+  };
+};
+
+/**
+ * Hook 用途：集中處理攝影機綁定與解除邏輯。
+ */
+export const useCameraBinding = (options: CameraBindingOptions) => {
+  const boundCameras = ref<Camera[]>([...(options.initialBound ?? [])]);
+  const bindModalOpen = ref(false);
+  const bindLoading = ref(false);
+  const unbindLoading = ref(false);
+
+  const markSearchResult = (camera: Camera, isBound: boolean) => {
+    options.searchResults.value = options.searchResults.value.map((item) =>
+      item.mac === camera.mac ? { ...item, is_bound: isBound } : item
+    );
+  };
+
+  const updateBoundList = (camera: Camera) => {
+    const index = boundCameras.value.findIndex((item) => item.mac === camera.mac);
+    if (index >= 0) {
+      boundCameras.value.splice(index, 1, camera);
+    } else {
+      boundCameras.value.push(camera);
+    }
+    markSearchResult(camera, true);
+  };
+
+  const prepareBind = (camera: Camera) => {
+    options.selectedCamera.value = camera;
+    bindModalOpen.value = true;
+  };
+
+  const confirmBind = async (payload: { custom_name: string; ipc_account?: string; ipc_password?: string }) => {
+    const camera = options.selectedCamera.value;
+    if (!camera) return;
+    bindLoading.value = true;
+    try {
+      const requestPayload: CameraBindPayload = {
+        ip_address: camera.ip,
+        mac_address: camera.mac,
+        ipc_name: camera.name,
+        custom_name: payload.custom_name || camera.name,
+        ipc_account: payload.ipc_account,
+        ipc_password: payload.ipc_password
+      };
+      const response: CameraBindResponse = await bindCamera(requestPayload);
+      if (response.ok && response.item) {
+        updateBoundList(response.item);
+        options.notify('綁定成功', 'success');
+        bindModalOpen.value = false;
+      } else if (response.code === 'ALREADY_BOUND') {
+        options.notify('此攝影機已綁定', 'info');
+        bindModalOpen.value = false;
+      } else {
+        options.notify(response.error ?? '綁定失敗', 'danger');
+      }
+    } catch (error) {
+      console.error(error);
+      options.notify('綁定失敗，請稍後再試', 'danger');
+    } finally {
+      bindLoading.value = false;
+    }
+  };
+
+  const removeBind = async (camera: Camera) => {
+    unbindLoading.value = true;
+    try {
+      const payload = camera.mac ? { mac_address: camera.mac } : { ip_address: camera.ip };
+      const response: CameraUnbindResponse = await unbindCamera(payload);
+      if (response.ok) {
+        boundCameras.value = boundCameras.value.filter((item) => item.mac !== camera.mac);
+        markSearchResult(camera, false);
+        options.notify('已解除綁定', 'success');
+      } else {
+        options.notify(response.error ?? '解除失敗', 'danger');
+      }
+    } catch (error) {
+      console.error(error);
+      options.notify('解除失敗，請稍後再試', 'danger');
+    } finally {
+      unbindLoading.value = false;
+    }
+  };
+
+  return {
+    boundCameras,
+    bindModalOpen,
+    bindLoading,
+    unbindLoading,
+    prepareBind,
+    confirmBind,
+    removeBind
+  };
+};
+
+/**
+ * Hook 用途：管理攝影機預覽的 WebRTC 連線與錯誤處理。
+ */
+export const useCameraPreview = (options: CameraPreviewOptions) => {
+  const previewOpen = ref(false);
+  const previewSessionId = ref('');
+  const previewConnection = shallowRef<RTCPeerConnection | null>(null);
+  const credentials = reactive({ account: '', password: '' });
+
+  const resetSession = () => {
+    previewSessionId.value = '';
+    previewConnection.value = null;
+    credentials.account = '';
+    credentials.password = '';
+  };
+
+  const promptCredentials = () => {
+    credentials.account = window.prompt('請輸入攝影機帳號', credentials.account) ?? '';
+    credentials.password = window.prompt('請輸入攝影機密碼', credentials.password) ?? '';
+  };
+
+  const ensureProbe = async (camera: Camera) => {
+    const payload: CameraPreviewProbePayload = {
+      ip: camera.ip,
+      account: '',
+      password: ''
+    };
+    try {
+      await previewProbe(payload);
+      return;
+    } catch (error) {
+      if (!isAuthRequiredError(error)) {
+        throw error;
+      }
+    }
+
+    promptCredentials();
+    if (!credentials.account && !credentials.password) {
+      throw new HttpError('需要輸入攝影機帳號與密碼才能預覽', undefined, 'AUTH_REQUIRED');
+    }
+
+    await previewProbe({
+      ip: camera.ip,
+      account: credentials.account,
+      password: credentials.password
+    });
+  };
+
+  const createPeerConnection = () => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }]
+    });
+    if (pc.addTransceiver) {
+      pc.addTransceiver('video', { direction: 'recvonly' });
+    }
+    pc.addEventListener('track', (event) => {
+      const [stream] = event.streams ?? [];
+      if (stream) {
+        options.onStream(stream);
+      }
+    });
+    pc.addEventListener('iceconnectionstatechange', () => {
+      if (pc.iceConnectionState === 'failed') {
+        options.onError('預覽連線失敗');
+        void stopPreview();
+      }
+    });
+    return pc;
+  };
+
+  const openPreview = (camera: Camera) => {
+    options.selectedCamera.value = camera;
+    previewOpen.value = true;
+  };
+
+  const startPreview = async (camera: Camera) => {
+    credentials.account = '';
+    credentials.password = '';
+    try {
+      await ensureProbe(camera);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '無法建立連線';
+      options.onError(message);
+      return;
+    }
+
+    try {
+      const pc = createPeerConnection();
+      previewConnection.value = pc;
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const payload: CameraPreviewOfferPayload = {
+        ip: camera.ip,
+        account: credentials.account,
+        password: credentials.password,
+        offer: {
+          type: offer.type,
+          sdp: offer.sdp ?? ''
+        }
+      };
+
+      const response: CameraPreviewOfferResponse = await previewOffer(payload);
+      previewSessionId.value = response.session_id;
+      await pc.setRemoteDescription(response.answer);
+    } catch (error) {
+      console.error(error);
+      const message = error instanceof Error ? error.message : '預覽失敗';
+      options.onError(message);
+      await stopPreview();
+    }
+  };
+
+  const stopPreview = async () => {
+    const connection = previewConnection.value;
+    if (connection) {
+      connection.getSenders().forEach((sender) => sender.track?.stop());
+      connection.getReceivers().forEach((receiver) => receiver.track?.stop());
+      connection.close();
+    }
+    previewConnection.value = null;
+    const sessionId = previewSessionId.value;
+    previewSessionId.value = '';
+  if (sessionId) {
+      try {
+        await previewHangup({ session_id: sessionId });
+      } catch (error) {
+        console.warn('預覽結束通知失敗', error);
+      }
+    }
+    resetSession();
+  };
+
+  const closePreview = () => {
+    previewOpen.value = false;
+    resetSession();
+  };
+
+  onScopeDispose(() => {
+    void stopPreview();
+  });
+
+  return {
+    previewOpen,
+    previewSessionId,
+    openPreview,
+    startPreview,
+    stopPreview,
+    closePreview
+  };
+};

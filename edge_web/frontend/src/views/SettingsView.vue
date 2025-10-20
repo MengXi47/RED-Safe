@@ -10,4 +10,9 @@
 
 <script setup lang="ts">
 import BaseEmpty from '@/components/ui/BaseEmpty.vue';
+
+/**
+  * 組件用途：系統設定頁的佔位畫面，並向使用者說明即將提供的功能。
+  * 與其他模組關聯：沿用 BaseEmpty 呈現一致的待建置訊息。
+  */
 </script>

@@ -59,6 +59,12 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
+/**
+  * 組件用途：呈現主側邊導覽並依據裝置狀態提供收合模式。
+  * 輸入參數：collapsed 控制縮小版視圖，外層 AppShell 會傳入。
+  * 與其他模組關聯：依賴 Router 判斷目前路徑並顯示不同群組連結。
+  */
+
 const props = withDefaults(
   defineProps<{
     collapsed?: boolean;
@@ -68,7 +74,11 @@ const props = withDefaults(
 
 const collapsed = computed(() => Boolean(props.collapsed));
 
-const navGroups = [
+type NavItem = { to: string; label: string };
+type NavGroup = { label: string; items: NavItem[] };
+
+// 導覽資料：依功能群組整理路由，提供 template 迴圈使用
+const navGroups: NavGroup[] = [
   {
     label: '總覽',
     items: [{ to: '/', label: '儀表板' }]
@@ -107,5 +117,6 @@ const navGroups = [
 const route = useRoute();
 const year = new Date().getFullYear();
 
+// 判斷連結是否為目前頁面或其子路徑，用於啟用態樣式
 const isActive = (to: string) => route.path === to || route.path.startsWith(`${to}/`);
 </script>

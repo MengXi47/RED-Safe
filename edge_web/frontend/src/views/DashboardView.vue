@@ -30,16 +30,24 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import BaseCard from '@/components/ui/BaseCard.vue';
 import MetricProgress from '@/components/visual/MetricProgress.vue';
 import { fetchMetrics } from '@/lib/services/metricsService';
 import type { MetricsResponse } from '@/types/metrics';
 import { useUiStore } from '@/store/ui';
 
+/**
+  * 組件用途：呈現系統效能儀表板並定時更新 CPU、記憶體、磁碟與溫度資訊。
+  * 輸入參數：無外部 props，依賴 metricsService 取得資料並使用 BaseCard 呈現。
+  * 與其他模組關聯：透過 uiStore 顯示 Toast 通知錯誤狀態。
+  */
+
 const metrics = ref<MetricsResponse>();
 const uiStore = useUiStore();
+const metricsTimer = ref<number | null>(null);
 
+// 抓取最新監控資料，失敗時透過 Toast 告知使用者
 const loadMetrics = async () => {
   try {
     metrics.value = await fetchMetrics();
@@ -51,7 +59,13 @@ const loadMetrics = async () => {
 
 onMounted(() => {
   loadMetrics();
-  const timer = window.setInterval(loadMetrics, 5000);
-  return () => window.clearInterval(timer);
+  metricsTimer.value = window.setInterval(loadMetrics, 5000);
+});
+
+onBeforeUnmount(() => {
+  if (metricsTimer.value !== null) {
+    window.clearInterval(metricsTimer.value);
+    metricsTimer.value = null;
+  }
 });
 </script>
