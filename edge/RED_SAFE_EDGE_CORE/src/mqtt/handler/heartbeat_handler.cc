@@ -1,4 +1,4 @@
-#include "heartbeat_handler.hpp"
+#include "mqtt/handler/heartbeat_handler.hpp"
 
 #include "grpc/ip_resolver.hpp"
 #include "util/logging.hpp"
@@ -9,7 +9,8 @@
 #include <boost/asio/this_coro.hpp>
 #include <boost/asio/use_awaitable.hpp>
 
-#include <nlohmann/json.hpp>
+#include <folly/dynamic.h>
+#include <folly/json.h>
 
 using boost::asio::awaitable;
 
@@ -54,24 +55,25 @@ awaitable<void> HeartbeatHandler::RunPublisher() {
 
 std::string HeartbeatHandler::BuildHeartbeatPayload(
     std::uint64_t sequence) const {
-  nlohmann::json payload{
-      {"edge_id", config_.edge_id},
-      {"version", config_.version},
-      {"heartbeat_at", CurrentIsoTimestamp()},
-      {"status", "online"},
-      {"sequence", sequence},
-      {"ip", config_.edge_ip}};
-  return payload.dump();
+  folly::dynamic payload = folly::dynamic::object;
+  payload["edge_id"] = config_.edge_id;
+  payload["version"] = config_.version;
+  payload["heartbeat_at"] = CurrentIsoTimestamp();
+  payload["status"] = "online";
+  payload["sequence"] = sequence;
+  payload["ip"] = config_.edge_ip;
+  return folly::toJson(payload);
 }
 
 std::string HeartbeatHandler::BuildAckMessage(
     const std::string& trace_id, const std::string& code) {
-  nlohmann::json message{
-      {"trace_id", trace_id},
-      {"code", code},
-      {"status", "ok"},
-      {"result", nlohmann::json{{"message", "heartbeat_ack"}}}};
-  return message.dump();
+  folly::dynamic message = folly::dynamic::object;
+  message["trace_id"] = trace_id;
+  message["code"] = code;
+  message["status"] = "ok";
+  message["result"] =
+      folly::dynamic::object("message", "heartbeat_ack");
+  return folly::toJson(message);
 }
 
 void HeartbeatHandler::RefreshEdgeIp() {

@@ -1,8 +1,9 @@
-#include "unsupported_command_handler.hpp"
+#include "mqtt/handler/unsupported_command_handler.hpp"
 
 #include "util/logging.hpp"
 
-#include <nlohmann/json.hpp>
+#include <folly/dynamic.h>
+#include <folly/json.h>
 
 #include <utility>
 
@@ -22,10 +23,11 @@ awaitable<void> UnsupportedCommandHandler::Handle(
 
 std::string UnsupportedCommandHandler::BuildUnsupportedCommand(
     const std::string& trace_id, const std::string& code) {
-  nlohmann::json message{
-      {"trace_id", trace_id},
-      {"code", code},
-      {"status", "error"},
-      {"result", nlohmann::json{{"error_message", "unsupported command"}}}};
-  return message.dump();
+  folly::dynamic message = folly::dynamic::object;
+  message["trace_id"] = trace_id;
+  message["code"] = code;
+  message["status"] = "error";
+  message["result"] =
+      folly::dynamic::object("error_message", "unsupported command");
+  return folly::toJson(message);
 }

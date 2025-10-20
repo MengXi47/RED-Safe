@@ -28,7 +28,48 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 include(cmake/Target.cmake)
 include(cmake/CLangFormat.cmake)
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  execute_process(
+      COMMAND ${CMAKE_CXX_COMPILER} -print-resource-dir
+      OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if (CLANG_RESOURCE_DIR)
+    get_filename_component(CLANG_PREFIX "${CLANG_RESOURCE_DIR}/../.." ABSOLUTE)
+    set(LIBCXX_INCLUDE_DIR "${CLANG_PREFIX}/include/c++/v1")
+    if (EXISTS "${LIBCXX_INCLUDE_DIR}")
+      include_directories(BEFORE SYSTEM "${LIBCXX_INCLUDE_DIR}")
+    endif ()
+  endif ()
+endif ()
+
+foreach(_implicit_dir IN LISTS CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+  if(_implicit_dir MATCHES "/c\\+\\+/v1(/)?$")
+    include_directories(BEFORE SYSTEM "${_implicit_dir}")
+  endif()
+endforeach()
+
 find_package(folly REQUIRED)
+
+if (TARGET Folly::folly_deps)
+  get_target_property(_folly_includes Folly::folly_deps INTERFACE_INCLUDE_DIRECTORIES)
+  if (_folly_includes)
+    list(FILTER _folly_includes EXCLUDE REGEX "MacOSX[0-9.]+\\.sdk/usr/include")
+    set_property(
+        TARGET Folly::folly_deps
+        PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${_folly_includes}")
+  endif ()
+  get_target_property(_folly_deps Folly::folly_deps INTERFACE_LINK_LIBRARIES)
+  if (_folly_deps)
+    find_library(GFLAGS_LIBRARY NAMES gflags)
+    if (GFLAGS_LIBRARY)
+      list(TRANSFORM _folly_deps REPLACE "gflags_shared" "${GFLAGS_LIBRARY}")
+    endif ()
+    set_property(
+        TARGET Folly::folly_deps
+        PROPERTY INTERFACE_LINK_LIBRARIES "${_folly_deps}")
+  endif ()
+endif ()
+
 find_package(Boost 1.82 REQUIRED COMPONENTS)
 find_package(OpenSSL REQUIRED)
 if (APPLE)
@@ -38,7 +79,6 @@ else ()
 endif ()
 find_package(gRPC CONFIG REQUIRED)
 find_package(Threads REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBPQXX REQUIRED IMPORTED_TARGET libpqxx)

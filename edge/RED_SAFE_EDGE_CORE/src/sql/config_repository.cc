@@ -1,6 +1,6 @@
-#include "config_repository.hpp"
+#include "sql/config_repository.hpp"
 
-#include "../util/logging.hpp"
+#include "util/logging.hpp"
 
 #include <pqxx/pqxx>
 

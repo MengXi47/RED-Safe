@@ -5,7 +5,8 @@
 #include "util/time.hpp"
 
 #include <curl/curl.h>
-#include <nlohmann/json.hpp>
+#include <folly/dynamic.h>
+#include <folly/json.h>
 
 #include <string>
 #include <string_view>
@@ -44,14 +45,14 @@ bool CurlEdgeOnlineService::ReportOnline(const EdgeConfig& config) {
     }
   }
 
-  nlohmann::json body{
-      {"edge_id", config.edge_id},
-      {"version", config.version},
-      {"started_at", CurrentIsoTimestamp()}};
+  folly::dynamic body = folly::dynamic::object;
+  body["edge_id"] = config.edge_id;
+  body["version"] = config.version;
+  body["started_at"] = CurrentIsoTimestamp();
   if (!edge_ip.empty()) {
     body["ip"] = edge_ip;
   }
-  const std::string payload = body.dump();
+  const std::string payload = folly::toJson(body);
 
   CURL* curl = curl_easy_init();
   if (!curl) {

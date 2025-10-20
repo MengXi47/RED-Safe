@@ -1,7 +1,7 @@
-#include "env_setting.hpp"
+#include "core/env_setting.hpp"
 
-#include "../sql/config_repository.hpp"
-#include "../util/logging.hpp"
+#include "sql/config_repository.hpp"
+#include "util/logging.hpp"
 
 #include <algorithm>
 #include <cstdlib>

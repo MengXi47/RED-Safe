@@ -1,4 +1,4 @@
-#include "ws_discovery_client.hpp"
+#include "ipcscan/network/ws_discovery_client.hpp"
 
 #include <format>
 #include <random>

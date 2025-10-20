@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/env_setting.hpp"
+#include "core/env_setting.hpp"
 
 class IEdgeOnlineService {
 public:
@@ -15,4 +15,3 @@ public:
 private:
     static std::string BuildUrl(const std::string& base_url, std::string_view path);
 };
-

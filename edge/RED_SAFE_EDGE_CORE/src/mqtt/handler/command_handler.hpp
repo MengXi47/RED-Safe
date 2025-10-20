@@ -7,12 +7,13 @@
 #include <string_view>
 #include <utility>
 
-#include <nlohmann/json.hpp>
+#include <folly/dynamic.h>
+#include <folly/json.h>
 
 struct CommandMessage {
   std::string trace_id;
   std::string code;
-  const nlohmann::json& payload;
+  const folly::dynamic& payload;
   std::string raw_payload;
 };
 
@@ -25,25 +26,26 @@ class ICommandHandler {
 
  protected:
   static std::string BuildSuccessResponse(
-      std::string trace_id, int code, nlohmann::json result) {
-    nlohmann::json message{
-        {"trace_id", std::move(trace_id)},
-        {"code", code},
-        {"status", "ok"},
-        {"result", std::move(result)}};
-    return message.dump();
+      std::string trace_id, int code, folly::dynamic result) {
+    folly::dynamic message = folly::dynamic::object;
+    message["trace_id"] = std::move(trace_id);
+    message["code"] = code;
+    message["status"] = "ok";
+    message["result"] = std::move(result);
+    return folly::toJson(message);
   }
 
   static std::string BuildErrorResponse(
       std::string trace_id,
       int code,
       std::string_view error_message) {
-    nlohmann::json message{
-        {"trace_id", std::move(trace_id)},
-        {"code", code},
-        {"status", "error"},
-        {"result", nlohmann::json{{"error_message", error_message}}}};
-    return message.dump();
+    folly::dynamic message = folly::dynamic::object;
+    message["trace_id"] = std::move(trace_id);
+    message["code"] = code;
+    message["status"] = "error";
+    message["result"] = folly::dynamic::object(
+        "error_message", std::string(error_message));
+    return folly::toJson(message);
   }
 };
 

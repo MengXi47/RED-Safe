@@ -9,5 +9,5 @@ target_add_lib(RED_SAFE_EDGE_CORE_mqtt
     OpenSSL::Crypto
     ${Boost_LIBRARIES}
     Threads::Threads
-    nlohmann_json::nlohmann_json
+    Folly::folly
 )

@@ -1,13 +1,13 @@
-#include "network_info_handler.hpp"
-
-#include <utility>
+#include "mqtt/handler/network_info_handler.hpp"
 
 #include "grpc/grpc_client.hpp"
-#include "iptool.pb.h"
+#include <iptool.pb.h>
 #include "util/logging.hpp"
 
+#include <folly/dynamic.h>
+
 #include <string>
-#include <nlohmann/json.hpp>
+#include <utility>
 
 using boost::asio::awaitable;
 
@@ -24,18 +24,19 @@ std::string ModeToString(iptool::NetworkMode mode) {
   }
 }
 
-nlohmann::json BuildNetworkInfoResult(const iptool::NetworkConfig& net) {
-  nlohmann::json result{
-      {"interface_name", net.interface_name()},
-      {"ip_address", net.ip_address()},
-      {"subnet_mask", net.subnet_mask()},
-      {"gateway", net.gateway()},
-      {"dns", net.dns()},
-      {"mode",
-       nlohmann::json{
-           {"name", ModeToString(net.mode())},
-           {"value", static_cast<int>(net.mode())},
-           {"raw", iptool::NetworkMode_Name(net.mode())}}}};
+folly::dynamic BuildNetworkInfoResult(const iptool::NetworkConfig& net) {
+  folly::dynamic result = folly::dynamic::object;
+  result["interface_name"] = net.interface_name();
+  result["ip_address"] = net.ip_address();
+  result["subnet_mask"] = net.subnet_mask();
+  result["gateway"] = net.gateway();
+  result["dns"] = net.dns();
+
+  folly::dynamic mode = folly::dynamic::object;
+  mode["name"] = ModeToString(net.mode());
+  mode["value"] = static_cast<int>(net.mode());
+  mode["raw"] = iptool::NetworkMode_Name(net.mode());
+  result["mode"] = std::move(mode);
   return result;
 }
 

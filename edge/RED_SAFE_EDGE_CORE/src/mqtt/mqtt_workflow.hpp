@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../core/env_setting.hpp"
-#include "dependency_injection.hpp"
+#include "core/env_setting.hpp"
+#include "mqtt/dependency_injection.hpp"
 #include "handler/command_handler.hpp"
 #include "handler/heartbeat_handler.hpp"
 #include "handler/network_info_handler.hpp"

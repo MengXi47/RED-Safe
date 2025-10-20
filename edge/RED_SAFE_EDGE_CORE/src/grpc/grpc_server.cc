@@ -1,6 +1,6 @@
-#include "grpc_server.hpp"
+#include "grpc/grpc_server.hpp"
 
-#include "ipcscan.grpc.pb.h"
+#include <ipcscan.grpc.pb.h>
 #include "ipcscan/app/scan_executor.hpp"
 #include "util/logging.hpp"
 

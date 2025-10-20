@@ -1,11 +1,12 @@
-#include "scan_handler.hpp"
+#include "mqtt/handler/scan_handler.hpp"
 
-#include "../../ipcscan/app/scan_executor.hpp"
+#include "ipcscan/app/scan_executor.hpp"
 #include "util/logging.hpp"
 
 #include <boost/asio.hpp>
 
-#include <nlohmann/json.hpp>
+#include <folly/dynamic.h>
+#include <folly/json.h>
 
 #include <algorithm>
 #include <thread>
@@ -83,9 +84,11 @@ awaitable<std::tuple<bool, std::string>> ScanCommandHandler::RunScanAsync() {
 
 std::string ScanCommandHandler::BuildScanSuccess(
     const std::string& trace_id, const std::string& result_json) {
-  nlohmann::json data = nlohmann::json::parse(result_json, nullptr, false);
-  if (data.is_discarded()) {
-    data = nlohmann::json::array();
+  folly::dynamic data;
+  try {
+    data = folly::parseJson(result_json);
+  } catch (const folly::json::parse_error&) {
+    data = folly::dynamic::array();
   }
   return BuildSuccessResponse(trace_id, 101, std::move(data));
 }

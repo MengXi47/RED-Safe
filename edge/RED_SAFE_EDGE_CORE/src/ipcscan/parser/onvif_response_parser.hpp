@@ -1,6 +1,6 @@
 #pragma once
 
-#include "response_parser.hpp"
+#include "ipcscan/parser/response_parser.hpp"
 
 #include <optional>
 #include <string_view>

@@ -1,6 +1,7 @@
 #include "ipcscan/app/scan_executor.hpp"
 
-#include <nlohmann/json.hpp>
+#include <folly/dynamic.h>
+#include <folly/json.h>
 
 namespace ipcscan {
 
@@ -18,13 +19,15 @@ std::string ScanExecutor::RunScan() {
 
 // 將掃描結果轉成 JSON 陣列格式
 std::string ScanExecutor::BuildJson(const std::vector<DeviceInfo>& devices) {
-  nlohmann::json array = nlohmann::json::array();
+  folly::dynamic array = folly::dynamic::array();
   for (const auto& device : devices) {
-    nlohmann::json entry{
-        {"ip", device.ip}, {"mac", device.mac}, {"name", device.name}};
+    folly::dynamic entry = folly::dynamic::object;
+    entry["ip"] = device.ip;
+    entry["mac"] = device.mac;
+    entry["name"] = device.name;
     array.push_back(std::move(entry));
   }
-  return array.dump();
+  return folly::toJson(array);
 }
 
 } // namespace ipcscan

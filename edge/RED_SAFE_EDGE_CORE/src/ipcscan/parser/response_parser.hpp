@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/device_info.hpp"
+#include "ipcscan/core/device_info.hpp"
 
 #include <string_view>
 

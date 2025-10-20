@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../grpc/grpc_server.hpp"
-#include "env_setting.hpp"
+#include "grpc/grpc_server.hpp"
+#include "core/env_setting.hpp"
 #include "http/http_client.hpp"
 #include "mqtt/mqtt_workflow.hpp"
 

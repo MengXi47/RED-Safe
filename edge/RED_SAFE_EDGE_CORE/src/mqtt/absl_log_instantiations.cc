@@ -1,5 +1,5 @@
 #ifdef __APPLE__
-#include "absl/log/internal/log_message.h"
+#include <absl/log/internal/log_message.h>
 // Ensure the Abseil log message stream overloads for unsigned integral types
 // are emitted even when the toolchain misses Abseil's explicit instantiations.
 // This prevents unresolved references to the templated operator<< symbols

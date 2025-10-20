@@ -1,4 +1,4 @@
-#include "grpc_client.hpp"
+#include "grpc/grpc_client.hpp"
 
 #include "util/logging.hpp"
 
@@ -7,7 +7,7 @@
 #include <string>
 
 #include <grpcpp/grpcpp.h>
-#include "iptool.grpc.pb.h"
+#include <iptool.grpc.pb.h>
 
 using grpc::Channel;
 using grpc::ClientContext;

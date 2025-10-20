@@ -6,23 +6,28 @@
 #include <boost/asio/error.hpp>
 #include <boost/system/errc.hpp>
 
-#include <nlohmann/json.hpp>
+#include <folly/Conv.h>
+#include <folly/dynamic.h>
+#include <folly/json.h>
 
 using boost::asio::awaitable;
 namespace mqtt5 = boost::mqtt5;
 
 namespace {
-std::string ExtractCodeFieldValue(const nlohmann::json* code_field) {
+std::string ExtractCodeFieldValue(const folly::dynamic* code_field) {
   if (code_field == nullptr) {
     return "";
   }
-  if (code_field->is_string()) {
-    return code_field->get<std::string>();
+  if (code_field->isString()) {
+    return code_field->asString();
   }
-  if (code_field->is_number_integer()) {
-    return std::to_string(code_field->get<int>());
+  if (code_field->isInt()) {
+    return folly::to<std::string>(code_field->asInt());
   }
-  return code_field->dump();
+  if (code_field->isDouble()) {
+    return folly::to<std::string>(code_field->asDouble());
+  }
+  return folly::toJson(*code_field);
 }
 } // namespace
 
@@ -64,22 +69,28 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
       continue;
     }
 
-    nlohmann::json json = nlohmann::json::parse(payload, nullptr, false);
-    if (json.is_discarded()) {
+    folly::dynamic json;
+    try {
+      json = folly::parseJson(payload);
+    } catch (const folly::json::parse_error&) {
+      LogWarnFormat("解析 MQTT 指令失敗，payload={}", payload);
+      continue;
+    }
+    if (!json.isObject()) {
       LogWarnFormat("解析 MQTT 指令失敗，payload={}", payload);
       continue;
     }
 
-    const auto trace_it = json.find("trace_id");
-    const auto code_it = json.find("code");
+    const auto* trace_ptr = json.get_ptr("trace_id");
+    const auto* code_ptr = json.get_ptr("code");
 
     const std::string trace_value =
-        (trace_it != json.end() && trace_it->is_string()) ? *trace_it : "";
+        (trace_ptr != nullptr && trace_ptr->isString()) ? trace_ptr->asString()
+                                                        : "";
     const std::string code_field_value =
-        (code_it != json.end()) ? ExtractCodeFieldValue(&(*code_it)) : "";
+        ExtractCodeFieldValue(code_ptr);
 
-    if (trace_it == json.end() || !trace_it->is_string() ||
-        code_it == json.end()) {
+    if (trace_ptr == nullptr || !trace_ptr->isString() || code_ptr == nullptr) {
       LogWarnFormat("MQTT 指令欄位不完整，payload={}", payload);
       CommandMessage command{trace_value, code_field_value, json, payload};
       co_await unsupported_handler_->Handle(command);
@@ -87,10 +98,10 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
     }
 
     std::string code_str;
-    if (code_it->is_string()) {
-      code_str = *code_it;
-    } else if (code_it->is_number_integer()) {
-      code_str = std::to_string(code_it->get<int>());
+    if (code_ptr->isString()) {
+      code_str = code_ptr->asString();
+    } else if (code_ptr->isInt()) {
+      code_str = folly::to<std::string>(code_ptr->asInt());
     } else {
       LogWarnFormat("MQTT 指令 code 欄位型別不支援，payload={}", payload);
       CommandMessage command{trace_value, code_field_value, json, payload};

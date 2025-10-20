@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../core/device_info.hpp"
-#include "../network/discovery_transport.hpp"
-#include "../network/mac_resolver_port.hpp"
-#include "../parser/response_parser.hpp"
+#include "ipcscan/core/device_info.hpp"
+#include "ipcscan/network/discovery_transport.hpp"
+#include "ipcscan/network/mac_resolver_port.hpp"
+#include "ipcscan/parser/response_parser.hpp"
 
 #include <unordered_map>
 #include <vector>
