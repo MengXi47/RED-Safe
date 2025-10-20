@@ -291,3 +291,14 @@
 ```
 
 **常見錯誤碼**：`120`、`123`、`125`、`126`、`127`、`135`、`144`、`147`、`148`
+
+---
+
+## gRPC 介面：UserService
+
+| Method | Request | Response | 說明 |
+|--------|---------|----------|------|
+| `ListEdgeUsers` | `ListEdgeUsersRequest` | `ListEdgeUsersResponse` | 依 edge_id 取得綁定的使用者列表 |
+| `UnbindEdgeUser` | `UnbindEdgeUserRequest` | `UnbindEdgeUserResponse` | 解除指定使用者與 edge 的綁定 |
+| `CreateUserProfile` | `CreateUserProfileRequest` | `CreateUserProfileResponse` | 建立 user_profile 與預設通知設定，`error_code`=`0` 表示成功 |
+| `GetUserProfile` | `GetUserProfileRequest` | `GetUserProfileResponse` | 依 user_id 或 email 查詢個人資料 |

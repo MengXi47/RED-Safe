@@ -36,6 +36,7 @@ public class EdgeCommandSseService {
         thread.setDaemon(true);
         return thread;
     });
+    private final TokenVerifier tokenVerifier;
 
     /**
      * 建立即時事件串流並等待 Redis 更新。
@@ -44,10 +45,7 @@ public class EdgeCommandSseService {
         JsonNode requestNode = edgeCommandRedisService.getRequest(traceId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "155"));
 
-        UUID userId = JwtService.verifyAndGetUserId(accessToken);
-        if (userId.equals(new UUID(0L, 0L))) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
+        UUID userId = tokenVerifier.requireUserId(accessToken);
 
         String edgeId = requestNode.path("edge_id").asText();
         if (!userEdgeBindRepository.existsByUserIdAndEdgeId(userId, edgeId)) {

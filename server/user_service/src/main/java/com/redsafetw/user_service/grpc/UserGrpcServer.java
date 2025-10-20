@@ -1,13 +1,21 @@
 package com.redsafetw.user_service.grpc;
 
+import com.grpc.user.CreateUserProfileRequest;
+import com.grpc.user.CreateUserProfileResponse;
 import com.grpc.user.EdgeUserBind;
+import com.grpc.user.GetUserProfileRequest;
+import com.grpc.user.GetUserProfileResponse;
 import com.grpc.user.ListEdgeUsersRequest;
 import com.grpc.user.ListEdgeUsersResponse;
 import com.grpc.user.UnbindEdgeUserRequest;
 import com.grpc.user.UnbindEdgeUserResponse;
 import com.grpc.user.UserServiceGrpc;
 import com.redsafetw.user_service.domain.UserEdgeBindDomain;
+import com.redsafetw.user_service.domain.UserDomain;
+import com.redsafetw.user_service.domain.UserNotificationSettings;
+import com.redsafetw.user_service.grpc.AuthGrpcClient;
 import com.redsafetw.user_service.repository.UserEdgeBindRepository;
+import com.redsafetw.user_service.repository.UserNotificationSettingsRepository;
 import com.redsafetw.user_service.repository.UserRepository;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
@@ -15,10 +23,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.grpc.server.service.GrpcService;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -33,6 +43,8 @@ public class UserGrpcServer extends UserServiceGrpc.UserServiceImplBase {
 
     private final UserEdgeBindRepository userEdgeBindRepository;
     private final UserRepository userRepository;
+    private final UserNotificationSettingsRepository notificationSettingsRepository;
+    private final AuthGrpcClient authGrpcClient;
 
     @Override
     public void listEdgeUsers(
@@ -53,7 +65,7 @@ public class UserGrpcServer extends UserServiceGrpc.UserServiceImplBase {
             userRepository.findByUserId(bind.getUserId()).ifPresentOrElse(user -> {
                 EdgeUserBind.Builder userBuilder = EdgeUserBind.newBuilder()
                         .setEmail(user.getEmail())
-                        .setUserName(user.getUser_name() == null ? "" : user.getUser_name());
+                        .setUserName(user.getUserName() == null ? "" : user.getUserName());
 
                 if (bind.getBindAt() != null) {
                     userBuilder.setBindAt(formatDate(bind.getBindAt()));
@@ -61,8 +73,14 @@ public class UserGrpcServer extends UserServiceGrpc.UserServiceImplBase {
 
                 userBuilder.setUserId(bind.getUserId().toString());
 
-                if (user.getLast_login_at() != null) {
-                    userBuilder.setLastOnline(formatDate(user.getLast_login_at()));
+                try {
+                    var profile = authGrpcClient.getSecurityProfile(user.getUserId());
+                    String lastLogin = profile.getLastLoginAt();
+                    if (!lastLogin.isBlank()) {
+                        userBuilder.setLastOnline(lastLogin);
+                    }
+                } catch (ResponseStatusException ex) {
+                    log.warn("listEdgeUsers security profile fetch failed user_id={}", user.getUserId(), ex);
                 }
 
                 responseBuilder.addUsers(userBuilder.build());
@@ -127,7 +145,106 @@ public class UserGrpcServer extends UserServiceGrpc.UserServiceImplBase {
         responseObserver.onCompleted();
     }
 
+    @Override
+    @Transactional
+    public void createUserProfile(CreateUserProfileRequest request, StreamObserver<CreateUserProfileResponse> responseObserver) {
+        UUID userId;
+        try {
+            userId = UUID.fromString(request.getUserId());
+        } catch (IllegalArgumentException ex) {
+            responseObserver.onNext(CreateUserProfileResponse.newBuilder().setErrorCode("142").build());
+            responseObserver.onCompleted();
+            return;
+        }
+
+        String email = normalizeEmail(request.getEmail());
+        if (email == null) {
+            responseObserver.onNext(CreateUserProfileResponse.newBuilder().setErrorCode("124").build());
+            responseObserver.onCompleted();
+            return;
+        }
+
+        if (userRepository.findByUserId(userId).isPresent() || userRepository.existsByEmail(email)) {
+            responseObserver.onNext(CreateUserProfileResponse.newBuilder().setErrorCode("133").build());
+            responseObserver.onCompleted();
+            return;
+        }
+
+        UserDomain user = new UserDomain();
+        user.setUserId(userId);
+        user.setEmail(email);
+        user.setUserName(request.getUserName().isBlank() ? null : request.getUserName());
+        user.setAvatarUrl(request.getAvatarUrl().isBlank() ? null : request.getAvatarUrl());
+        if (!request.getLocale().isBlank()) {
+            user.setLocale(request.getLocale());
+        }
+        if (!request.getTimezone().isBlank()) {
+            user.setTimezone(request.getTimezone());
+        }
+        userRepository.save(user);
+
+        if (!notificationSettingsRepository.existsById(userId)) {
+            UserNotificationSettings settings = new UserNotificationSettings();
+            settings.setUserId(userId);
+            notificationSettingsRepository.save(settings);
+        }
+
+        responseObserver.onNext(CreateUserProfileResponse.newBuilder().setErrorCode("0").build());
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void getUserProfile(GetUserProfileRequest request, StreamObserver<GetUserProfileResponse> responseObserver) {
+        UserDomain user = resolveUser(request);
+        if (user == null) {
+            responseObserver.onNext(GetUserProfileResponse.newBuilder().build());
+            responseObserver.onCompleted();
+            return;
+        }
+
+        GetUserProfileResponse response = GetUserProfileResponse.newBuilder()
+                .setUserId(user.getUserId().toString())
+                .setEmail(user.getEmail())
+                .setUserName(user.getUserName() == null ? "" : user.getUserName())
+                .setAvatarUrl(user.getAvatarUrl() == null ? "" : user.getAvatarUrl())
+                .setLocale(user.getLocale() == null ? "" : user.getLocale())
+                .setTimezone(user.getTimezone() == null ? "" : user.getTimezone())
+                .setCreatedAt(user.getCreatedAt() == null ? "" : formatDate(user.getCreatedAt()))
+                .setUpdatedAt(user.getUpdatedAt() == null ? "" : formatDate(user.getUpdatedAt()))
+                .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    private UserDomain resolveUser(GetUserProfileRequest request) {
+        if (!request.getUserId().isBlank()) {
+            try {
+                UUID userId = UUID.fromString(request.getUserId());
+                return userRepository.findByUserId(userId).orElse(null);
+            } catch (IllegalArgumentException ex) {
+                return null;
+            }
+        }
+        if (!request.getEmail().isBlank()) {
+            String email = normalizeEmail(request.getEmail());
+            if (email == null) {
+                return null;
+            }
+            return userRepository.findByEmail(email).orElse(null);
+        }
+        return null;
+    }
+
     private String formatDate(OffsetDateTime dateTime) {
         return ISO_FORMATTER.format(dateTime);
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null) {
+            return null;
+        }
+        String trimmed = email.trim().toLowerCase(Locale.ROOT);
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

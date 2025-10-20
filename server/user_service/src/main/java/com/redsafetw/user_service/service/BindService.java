@@ -27,16 +27,13 @@ public class BindService {
 
     private final EdgeGrpcClient edgeGrpcClient;
     private final UserEdgeBindRepository userEdgeBindRepository;
+    private final TokenVerifier tokenVerifier;
     private static final Logger logger = LoggerFactory.getLogger(BindService.class);
 
     public BindResponse bind(String access_token, BindRequest bindRequest) {
 
-        UUID userId = JwtService.verifyAndGetUserId(access_token);
+        UUID userId = tokenVerifier.requireUserId(access_token);
         String edgeId = bindRequest.getEdgeId();
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} access_token 失效", userId, edgeId);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
 
         if (!edgeGrpcClient.CheckEdgeIdExists(edgeId)) {
             logger.info("UserEdgeBind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} edge_id 不存在", userId, edgeId);
@@ -68,11 +65,7 @@ public class BindService {
 
     public UnbindResponse unbind(String access_token, String edge_id) {
 
-        UUID userId = JwtService.verifyAndGetUserId(access_token);
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("UserEdgeUnbind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} access_token 失效", userId, edge_id);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
+        UUID userId = tokenVerifier.requireUserId(access_token);
 
         if (!edgeGrpcClient.CheckEdgeIdExists(edge_id)) {
             logger.info("UserEdgeUnbind: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} edge_id 不存在", userId, edge_id);

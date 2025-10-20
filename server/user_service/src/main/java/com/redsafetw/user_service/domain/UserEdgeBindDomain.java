@@ -15,7 +15,7 @@ import java.util.UUID;
 @Setter
 @Getter
 @Entity
-@Table(name = "user_edge_bind")
+@Table(name = "user_edge_bindings")
 @IdClass(UserEdgeBindDomain.BindId.class)
 public class UserEdgeBindDomain {
 
@@ -34,6 +34,13 @@ public class UserEdgeBindDomain {
 
     @Column(name = "bind_at")
     private OffsetDateTime bindAt;
+
+    @PrePersist
+    void onCreate() {
+        if (bindAt == null) {
+            bindAt = OffsetDateTime.now();
+        }
+    }
 
     // JPA 複合主鍵類別
     @Getter

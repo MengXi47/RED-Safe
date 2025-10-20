@@ -1,15 +1,14 @@
-package com.redsafetw.user_service.dto;
+package com.redsafetw.auth_service.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.UUID;
 
-/**
- * 使用者註冊回覆
- *
- * @create 2025-09-11 10:40 pm
- **/
 @Getter
 @Setter
 @NoArgsConstructor

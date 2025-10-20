@@ -2,10 +2,12 @@ package com.redsafetw.user_service.service;
 
 import com.redsafetw.user_service.domain.UserEdgeBindDomain;
 import com.redsafetw.user_service.dto.*;
+import com.grpc.auth.ChangePasswordResponse;
+import com.grpc.auth.UserSecurityProfileResponse;
+import com.redsafetw.user_service.grpc.AuthGrpcClient;
 import com.redsafetw.user_service.grpc.EdgeGrpcClient;
 import com.redsafetw.user_service.repository.UserEdgeBindRepository;
 import com.redsafetw.user_service.repository.UserRepository;
-import com.redsafetw.user_service.util.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -28,24 +30,23 @@ import java.util.UUID;
 public class UserService {
     private final UserRepository userRepository;
     private final UserEdgeBindRepository userEdgeBindRepository;
-    private final AuthService authService;
+    private final AuthGrpcClient authGrpcClient;
+    private final TokenVerifier tokenVerifier;
     private final EdgeGrpcClient edgeGrpcClient;
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     public UserInfoResponse getUserInfo(String accessToken) {
-        UUID userId = JwtService.verifyAndGetUserId(accessToken);
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("getUserInfo: {\"access_token\":\"{}\"} access_token 失效", accessToken);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
+        UUID userId = tokenVerifier.requireUserId(accessToken);
 
         var user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "142"));
 
+        UserSecurityProfileResponse profile = authGrpcClient.getSecurityProfile(userId);
+
         return UserInfoResponse.builder()
-                .userName(user.getUser_name())
+                .userName(user.getUserName())
                 .email(user.getEmail())
-                .otpEnabled(Boolean.TRUE.equals(user.getOtpEnabled()))
+                .otpEnabled(profile.getOtpEnabled())
                 .build();
     }
 
@@ -53,11 +54,7 @@ public class UserService {
             UpdateEdgeNameRequest updateEdgeNameRequest,
             String accessToken) {
 
-        UUID userId = JwtService.verifyAndGetUserId(accessToken);
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("updataEdgeName: {\"access_token\":\"{}\"} access_token 失效", accessToken);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
+        UUID userId = tokenVerifier.requireUserId(accessToken);
 
         if (!userEdgeBindRepository.existsByUserIdAndEdgeId(userId, updateEdgeNameRequest.getEdgeId())) {
             logger.info("updataEdgeName: {\"user_id\":\"{}\", \"edge_id\":\"{}\"} 未綁定",
@@ -88,17 +85,13 @@ public class UserService {
     public ErrorCodeResponse updateUserName(
             UpdateUserNameRequest updateUserNameRequest,
             String accessToken) {
-        UUID userId = JwtService.verifyAndGetUserId(accessToken);
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("updateUserName: {\"access_token\":\"{}\"} access_token 失效", accessToken);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
+        UUID userId = tokenVerifier.requireUserId(accessToken);
 
 
         var user = userRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "142"));
 
-        user.setUser_name(updateUserNameRequest.getUserName());
+        user.setUserName(updateUserNameRequest.getUserName());
         userRepository.save(user);
 
         return ErrorCodeResponse.builder()
@@ -109,23 +102,23 @@ public class UserService {
     public ErrorCodeResponse updateUserPassword(
             UpdateUserPasswordRequest updateUserPasswordRequest,
             String accessToken) {
-        UUID userId = JwtService.verifyAndGetUserId(accessToken);
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("updateUserPassword: {\"access_token\":\"{}\"} access_token 失效", accessToken);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
+        UUID userId = tokenVerifier.requireUserId(accessToken);
 
-        var user = userRepository.findByUserId(userId)
+        userRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "142"));
 
-        if (!authService.verifyPassword(userId, updateUserPasswordRequest.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "143");
+        ChangePasswordResponse response = authGrpcClient.changePassword(
+                userId,
+                updateUserPasswordRequest.getPassword(),
+                updateUserPasswordRequest.getNewPassword());
+
+        if (!response.getSuccess()) {
+            HttpStatus status = switch (response.getErrorCode()) {
+                case "142", "143" -> HttpStatus.UNAUTHORIZED;
+                default -> HttpStatus.BAD_REQUEST;
+            };
+            throw new ResponseStatusException(status, response.getErrorCode());
         }
-
-        String newPasswordHash = Argon2id.hash(updateUserPasswordRequest.getNewPassword());
-
-        user.setUser_password_hash(newPasswordHash);
-        userRepository.save(user);
 
         return ErrorCodeResponse.builder()
                 .errorCode("0")
@@ -135,11 +128,7 @@ public class UserService {
     public ErrorCodeResponse updateEdgePassword(
             UpdateEdgePasswordRequest updateEdgePasswordRequest,
             String accessToken) {
-        UUID userId = JwtService.verifyAndGetUserId(accessToken);
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("updateEdgePassword: {\"access_token\":\"{}\"} access_token 失效", accessToken);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
+        UUID userId = tokenVerifier.requireUserId(accessToken);
 
         String edgeId = updateEdgePasswordRequest.getEdgeId();
         if (!userEdgeBindRepository.existsByUserIdAndEdgeId(userId, edgeId)) {

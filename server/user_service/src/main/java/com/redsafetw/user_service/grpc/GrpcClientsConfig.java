@@ -1,5 +1,6 @@
 package com.redsafetw.user_service.grpc;
 
+import com.grpc.auth.AuthServiceGrpc;
 import com.grpc.edge.EdgeServiceGrpc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,5 +13,10 @@ public class GrpcClientsConfig {
     EdgeServiceGrpc.EdgeServiceBlockingStub edgeBlockingStub(GrpcChannelFactory channels) {
         // "edge" 對應到 application.properties 的命名通道
         return EdgeServiceGrpc.newBlockingStub(channels.createChannel("edge"));
+    }
+
+    @Bean
+    AuthServiceGrpc.AuthServiceBlockingStub authBlockingStub(GrpcChannelFactory channels) {
+        return AuthServiceGrpc.newBlockingStub(channels.createChannel("auth"));
     }
 }

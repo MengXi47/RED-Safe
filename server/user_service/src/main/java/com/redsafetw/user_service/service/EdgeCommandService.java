@@ -34,16 +34,13 @@ public class EdgeCommandService {
     private final EdgeMqttSubscriber edgeMqttSubscriber;
     private final EdgeCommandRedisService edgeCommandRedisService;
     private final ObjectMapper objectMapper;
+    private final TokenVerifier tokenVerifier;
 
     /**
      * 驗證後發送 Edge 指令並回傳 traceId。
      */
     public EdgeCommandResponse sendCommand(EdgeCommandRequest request, String accessToken) {
-        UUID userId = JwtService.verifyAndGetUserId(accessToken);
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("sendCommand: {\"access_token\":\"{}\"} access_token 失效", accessToken);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
+        UUID userId = tokenVerifier.requireUserId(accessToken);
 
         String edgeId = request.getEdgeId();
         if (!userEdgeBindRepository.existsByUserIdAndEdgeId(userId, edgeId)) {

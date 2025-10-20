@@ -30,15 +30,11 @@ public class EdgeListService {
     private static final Logger logger = LoggerFactory.getLogger(EdgeListService.class);
     private final UserEdgeBindRepository userEdgeBindRepository;
     private final StringRedisTemplate redisTemplate;
+    private final TokenVerifier tokenVerifier;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public EdgeIdListResponse getEdgeIdList(String accessToken) {
-
-        UUID userId = JwtService.verifyAndGetUserId(accessToken);
-        if (userId.equals(new UUID(0L, 0L))) {
-            logger.info("getEdgeIdList: {\"access_token\":\"{}\"} access_token 失效", accessToken);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "126");
-        }
+        UUID userId = tokenVerifier.requireUserId(accessToken);
 
         List<UserEdgeBindDomain> edgeBindings = userEdgeBindRepository.findByUserId(userId);
         if (edgeBindings.isEmpty()) {

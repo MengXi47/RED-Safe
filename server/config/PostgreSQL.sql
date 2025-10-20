@@ -27,10 +27,7 @@ CREATE TABLE auth_users (
     otp_enabled      BOOLEAN     NOT NULL DEFAULT FALSE,
     otp_backup_codes TEXT[],
     otp_enabled_at    TIMESTAMPTZ,
-    revoked BOOLEAN NOT NULL DEFAULT FALSE,
-    CHECK (
-        email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$'
-    )
+    revoked BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE user_profiles (

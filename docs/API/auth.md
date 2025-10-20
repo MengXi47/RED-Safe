@@ -200,6 +200,16 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 
 ---
 
+## gRPC 介面：AuthService
+
+| Method | Request | Response | 說明 |
+|--------|---------|----------|------|
+| `CheckAccessToken` | `accesstokenchkRequset` | `accesstokenchkResponse` | 驗證 Access Token 並回傳 user_id |
+| `ChangePassword` | `ChangePasswordRequest` | `ChangePasswordResponse` | 驗證原密碼後更新登入密碼，`error_code` 同 REST 規則 |
+| `GetUserSecurityProfile` | `UserSecurityProfileRequest` | `UserSecurityProfileResponse` | 取得 OTP 啟用與最後登入資訊供其他服務使用 |
+
+---
+
 ## POST /auth/delete/otp
 停用 OTP 並刪除伺服器上的 OTP 秘鑰與備援碼，需提供合法的 `access_token`。
 

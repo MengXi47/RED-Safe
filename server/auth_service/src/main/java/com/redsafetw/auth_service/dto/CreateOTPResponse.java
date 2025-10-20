@@ -1,7 +1,11 @@
-package com.redsafetw.user_service.dto;
+package com.redsafetw.auth_service.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -11,9 +15,10 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class CreateOTPResponse {
+
     @JsonProperty("otp_key")
-    String otpKey;
+    private String otpKey;
 
     @JsonProperty("backup_codes")
-    List<String> backupCodes;
+    private List<String> backupCodes;
 }
