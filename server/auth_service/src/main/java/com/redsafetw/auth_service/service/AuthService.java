@@ -30,6 +30,7 @@ public class AuthService {
     private final SecurityProfileService securityProfileService;
     private final AccessTokenManager accessTokenManager;
     private final UserGrpcClient userGrpcClient;
+    private final MailVerificationService mailVerificationService;
 
     public SignupResponse signup(SignupRequest request) {
         return registrationService.signup(request);
@@ -55,6 +56,16 @@ public class AuthService {
     public ErrorCodeResponse deleteOtp(String accessToken) {
         UUID userId = accessTokenManager.requireValidUserId(accessToken);
         return otpManagementService.disableOtp(userId);
+    }
+
+    public ErrorCodeResponse sendMailVerification(String accessToken) {
+        UUID userId = accessTokenManager.requireValidUserId(accessToken);
+        return mailVerificationService.sendMailVerification(userId);
+    }
+
+    public ErrorCodeResponse verifyMailCode(String accessToken, String code) {
+        UUID userId = accessTokenManager.requireValidUserId(accessToken);
+        return mailVerificationService.verifyMailCode(userId, code);
     }
 
     public PasswordChangeResult changePassword(UUID userId, String currentPassword, String newPassword) {

@@ -13,14 +13,4 @@ public class NotifyServiceApplication {
         SpringApplication.run(NotifyServiceApplication.class, args);
     }
 
-    @Bean
-    CommandLineRunner sendTestMail(MailService mailService) {
-        return args -> {
-            mailService.sendMailVerifyCode(
-                    "chenboen931204@gmail.com",
-                    "241144",
-                    1
-            );
-        };
-    }
 }

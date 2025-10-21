@@ -2,6 +2,8 @@ package com.redsafetw.notify_service.service;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -11,14 +13,14 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class MailService {
 
-    private final JavaMailSender mailSender;
     private static final String DEFAULT_FROM = "RED-SAFE <noreply@redsafe-tw.com>";
 
-    public MailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
-    }
+    private final JavaMailSender mailSender;
+    private final MailLogService mailLogService;
 
     public void sendText(String to, String subject, String body) {
         SimpleMailMessage msg = new SimpleMailMessage();
@@ -26,21 +28,39 @@ public class MailService {
         msg.setTo(to);
         msg.setSubject(subject);
         msg.setText(body);
-        mailSender.send(msg);
+
+        try {
+            mailSender.send(msg);
+            mailLogService.log(DEFAULT_FROM, to, subject, body, true, null);
+        } catch (RuntimeException ex) {
+            mailLogService.log(DEFAULT_FROM, to, subject, body, false, ex.getMessage());
+            throw ex;
+        }
     }
 
     public void sendHtml(String to, String subject, String html) throws MessagingException {
         MimeMessage mime = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(mime, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, StandardCharsets.UTF_8.name());
-        helper.setFrom(DEFAULT_FROM);
-        helper.setTo(to);
-        helper.setSubject(subject);
-        helper.setText(html, true);
-        mailSender.send(mime);
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    mime,
+                    MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                    StandardCharsets.UTF_8.name()
+            );
+            helper.setFrom(DEFAULT_FROM);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(html, true);
+
+            mailSender.send(mime);
+            mailLogService.log(DEFAULT_FROM, to, subject, html, true, null);
+        } catch (MessagingException | RuntimeException ex) {
+            mailLogService.log(DEFAULT_FROM, to, subject, html, false, ex.getMessage());
+            throw ex;
+        }
     }
 
     public void sendMailVerifyCode(String to, String code, int ttlMinutes) throws MessagingException {
-
+        String subject = "驗證您的電子郵件地址";
         String html = """
                 <!doctype html><html lang="zh-Hant"><head>
                   <meta charset="utf-8">
@@ -51,7 +71,7 @@ public class MailService {
                     .wrap{max-width:640px;margin:0 auto;padding:24px;}
                     .card{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden;}
                     .brand{text-align:center;padding:24px 24px 16px;border-bottom:1px solid #eee;}
-                    .brand-logo{width:100px;height:100px;border-radius:5px;display:block;margin:0 auto 8px;}
+                    .brand-logo{width:120px;height:120px;border-radius:5px;display:block;margin:0 auto 8px;}
                     .brand-name{font-weight:700;font-size:24px;display:block;color:#111;}
                     .content{padding:24px}
                     .title{font-size:16px;color:#111;margin:0 0 6px;text-align:center;}
@@ -83,20 +103,31 @@ public class MailService {
                 """.formatted(code, ttlMinutes);
 
         MimeMessage mime = mailSender.createMimeMessage();
-        MimeMessageHelper helper = new MimeMessageHelper(mime, MimeMessageHelper.MULTIPART_MODE_RELATED, "UTF-8");
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    mime,
+                    MimeMessageHelper.MULTIPART_MODE_RELATED,
+                    StandardCharsets.UTF_8.name()
+            );
 
-        helper.setFrom(DEFAULT_FROM);
-        helper.setTo(to);
-        helper.setSubject("驗證您的電子郵件地址");
-        helper.setText(html, true);
+            helper.setFrom(DEFAULT_FROM);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(html, true);
+//
+//            File logoFile = new File(System.getProperty("user.home") + "/Desktop/RED_Safe_icon1.png");
+//            helper.addInline("logoImage", logoFile);
 
-        File logoFile = new File(System.getProperty("user.home") + "/Desktop/RED_Safe_icon1.png");
-        helper.addInline("logoImage", logoFile);
+            String logoPath = System.getenv().getOrDefault("LOGO_PATH", "/app/assets/RED_Safe_icon1.png");
+            File logoFile = new File(logoPath);
+            helper.addInline("logoImage", logoFile);
 
-//        String logoPath = System.getenv().getOrDefault("LOGO_PATH", "/app/assets/RED_Safe_icon1.png");
-//        File logoFile = new File(logoPath);
-//        helper.addInline("logoImage", logoFile);
-
-        mailSender.send(mime);
+            String body = "MailVerify: " + code;
+            mailSender.send(mime);
+            mailLogService.log(DEFAULT_FROM, to, subject, body, true, null);
+        } catch (MessagingException | RuntimeException ex) {
+            mailLogService.log(DEFAULT_FROM, to, subject, html, false, ex.getMessage());
+            throw ex;
+        }
     }
 }

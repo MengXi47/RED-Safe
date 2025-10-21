@@ -8,6 +8,7 @@ import com.redsafetw.auth_service.dto.SigninRequest;
 import com.redsafetw.auth_service.dto.SigninResponse;
 import com.redsafetw.auth_service.dto.SignupRequest;
 import com.redsafetw.auth_service.dto.SignupResponse;
+import com.redsafetw.auth_service.dto.VerifyMailCodeRequest;
 import com.redsafetw.auth_service.service.AuthService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -57,5 +58,20 @@ public class AuthController {
     public ErrorCodeResponse deleteOtp(@NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
         String token = authorization.replace("Bearer ", "");
         return authService.deleteOtp(token);
+    }
+
+    @PostMapping("/mail/verify/send")
+    public ErrorCodeResponse sendMailVerification(
+            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
+        String token = authorization.replace("Bearer ", "");
+        return authService.sendMailVerification(token);
+    }
+
+    @PostMapping("/mail/verify")
+    public ErrorCodeResponse verifyMailCode(
+            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization,
+            @Valid @RequestBody VerifyMailCodeRequest request) {
+        String token = authorization.replace("Bearer ", "");
+        return authService.verifyMailCode(token, request.getCode());
     }
 }

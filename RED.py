@@ -246,6 +246,29 @@ def do_signin_with_otp():
         save_tokens(data.get("access_token"), data.get("refresh_token"))
 
 
+def do_mail_verification():
+    token, _ = load_tokens()
+    if not token:
+        print("❌ 請先 signin 取得 access_token")
+        return
+
+    print("1) 寄送驗證信")
+    print("2) 驗證郵件代碼")
+    action = input("選擇操作: ").strip()
+
+    if action == "1":
+        api_post("/auth/mail/verify/send", {}, token=token)
+    elif action == "2":
+        code = input("Mail Verification Code: ").strip()
+        if not code:
+            print("❌ 驗證碼不可為空")
+            return
+        payload = {"code": code}
+        api_post("/auth/mail/verify", payload, token=token)
+    else:
+        print("❌ 無效操作")
+
+
 def do_ios_register():
     token, _ = load_tokens()
     if not token:
@@ -287,6 +310,7 @@ def main():
         print("14) create OTP secret")
         print("15) signin with OTP")
         print("16) list users by edge")
+        print("17) mail verification")
         choice = input("選擇操作: ").strip()
         if choice == "1":
             do_signup()
@@ -320,6 +344,8 @@ def main():
             do_signin_with_otp()
         elif choice == "16":
             do_list_edge_users()
+        elif choice == "17":
+            do_mail_verification()
         else:
             print("無效選項")
 
