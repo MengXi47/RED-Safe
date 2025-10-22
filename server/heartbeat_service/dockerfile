@@ -16,11 +16,7 @@ RUN chmod +x mvnw \
 FROM eclipse-temurin:17-jre-jammy
 ENV TZ=Asia/Taipei
 
-RUN useradd -m appuser
-
 WORKDIR /app
-COPY --from=build --chown=appuser:appuser /workspace/target/app.jar /app/app.jar
-
-USER appuser
+COPY --from=build /workspace/target/app.jar /app/app.jar
 
 ENTRYPOINT ["java","-XX:MaxRAMPercentage=75","-Duser.timezone=Asia/Taipei","-jar","/app/app.jar"]
