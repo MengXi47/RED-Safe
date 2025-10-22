@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        SERVICE_DIR     = 'server/auth_service'
+        IMAGE_NAME      = 'auth-service:latest'
+        CONTAINER_NAME  = 'auth-service'
+        DOCKERFILE_PATH = 'dockerfile'
+    }
+
+    options {
+        ansiColor('xterm')
+        timestamps()
+    }
+
+    stages {
+        stage('Preparation') {
+            steps {
+                script {
+                    env.SERVICE_DIR = fileExists('server/auth_service/pom.xml') ? 'server/auth_service' : 'auth_service'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                dir(env.SERVICE_DIR) {
+                    sh 'chmod +x mvnw'
+                    sh './mvnw -B clean verify'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir(env.SERVICE_DIR) {
+                    sh "docker build --pull -t ${IMAGE_NAME} -f ${DOCKERFILE_PATH} ."
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    dir(env.SERVICE_DIR) {
+                        sh "docker container rm -f ${CONTAINER_NAME} || true"
+                        sh "docker run -d --name ${CONTAINER_NAME} --network host --restart unless-stopped ${IMAGE_NAME}"
+                    }
+                }
+            }
+        }
+    }
+}

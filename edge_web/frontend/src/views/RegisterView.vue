@@ -7,7 +7,7 @@
       >
         RS
       </div>
-    </template>
+    </template> 
 
     <div
       v-if="errorMessage"
