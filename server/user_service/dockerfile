@@ -16,12 +16,8 @@ RUN chmod +x mvnw \
 FROM eclipse-temurin:17-jre-jammy
 ENV TZ=Asia/Taipei
 
-RUN useradd -m appuser
-
 WORKDIR /app
-COPY --from=build --chown=appuser:appuser /workspace/target/app.jar /app/app.jar
-
-USER appuser
+COPY --from=build /workspace/target/app.jar /app/app.jar
 
 EXPOSE 30011 30012
 
