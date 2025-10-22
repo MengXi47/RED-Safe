@@ -1,20 +1,11 @@
 pipeline {
     agent any
 
-    parameters {
-        booleanParam(name: 'FORCE_BUILD', defaultValue: false, description: 'Override change detection and force this service to build/deploy')
-    }
-
-    triggers {
-        githubPush()
-    }
-
     environment {
         SERVICE_DIR     = 'server/notify_service'
         IMAGE_NAME      = 'notify-service:latest'
         CONTAINER_NAME  = 'notify-service'
         DOCKERFILE_PATH = 'dockerfile'
-        SHOULD_BUILD    = 'true'
     }
 
     options {
@@ -26,71 +17,11 @@ pipeline {
             steps {
                 script {
                     env.SERVICE_DIR = fileExists('server/notify_service/pom.xml') ? 'server/notify_service' : 'notify_service'
-
-                    def candidatePaths = [env.SERVICE_DIR]
-                    if (env.SERVICE_DIR.startsWith('server/')) {
-                        candidatePaths << env.SERVICE_DIR.replaceFirst('^server/', '')
-                    } else {
-                        candidatePaths << "server/${env.SERVICE_DIR}"
-                    }
-                    candidatePaths = candidatePaths.collect { it.replaceFirst('^\\./', '') }.unique()
-
-                    boolean forceBuild = false
-                    try {
-                        forceBuild = params.FORCE_BUILD instanceof Boolean ? params.FORCE_BUILD : params.FORCE_BUILD?.toString()?.toBoolean()
-                    } catch (ignored) {
-                        forceBuild = false
-                    }
-
-                    def changedFilesRaw = ''
-                    try {
-                        def previousCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: env.GIT_PREVIOUS_COMMIT
-                        def diffCmd = previousCommit ? "git diff --name-only ${previousCommit} HEAD" : "git show --pretty='' --name-only HEAD"
-                        changedFilesRaw = sh(script: diffCmd, returnStdout: true).trim()
-                    } catch (Exception ex) {
-                        echo "偵測變更檔案時發生錯誤：${ex.message}"
-                    }
-                    def changedFiles = changedFilesRaw ? changedFilesRaw.readLines().findAll { it?.trim() } : []
-
-                    if (changedFiles.isEmpty()) {
-                        def changeSets = currentBuild.changeSets ?: []
-                        changeSets.each { cs ->
-                            cs.items.each { entry ->
-                                entry.affectedFiles.each { file ->
-                                    changedFiles << file.path
-                                }
-                            }
-                        }
-                        changedFiles = changedFiles.collect { it.replaceFirst('^\\./', '') }.unique()
-                    }
-
-                    boolean shouldBuild = forceBuild
-                    if (!shouldBuild) {
-                        shouldBuild = changedFiles.any { path ->
-                            def normalized = path.replaceFirst('^\\./', '')
-                            candidatePaths.any { prefix -> normalized == prefix || normalized.startsWith("${prefix}/") }
-                        }
-                    }
-
-                    env.SHOULD_BUILD = shouldBuild.toString()
-
-                    if (shouldBuild) {
-                        if (forceBuild) {
-                            echo "FORCE_BUILD=true：強制執行 ${env.SERVICE_DIR} 建置流程。"
-                        } else {
-                            echo "變更偵測：${env.SERVICE_DIR} 有相關更新，將執行建置流程。"
-                        }
-                    } else {
-                        echo "變更偵測：${env.SERVICE_DIR} 無相關變更，本次僅執行檢查步驟。"
-                    }
                 }
             }
         }
 
         stage('Unit Tests') {
-            when {
-                expression { env.SHOULD_BUILD?.toBoolean() }
-            }
             steps {
                 dir(env.SERVICE_DIR) {
                     sh 'chmod +x mvnw'
@@ -100,9 +31,6 @@ pipeline {
         }
 
         stage('Build Docker Image') {
-            when {
-                expression { env.SHOULD_BUILD?.toBoolean() }
-            }
             steps {
                 dir(env.SERVICE_DIR) {
                     sh "docker build --pull -t ${IMAGE_NAME} -f ${DOCKERFILE_PATH} ."
@@ -111,9 +39,6 @@ pipeline {
         }
 
         stage('Deploy') {
-            when {
-                expression { env.SHOULD_BUILD?.toBoolean() }
-            }
             steps {
                 dir(env.SERVICE_DIR) {
                     sh "docker container rm -f ${CONTAINER_NAME} || true"
