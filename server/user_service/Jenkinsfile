@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    parameters {
+        booleanParam(name: 'FORCE_BUILD', defaultValue: false, description: 'Override change detection and force this service to build/deploy')
+    }
+
     triggers {
         githubPush()
     }
@@ -31,8 +35,12 @@ pipeline {
                     }
                     candidatePaths = candidatePaths.collect { it.replaceFirst('^\\./', '') }.unique()
 
-                    def causes = currentBuild.rawBuild?.getCauses() ?: []
-                    def manualTrigger = causes.any { it.class.simpleName == 'UserIdCause' }
+                    boolean forceBuild = false
+                    try {
+                        forceBuild = params.FORCE_BUILD instanceof Boolean ? params.FORCE_BUILD : params.FORCE_BUILD?.toString()?.toBoolean()
+                    } catch (ignored) {
+                        forceBuild = false
+                    }
 
                     def changedFilesRaw = ''
                     try {
@@ -44,8 +52,20 @@ pipeline {
                     }
                     def changedFiles = changedFilesRaw ? changedFilesRaw.readLines().findAll { it?.trim() } : []
 
-                    boolean shouldBuild = manualTrigger
-                    if (!manualTrigger) {
+                    if (changedFiles.isEmpty()) {
+                        def changeSets = currentBuild.changeSets ?: []
+                        changeSets.each { cs ->
+                            cs.items.each { entry ->
+                                entry.affectedFiles.each { file ->
+                                    changedFiles << file.path
+                                }
+                            }
+                        }
+                        changedFiles = changedFiles.collect { it.replaceFirst('^\\./', '') }.unique()
+                    }
+
+                    boolean shouldBuild = forceBuild
+                    if (!shouldBuild) {
                         shouldBuild = changedFiles.any { path ->
                             def normalized = path.replaceFirst('^\\./', '')
                             candidatePaths.any { prefix -> normalized == prefix || normalized.startsWith("${prefix}/") }
@@ -55,8 +75,8 @@ pipeline {
                     env.SHOULD_BUILD = shouldBuild.toString()
 
                     if (shouldBuild) {
-                        if (manualTrigger && changedFiles.isEmpty()) {
-                            echo "手動觸發：強制執行 ${env.SERVICE_DIR} 建置流程。"
+                        if (forceBuild) {
+                            echo "FORCE_BUILD=true：強制執行 ${env.SERVICE_DIR} 建置流程。"
                         } else {
                             echo "變更偵測：${env.SERVICE_DIR} 有相關更新，將執行建置流程。"
                         }
