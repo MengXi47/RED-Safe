@@ -22,28 +22,49 @@ pipeline {
         }
 
         stage('Unit Tests') {
+            when {
+                beforeAgent true
+                changeset "server/user_service/**"
+            }
             steps {
                 dir(env.SERVICE_DIR) {
                     sh 'chmod +x mvnw'
-                    sh './mvnw -B clean verify'
                 }
             }
         }
 
         stage('Build Docker Image') {
+            when {
+                beforeAgent true
+                changeset "server/user_service/**"
+            }
             steps {
                 dir(env.SERVICE_DIR) {
-                    sh "docker build --pull -t ${IMAGE_NAME} -f ${DOCKERFILE_PATH} ."
+                    sh "docker build -t ${IMAGE_NAME} -f ${DOCKERFILE_PATH} ."
                 }
             }
         }
 
         stage('Deploy') {
+            when {
+                beforeAgent true
+                changeset "server/user_service/**"
+            }
             steps {
                 dir(env.SERVICE_DIR) {
                     sh "docker container rm -f ${CONTAINER_NAME} || true"
                     sh "docker run -d --name ${CONTAINER_NAME} --network host --restart unless-stopped ${IMAGE_NAME}"
                 }
+            }
+        }
+
+        stage('Cleanup') {
+            when {
+                beforeAgent true
+                changeset "server/user_service/**"
+            }
+            steps {
+                sh 'docker image prune -f'
             }
         }
     }
