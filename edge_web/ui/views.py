@@ -82,6 +82,55 @@ def _get_edge_config() -> EdgeConfig | None:
     return EdgeConfig.objects.first()
 
 
+def _build_device_snapshot() -> dict[str, Any]:
+    """根據本地資料庫組裝裝置資訊快照。"""
+
+    config = _get_edge_config()
+    serial = config.edge_id if config and config.edge_id else "RED-UNKNOWN"
+    password = (config.edge_password or "") if config else ""
+
+    raw_version = str(DEFAULT_EDGE_VERSION or "1.0.0")
+    version = raw_version if raw_version.lower().startswith("v") else f"v{raw_version}"
+    status = 1 if config else 0
+    name = "裝置"
+    has_password = bool(password)
+    masked_password = "＊" * len(password) if has_password else "******"
+
+    payload_dict = {"serial": serial, "password": password, "name": name}
+    payload = json.dumps(payload_dict, ensure_ascii=False, separators=(",", ":"))
+
+    qrcode_data: str | None
+    try:
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_M,
+            box_size=8,
+            border=2,
+        )
+        qr.add_data(payload)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        b64 = base64.b64encode(buf.read()).decode("ascii")
+        qrcode_data = f"data:image/png;base64,{b64}"
+    except Exception as e:  # pragma: no cover - 資料夾缺少 qrcode 依賴時容錯
+        qrcode_data = None
+        logger.warning("QR generation error: %s", e)
+
+    return {
+        "serial": serial,
+        "version": version,
+        "status": status,
+        "password": password,
+        "masked_password": masked_password,
+        "has_password": has_password,
+        "qrcode": qrcode_data,
+    }
+
+
 def _edge_id() -> str:
     """從 config 表讀出 edge_id，若不存在則回傳預設值。"""
 
@@ -570,55 +619,17 @@ def user_bound(request):
 def device_info(request):
     """顯示裝置基本資訊與預設 QR Code。"""
 
-    config = _get_edge_config()
-    serial = config.edge_id if config and config.edge_id else "RED-UNKNOWN"
-    password = (config.edge_password or "") if config else ""
+    snapshot = _build_device_snapshot()
+    return render(request, "ui/device_info.html", {"initial_state": {"device": snapshot}})
 
-    raw_version = str(DEFAULT_EDGE_VERSION or "1.0.0")
-    version = raw_version if raw_version.lower().startswith("v") else f"v{raw_version}"
-    status = 1  # 1 = 已連線, 0 = 未連線
-    name = "裝置"
-    has_password = bool(password)
-    masked_password = "＊" * len(password) if has_password else ""
 
-    # QR code 內容格式：JSON，包含 serial / password / name 三個欄位
-    payload_dict = {"serial": serial, "password": password, "name": name}
-    payload = json.dumps(payload_dict, ensure_ascii=False, separators=(",", ":"))
+@_require_auth
+@require_http_methods(["GET"])
+def api_device_info(request: HttpRequest):
+    """回傳本地資料庫中的裝置基本資訊。"""
 
-    # 產生 QR image 至 memory buffer，轉成 base64 data URI
-    try:
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_M,
-            box_size=8,
-            border=2,
-        )
-        qr.add_data(payload)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
-
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        buf.seek(0)
-        b64 = base64.b64encode(buf.read()).decode("ascii")
-        qrcode_data = f"data:image/png;base64,{b64}"
-    except Exception as e:
-        # 如果 QR 生成失敗，避免整個頁面掛掉，回傳 None
-        qrcode_data = None
-        print("QR generation error:", e)
-
-    initial_state = {
-        "device": {
-            "serial": serial,
-            "version": version,
-            "status": status,
-            "password": password,
-            "masked_password": masked_password,
-            "has_password": has_password,
-            "qrcode": qrcode_data,
-        }
-    }
-    return render(request, "ui/device_info.html", {"initial_state": initial_state})
+    snapshot = _build_device_snapshot()
+    return JsonResponse({"device": snapshot})
 
 
 # ====== QR Image Endpoint ======

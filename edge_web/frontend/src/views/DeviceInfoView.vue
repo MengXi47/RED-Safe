@@ -39,10 +39,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import BaseCard from '@/components/ui/BaseCard.vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
 import { useInitialState } from '@/lib/useInitialState';
+import { fetchDeviceInfo } from '@/lib/services/deviceService';
 import type { DeviceInfo } from '@/types/device';
 
 /**
@@ -56,17 +57,31 @@ const initialDevice = useInitialState<Partial<DeviceInfo>>(
   () => ({})
 );
 
-// 將初始資料整理為帶預設值的裝置資訊
-const info = computed<DeviceInfo>(() => ({
-  serial: initialDevice.serial ?? 'RED-UNKNOWN',
-  version: initialDevice.version ?? 'v1.0.0',
-  status: initialDevice.status ?? 0,
-  masked_password: initialDevice.masked_password ?? '******',
-  password: initialDevice.password ?? ''
-}));
+const DEFAULT_VERSION = 'v1.0.0';
+const DEFAULT_MASK = '******';
 
-const qrcode = initialDevice.qrcode ?? '';
+const normalizeDevice = (snapshot: Partial<DeviceInfo>): DeviceInfo => {
+  const password = snapshot.password ?? '';
+  const hasPassword = snapshot.has_password ?? Boolean(password);
+  const masked =
+    snapshot.masked_password ??
+    (hasPassword && password.length > 0 ? '＊'.repeat(password.length) : DEFAULT_MASK);
+
+  return {
+    serial: snapshot.serial ?? 'RED-UNKNOWN',
+    version: snapshot.version ?? DEFAULT_VERSION,
+    status: snapshot.status ?? 0,
+    password,
+    masked_password: masked || DEFAULT_MASK,
+    qrcode: snapshot.qrcode,
+    has_password: hasPassword
+  };
+};
+
+const info = ref<DeviceInfo>(normalizeDevice(initialDevice));
 const passwordVisible = ref(false);
+
+const qrcode = computed(() => info.value.qrcode ?? '');
 
 // 依據顯示狀態切換密碼或遮罩文字
 const displayPassword = computed(() => (passwordVisible.value ? info.value.password : info.value.masked_password));
@@ -76,10 +91,26 @@ const togglePassword = () => {
   passwordVisible.value = !passwordVisible.value;
 };
 
+const loadDeviceInfo = async () => {
+  try {
+    const { device } = await fetchDeviceInfo();
+    if (device) {
+      info.value = normalizeDevice(device);
+    }
+  } catch (error) {
+    console.error('取得裝置資訊失敗', error);
+  }
+};
+
+onMounted(() => {
+  void loadDeviceInfo();
+});
+
 // 建立隱藏下載連結，讓使用者保存 QRCode 圖檔
 const downloadQr = () => {
+  if (!qrcode.value) return;
   const link = document.createElement('a');
-  link.href = qrcode;
+  link.href = qrcode.value;
   link.download = `device-${info.value.serial}.png`;
   link.click();
 };

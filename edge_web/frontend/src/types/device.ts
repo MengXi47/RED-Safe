@@ -10,6 +10,7 @@ export interface DeviceInfo {
   masked_password: string;
   password: string;
   qrcode?: string;
+  has_password?: boolean;
 }
 
 export type DeviceInfoSnapshot = Partial<DeviceInfo>;

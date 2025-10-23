@@ -24,6 +24,7 @@ urlpatterns = [
 
     # 新增：裝置
     path("device/info/", views.device_info, name="device_info"),
+    path("api/device/info/", views.api_device_info, name="api_device_info"),
     path("api/metrics/", views.api_metrics, name="api_metrics"),
     path("network/ip/", views.network_ip, name="network_ip"),
     path("api/network/port/", views.api_network_port, name="api_network_port"),

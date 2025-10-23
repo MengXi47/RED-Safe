@@ -4,6 +4,8 @@ import App from './App.vue';
 import router from './router';
 import './styles/global.css';
 import type { EdgeInitialState } from '@/types/bootstrap';
+import { bootstrapTheme } from '@/lib/themePreference';
+import { useThemeStore } from '@/store/theme';
 
 /**
   * 檔案用途：初始化 Vue 應用、還原伺服器注入的狀態並掛載全域插件。
@@ -22,7 +24,14 @@ if (initialElement?.textContent) {
 
 const app = createApp(App);
 
-app.use(createPinia());
+const initialPreference = bootstrapTheme();
+
+const pinia = createPinia();
+
+app.use(pinia);
 app.use(router);
+
+const themeStore = useThemeStore(pinia);
+themeStore.hydrate(initialPreference);
 
 app.mount('#app');

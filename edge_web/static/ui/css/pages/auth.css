@@ -67,6 +67,20 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+img,
+picture {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 body.auth-page {
