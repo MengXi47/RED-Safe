@@ -57,6 +57,6 @@ public class AuthController {
 
     @PostMapping("/mail/verify")
     public ErrorCodeResponse verifyMailCode(@Valid @RequestBody VerifyMailCodeRequest request) {
-        return authService.verifyMailCode(request.getUserId(), request.getCode());
+        return authService.verifyMailCode(UUID.fromString(request.getUserId()), request.getCode());
     }
 }
