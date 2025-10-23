@@ -43,7 +43,7 @@ public class MailVerificationService {
 
         redisTemplate.opsForValue().set(key, code, CODE_TTL.toSeconds(), TimeUnit.SECONDS);
         try {
-            notifyGrpcClient.sendMailVerification(email, code, (int) CODE_TTL.toMinutes());
+            notifyGrpcClient.sendEmailVerification(email, code, (int) CODE_TTL.toMinutes());
             log.info("Mail verification code dispatched user_id={}", userId);
         } catch (Exception ex) {
             redisTemplate.delete(key);
