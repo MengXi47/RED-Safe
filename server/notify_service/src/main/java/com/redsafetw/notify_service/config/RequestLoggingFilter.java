@@ -1,11 +1,10 @@
-package com.redsafetw.edge_service.config;
+package com.redsafetw.notify_service.config;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
@@ -17,16 +16,27 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 /**
- * Logs every incoming HTTP request along with its response status, duration and bodies.
+ * 全域過濾器：記錄所有 HTTP 請求與回應的內容，協助除錯與審查。
  */
 @Slf4j
 @Component
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
     @Override
-    protected void doFilterInternal(@NotNull HttpServletRequest request,
-                                    @NotNull HttpServletResponse response, FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+        if (isSseRequest(request)) {
+            long start = System.currentTimeMillis();
+            try {
+                filterChain.doFilter(request, response);
+            } finally {
+                long duration = System.currentTimeMillis() - start;
+                log.info("HTTP {} {} status={} duration={}ms (SSE stream)",
+                        request.getMethod(), request.getRequestURI(), response.getStatus(), duration);
+            }
+            return;
+        }
         long start = System.currentTimeMillis();
         ContentCachingRequestWrapper requestWrapper = new ContentCachingRequestWrapper(request);
         ContentCachingResponseWrapper responseWrapper = new ContentCachingResponseWrapper(response);
@@ -34,21 +44,28 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             filterChain.doFilter(requestWrapper, responseWrapper);
         } finally {
             long duration = System.currentTimeMillis() - start;
-            String query = request.getQueryString();
             String path = request.getRequestURI();
+            String query = request.getQueryString();
             if (query != null && !query.isBlank()) {
                 path = path + '?' + query;
             }
-            String requestBody = bodyAsString(
-                    requestWrapper.getContentAsByteArray(), requestWrapper.getCharacterEncoding());
-            String responseBody = bodyAsString(
-                    responseWrapper.getContentAsByteArray(), responseWrapper.getCharacterEncoding());
+            String requestBody = bodyAsString(requestWrapper.getContentAsByteArray(), requestWrapper.getCharacterEncoding());
+            String responseBody = bodyAsString(responseWrapper.getContentAsByteArray(), responseWrapper.getCharacterEncoding());
             if (!Objects.equals(path, "/health")) {
                 log.info("HTTP {} {} status={} duration={}ms request_body={} response_body={}",
                         request.getMethod(), path, responseWrapper.getStatus(), duration, requestBody, responseBody);
             }
             responseWrapper.copyBodyToResponse();
         }
+    }
+
+    private boolean isSseRequest(HttpServletRequest request) {
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains("text/event-stream")) {
+            return true;
+        }
+        String requestUri = request.getRequestURI();
+        return requestUri != null && requestUri.contains("/sse/");
     }
 
     private String bodyAsString(byte[] body, String encoding) {

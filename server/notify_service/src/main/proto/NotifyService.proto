@@ -9,10 +9,10 @@ option java_package = "com.grpc.notify";
 option java_generic_services = true;
 
 service NotifyService {
-  rpc SendMailVerifyCode (SendMailVerifyCodeRequest) returns (google.protobuf.Empty);
+  rpc SendEmailVerifyCode (SendEmailVerifyCodeRequest) returns (google.protobuf.Empty);
 }
 
-message SendMailVerifyCodeRequest {
+message SendEmailVerifyCodeRequest {
   string to = 1;
   string code = 2;
   int32 ttl_minutes = 3;

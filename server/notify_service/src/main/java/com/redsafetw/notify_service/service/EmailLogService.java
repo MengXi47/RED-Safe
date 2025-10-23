@@ -1,7 +1,7 @@
 package com.redsafetw.notify_service.service;
 
-import com.redsafetw.notify_service.domain.MailLogDomain;
-import com.redsafetw.notify_service.repository.MailLogRepository;
+import com.redsafetw.notify_service.domain.EmailLogDomain;
+import com.redsafetw.notify_service.repository.EmailLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -12,15 +12,15 @@ import java.time.OffsetDateTime;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class MailLogService {
+public class EmailLogService {
 
     private static final int MAX_ERROR_LENGTH = 2000;
 
-    private final MailLogRepository mailLogRepository;
+    private final EmailLogRepository emailLogRepository;
 
     @Transactional
     public void log(String from, String to, String subject, String body, boolean success, String errorMessage) {
-        MailLogDomain logEntry = MailLogDomain.builder()
+        EmailLogDomain logEntry = EmailLogDomain.builder()
                 .fromAddress(from)
                 .toAddress(to)
                 .subject(subject)
@@ -30,7 +30,7 @@ public class MailLogService {
                 .sendAt(OffsetDateTime.now())
                 .build();
 
-        mailLogRepository.save(logEntry);
+        emailLogRepository.save(logEntry);
         if (!success) {
             log.warn("Mail delivery failed to={} subject={}", to, subject);
         }

@@ -15,12 +15,12 @@ import java.nio.charset.StandardCharsets;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class MailService {
+public class EmailService {
 
     private static final String DEFAULT_FROM = "RED-SAFE <noreply@redsafe-tw.com>";
 
     private final JavaMailSender mailSender;
-    private final MailLogService mailLogService;
+    private final EmailLogService emailLogService;
 
     public void sendText(String to, String subject, String body) {
         SimpleMailMessage msg = new SimpleMailMessage();
@@ -31,9 +31,9 @@ public class MailService {
 
         try {
             mailSender.send(msg);
-            mailLogService.log(DEFAULT_FROM, to, subject, body, true, null);
+            emailLogService.log(DEFAULT_FROM, to, subject, body, true, null);
         } catch (RuntimeException ex) {
-            mailLogService.log(DEFAULT_FROM, to, subject, body, false, ex.getMessage());
+            emailLogService.log(DEFAULT_FROM, to, subject, body, false, ex.getMessage());
             throw ex;
         }
     }
@@ -52,14 +52,14 @@ public class MailService {
             helper.setText(html, true);
 
             mailSender.send(mime);
-            mailLogService.log(DEFAULT_FROM, to, subject, html, true, null);
+            emailLogService.log(DEFAULT_FROM, to, subject, html, true, null);
         } catch (MessagingException | RuntimeException ex) {
-            mailLogService.log(DEFAULT_FROM, to, subject, html, false, ex.getMessage());
+            emailLogService.log(DEFAULT_FROM, to, subject, html, false, ex.getMessage());
             throw ex;
         }
     }
 
-    public void sendMailVerifyCode(String to, String code, int ttlMinutes) throws MessagingException {
+    public void sendEmailVerifyCode(String to, String code, int ttlMinutes) throws MessagingException {
         String subject = "驗證您的電子郵件地址";
         String html = """
                 <!doctype html><html lang="zh-Hant"><head>
@@ -124,9 +124,9 @@ public class MailService {
 
             String body = "MailVerify: " + code;
             mailSender.send(mime);
-            mailLogService.log(DEFAULT_FROM, to, subject, body, true, null);
+            emailLogService.log(DEFAULT_FROM, to, subject, body, true, null);
         } catch (MessagingException | RuntimeException ex) {
-            mailLogService.log(DEFAULT_FROM, to, subject, html, false, ex.getMessage());
+            emailLogService.log(DEFAULT_FROM, to, subject, html, false, ex.getMessage());
             throw ex;
         }
     }

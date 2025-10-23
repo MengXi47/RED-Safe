@@ -1,9 +1,9 @@
 package com.redsafetw.notify_service.repository;
 
-import com.redsafetw.notify_service.domain.MailLogDomain;
+import com.redsafetw.notify_service.domain.EmailLogDomain;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface MailLogRepository extends JpaRepository<MailLogDomain, Long> {
+public interface EmailLogRepository extends JpaRepository<EmailLogDomain, Long> {
 }

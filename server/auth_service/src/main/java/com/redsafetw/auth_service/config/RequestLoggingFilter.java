@@ -13,6 +13,7 @@ import org.springframework.web.util.ContentCachingResponseWrapper;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 /**
  * 全域過濾器：記錄所有 HTTP 請求與回應的內容，協助除錯與審查。
@@ -50,8 +51,10 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
             }
             String requestBody = bodyAsString(requestWrapper.getContentAsByteArray(), requestWrapper.getCharacterEncoding());
             String responseBody = bodyAsString(responseWrapper.getContentAsByteArray(), responseWrapper.getCharacterEncoding());
-            log.info("HTTP {} {} status={} duration={}ms request_body={} response_body={}",
-                    request.getMethod(), path, responseWrapper.getStatus(), duration, requestBody, responseBody);
+            if (!Objects.equals(path, "/health")) {
+                log.info("HTTP {} {} status={} duration={}ms request_body={} response_body={}",
+                        request.getMethod(), path, responseWrapper.getStatus(), duration, requestBody, responseBody);
+            }
             responseWrapper.copyBodyToResponse();
         }
     }

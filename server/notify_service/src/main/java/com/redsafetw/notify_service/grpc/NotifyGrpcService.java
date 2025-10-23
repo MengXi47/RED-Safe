@@ -2,8 +2,8 @@ package com.redsafetw.notify_service.grpc;
 
 import com.google.protobuf.Empty;
 import com.grpc.notify.NotifyServiceGrpc;
-import com.grpc.notify.SendMailVerifyCodeRequest;
-import com.redsafetw.notify_service.service.MailService;
+import com.grpc.notify.SendEmailVerifyCodeRequest;
+import com.redsafetw.notify_service.service.EmailService;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import jakarta.mail.MessagingException;
@@ -18,10 +18,10 @@ import org.springframework.util.StringUtils;
 public class NotifyGrpcService extends NotifyServiceGrpc.NotifyServiceImplBase {
     private static final Logger log = LoggerFactory.getLogger(NotifyGrpcService.class);
 
-    private final MailService mailService;
+    private final EmailService emailService;
 
     @Override
-    public void sendMailVerifyCode(SendMailVerifyCodeRequest request, StreamObserver<Empty> responseObserver) {
+    public void sendEmailVerifyCode(SendEmailVerifyCodeRequest request, StreamObserver<Empty> responseObserver) {
         String to = request.getTo();
         String code = request.getCode();
         int ttlMinutes = request.getTtlMinutes();
@@ -43,7 +43,7 @@ public class NotifyGrpcService extends NotifyServiceGrpc.NotifyServiceImplBase {
         }
 
         try {
-            mailService.sendMailVerifyCode(to, code, ttlMinutes);
+            emailService.sendEmailVerifyCode(to, code, ttlMinutes);
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
         } catch (MessagingException ex) {
