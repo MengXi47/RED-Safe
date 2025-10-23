@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @Validated
 @RestController
 @RequestMapping("/auth")
@@ -50,7 +52,7 @@ public class AuthController {
 
     @PostMapping("/mail/verify/send")
     public ErrorCodeResponse sendEmailVerification(@Valid @RequestBody SendEmailVerificationRequset request) {
-        return authService.sendMailVerification(request.getUserId());
+        return authService.sendMailVerification(UUID.fromString(request.getUserId()));
     }
 
     @PostMapping("/mail/verify")

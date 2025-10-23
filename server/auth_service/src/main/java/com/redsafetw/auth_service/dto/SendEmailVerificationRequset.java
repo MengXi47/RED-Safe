@@ -12,5 +12,5 @@ import java.util.UUID;
 public class SendEmailVerificationRequset {
     @NotBlank(message = "157")
     @JsonProperty("user_id")
-    private UUID userId;
+    private String userId;
 }
