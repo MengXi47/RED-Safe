@@ -124,7 +124,7 @@ public class EmailService {
 
             String body = "MailVerify: " + code;
             mailSender.send(mime);
-            emailLogService.log(DEFAULT_FROM, to, subject, body, true, null);
+            emailLogService.log(DEFAULT_FROM, to, subject, html, true, null);
         } catch (MessagingException | RuntimeException ex) {
             emailLogService.log(DEFAULT_FROM, to, subject, html, false, ex.getMessage());
             throw ex;
