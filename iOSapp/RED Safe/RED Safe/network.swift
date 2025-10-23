@@ -238,6 +238,9 @@ final class APIClient {
         retryingOnAuthFailure: Bool
     ) async throws -> Response {
         let request = try await makeRequest(from: endpoint)
+#if DEBUG
+        debugLogRequest(request)
+#endif
 
         do {
             let (data, response) = try await session.data(for: request)
@@ -368,6 +371,35 @@ final class APIClient {
 
 #if DEBUG
 extension APIClient {
+    private func debugLogRequest(_ request: URLRequest) {
+        let method = request.httpMethod ?? "<NO METHOD>"
+        let urlString = request.url?.absoluteString ?? "<unknown URL>"
+        print("\n📤 [API] Request \(method) \(urlString)")
+
+        if let headers = request.allHTTPHeaderFields, !headers.isEmpty {
+            let headerLines = headers
+                .map { "  \($0.key): \($0.value)" }
+                .sorted()
+                .joined(separator: "\n")
+            print("📮 Headers:\n\(headerLines)")
+        } else {
+            print("📮 Headers: <none>")
+        }
+
+        guard let body = request.httpBody, !body.isEmpty else {
+            print("📦 Body: <empty>")
+            return
+        }
+
+        if let prettyJSON = prettyPrintedJSON(from: body) {
+            print("📦 Body (JSON):\n\(prettyJSON)")
+        } else if let bodyString = String(data: body, encoding: .utf8) {
+            print("📦 Body (UTF-8):\n\(bodyString)")
+        } else {
+            print("📦 Body: <non-UTF8 binary, \(body.count) bytes>")
+        }
+    }
+
     private func debugLogResponse(for request: URLRequest, response: HTTPURLResponse, data: Data) {
         let urlString = request.url?.absoluteString ?? "<unknown URL>"
         let method = request.httpMethod ?? "<NO METHOD>"
@@ -472,6 +504,43 @@ struct SignInResponse: Decodable {
     let refreshToken: String?
     let errorCode: ApiErrorCode?
 
+    init(
+        userName: String? = nil,
+        accessToken: String? = nil,
+        refreshToken: String? = nil,
+        errorCode: ApiErrorCode? = nil
+    ) {
+        self.userName = userName
+        self.accessToken = accessToken
+        self.refreshToken = refreshToken
+        self.errorCode = errorCode
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case userName
+        case accessToken
+        case refreshToken
+        case errorCode
+    }
+
+    init(from decoder: Decoder) throws {
+        if let container = try? decoder.container(keyedBy: CodingKeys.self) {
+            let userName = try container.decodeIfPresent(String.self, forKey: .userName)
+            let accessToken = try container.decodeIfPresent(String.self, forKey: .accessToken)
+            let refreshToken = try container.decodeIfPresent(String.self, forKey: .refreshToken)
+            let errorCode = try container.decodeIfPresent(ApiErrorCode.self, forKey: .errorCode)
+            self.init(userName: userName, accessToken: accessToken, refreshToken: refreshToken, errorCode: errorCode)
+            return
+        }
+
+        let singleValue = try decoder.singleValueContainer()
+        if let code = try? singleValue.decode(ApiErrorCode.self) {
+            self.init(errorCode: code)
+            return
+        }
+        throw DecodingError.dataCorruptedError(in: singleValue, debugDescription: "無法解析登入回應")
+    }
+
     var normalizedUserName: String? {
         guard let name = userName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty else {
             return nil
@@ -520,8 +589,30 @@ struct VerifyEmailRequest: Encodable {
 struct UserIdLookupResponse: Decodable {
     let userId: String
 
-    enum CodingKeys: String, CodingKey {
-        case userId = "user_id"
+    private enum CodingKeys: String, CodingKey {
+        case userId
+        case userIdSnake = "user_id"
+    }
+
+    init(userId: String) {
+        self.userId = userId
+    }
+
+    init(from decoder: Decoder) throws {
+        if let container = try? decoder.container(keyedBy: CodingKeys.self) {
+            if let value = try container.decodeIfPresent(String.self, forKey: .userId)
+                ?? container.decodeIfPresent(String.self, forKey: .userIdSnake) {
+                self.userId = value
+                return
+            }
+            throw DecodingError.keyNotFound(
+                CodingKeys.userIdSnake,
+                .init(codingPath: container.codingPath, debugDescription: "缺少 user_id 欄位")
+            )
+        }
+
+        let single = try decoder.singleValueContainer()
+        self.userId = try single.decode(String.self)
     }
 }
 
@@ -640,7 +731,11 @@ extension APIClient {
     }
 
     func requestEmailVerification(userId: String) async throws -> ApiErrorCode {
-        let payload = SendEmailVerificationRequest(userId: userId)
+        let trimmed = userId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw ApiError.invalidPayload(reason: "缺少 user_id")
+        }
+        let payload = SendEmailVerificationRequest(userId: trimmed)
         let endpoint = Endpoint<ErrorCodeResponse>(
             path: "/auth/mail/verify/send",
             method: .post,
