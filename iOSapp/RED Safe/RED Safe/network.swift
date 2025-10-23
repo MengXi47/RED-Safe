@@ -81,6 +81,7 @@ private extension ApiErrorCode {
         "146": "Edge ID 已存在",
         "147": "Edge 密碼錯誤",
         "148": "新 Edge 密碼為空",
+        "158": "Email 尚未認證，請完成信箱驗證",
         "150": "此帳號已啟用二階段驗證",
         "151": "尚未啟用二階段驗證",
         "152": "OTP 或備援碼驗證失敗",
@@ -479,6 +480,7 @@ struct SignInResponse: Decodable {
     }
 
     var requiresOTP: Bool { errorCode?.rawValue == "150" }
+    var requiresEmailVerification: Bool { errorCode?.rawValue == "158" }
 }
 
 struct CreateOTPResponse: Decodable {
@@ -495,6 +497,32 @@ struct UserInfoResponse: Decodable {
 struct SignUpResponse: Decodable {
     let userId: String
     let userName: String
+}
+
+struct SendEmailVerificationRequest: Encodable {
+    let userId: String
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+    }
+}
+
+struct VerifyEmailRequest: Encodable {
+    let userId: String
+    let code: String
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case code
+    }
+}
+
+struct UserIdLookupResponse: Decodable {
+    let userId: String
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+    }
 }
 
 struct RefreshResponse: Decodable {
@@ -598,6 +626,41 @@ extension APIClient {
             body: AnyEncodable(payload)
         )
         return try await send(endpoint)
+    }
+
+    func lookupUserId(by email: String) async throws -> String {
+        let endpoint = Endpoint<UserIdLookupResponse>(
+            path: "/user/userid",
+            method: .get,
+            requiresAuth: false,
+            queryItems: [URLQueryItem(name: "email", value: email)]
+        )
+        let response = try await send(endpoint)
+        return response.userId
+    }
+
+    func requestEmailVerification(userId: String) async throws -> ApiErrorCode {
+        let payload = SendEmailVerificationRequest(userId: userId)
+        let endpoint = Endpoint<ErrorCodeResponse>(
+            path: "/auth/mail/verify/send",
+            method: .post,
+            requiresAuth: false,
+            body: AnyEncodable(payload)
+        )
+        let response = try await send(endpoint)
+        return try mapSuccess(from: response)
+    }
+
+    func verifyEmail(userId: String, code: String) async throws -> ApiErrorCode {
+        let payload = VerifyEmailRequest(userId: userId, code: code)
+        let endpoint = Endpoint<ErrorCodeResponse>(
+            path: "/auth/mail/verify",
+            method: .post,
+            requiresAuth: false,
+            body: AnyEncodable(payload)
+        )
+        let response = try await send(endpoint)
+        return try mapSuccess(from: response)
     }
 
     func fetchUserInfo() async throws -> UserInfoResponse {

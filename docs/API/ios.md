@@ -23,8 +23,8 @@ iOS 服務用來註冊與更新行動裝置的 APNS Token，並需透過使用�
 | 欄位 | 型別 | 必填 | 約束 |
 |------|------|------|------|
 | `ios_device_id` | UUID | ❌ | 指定時會更新該裝置，未指定則建立新裝置 |
-| `apns_token` | string | ✅ | 最長 512 字元，不能為空 |
-| `device_name` | string | ❌ | 最長 255 字元 |
+| `apns_token` | string | ✅ | 會自動去除首尾空白，最長 512 字元 |
+| `device_name` | string | ❌ | 會自動去除首尾空白，最長 255 字元 |
 
 ### 成功回應 (200)
 ```json
@@ -42,12 +42,13 @@ iOS 服務用來註冊與更新行動裝置的 APNS Token，並需透過使用�
 }
 ```
 
-### 失敗情境
-| HTTP 狀態 | `error_code` | 說明 |
-|-----------|--------------|------|
-| 401 | `MISSING_AUTHORIZATION_HEADER` | 未提供 `Authorization` header |
-| 401 | `INVALID_AUTHORIZATION_HEADER` | Header 格式錯誤或 Bearer Token 為空 |
-| 401 | `INVALID_TOKEN` | JWT 驗證失敗或 user id 無效 |
-| 404 | `IOS_DEVICE_NOT_FOUND` | 指定的 `ios_device_id` 不屬於目前使用者 |
-| 409 | `APNS_TOKEN_IN_USE` | 提供的 `apns_token` 已綁定其他裝置 |
-| 503 | `USER_SERVICE_UNAVAILABLE` | 無法透過 gRPC 驗證 JWT，請稍後重試 |
+### 常見錯誤碼
+- `130` apns_token 為空
+- `131` apns_token 長度超過 512
+- `132` device_name 長度超過 255
+- `MISSING_AUTHORIZATION_HEADER` 未提供 `Authorization` header
+- `INVALID_AUTHORIZATION_HEADER` Header 格式錯誤或 Bearer Token 為空
+- `INVALID_TOKEN` JWT 驗證失敗或 user id 無效
+- `IOS_DEVICE_NOT_FOUND` 指定裝置不屬於目前使用者
+- `APNS_TOKEN_IN_USE` apns_token 已被其他裝置使用
+- `USER_SERVICE_UNAVAILABLE` 呼叫 user 服務驗證 JWT 失敗

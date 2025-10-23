@@ -1,11 +1,7 @@
 package com.redsafetw.user_service.controller;
 
 import com.redsafetw.user_service.dto.*;
-import com.redsafetw.user_service.service.BindService;
-import com.redsafetw.user_service.service.EdgeCommandService;
-import com.redsafetw.user_service.service.EdgeCommandSseService;
-import com.redsafetw.user_service.service.EdgeListService;
-import com.redsafetw.user_service.service.UserService;
+import com.redsafetw.user_service.service.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -31,6 +27,7 @@ public class UserController {
     private final EdgeCommandService edgeCommandService;
     private final EdgeListService edgeListService;
     private final EdgeCommandSseService edgeCommandSseService;
+    private final GetUserIdService getUserIdService;
 
     @GetMapping("/info")
     public UserInfoResponse getUserInfo(
@@ -109,5 +106,11 @@ public class UserController {
             @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
         String token = authorization.replace("Bearer ", "");
         return edgeCommandSseService.streamCommandResult(traceId, token);
+    }
+
+    @GetMapping("/userid")
+    public GetUserIdResponse getUserId(
+            @RequestParam("email") @NotBlank(message = "129") String email) {
+        return getUserIdService.getUserIdByEmail(email);
     }
 }

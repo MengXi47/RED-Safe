@@ -1,15 +1,8 @@
 package com.redsafetw.auth_service.service;
 
 import com.grpc.user.GetUserProfileResponse;
+import com.redsafetw.auth_service.dto.*;
 import com.redsafetw.auth_service.grpc.UserGrpcClient;
-import com.redsafetw.auth_service.dto.CreateOTPResponse;
-import com.redsafetw.auth_service.dto.ErrorCodeResponse;
-import com.redsafetw.auth_service.dto.RefreshRequest;
-import com.redsafetw.auth_service.dto.RefreshResponse;
-import com.redsafetw.auth_service.dto.SigninRequest;
-import com.redsafetw.auth_service.dto.SigninResponse;
-import com.redsafetw.auth_service.dto.SignupRequest;
-import com.redsafetw.auth_service.dto.SignupResponse;
 import com.redsafetw.auth_service.service.PasswordManagementService.PasswordChangeResult;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -58,13 +51,11 @@ public class AuthService {
         return otpManagementService.disableOtp(userId);
     }
 
-    public ErrorCodeResponse sendMailVerification(String accessToken) {
-        UUID userId = accessTokenManager.requireValidUserId(accessToken);
-        return mailVerificationService.sendMailVerification(userId);
+    public ErrorCodeResponse sendMailVerification(UUID user_id) {
+        return mailVerificationService.sendMailVerification(user_id);
     }
 
-    public ErrorCodeResponse verifyMailCode(String accessToken, String code) {
-        UUID userId = accessTokenManager.requireValidUserId(accessToken);
+    public ErrorCodeResponse verifyMailCode(UUID userId, String code) {
         return mailVerificationService.verifyMailCode(userId, code);
     }
 

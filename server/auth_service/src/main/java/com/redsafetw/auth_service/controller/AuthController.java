@@ -1,24 +1,13 @@
 package com.redsafetw.auth_service.controller;
 
-import com.redsafetw.auth_service.dto.CreateOTPResponse;
-import com.redsafetw.auth_service.dto.ErrorCodeResponse;
-import com.redsafetw.auth_service.dto.RefreshRequest;
-import com.redsafetw.auth_service.dto.RefreshResponse;
-import com.redsafetw.auth_service.dto.SigninRequest;
-import com.redsafetw.auth_service.dto.SigninResponse;
-import com.redsafetw.auth_service.dto.SignupRequest;
-import com.redsafetw.auth_service.dto.SignupResponse;
-import com.redsafetw.auth_service.dto.VerifyMailCodeRequest;
+import com.redsafetw.auth_service.dto.*;
 import com.redsafetw.auth_service.service.AuthService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Validated
 @RestController
@@ -61,17 +50,12 @@ public class AuthController {
     }
 
     @PostMapping("/mail/verify/send")
-    public ErrorCodeResponse sendMailVerification(
-            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization) {
-        String token = authorization.replace("Bearer ", "");
-        return authService.sendMailVerification(token);
+    public ErrorCodeResponse sendEmailVerification(sendEmailVerificationRequset request) {
+        return authService.sendMailVerification(request.getUserId());
     }
 
     @PostMapping("/mail/verify")
-    public ErrorCodeResponse verifyMailCode(
-            @NotBlank(message = "127") @RequestHeader("Authorization") String authorization,
-            @Valid @RequestBody VerifyMailCodeRequest request) {
-        String token = authorization.replace("Bearer ", "");
-        return authService.verifyMailCode(token, request.getCode());
+    public ErrorCodeResponse verifyMailCode(@Valid @RequestBody VerifyMailCodeRequest request) {
+        return authService.verifyMailCode(request.getUserId(), request.getCode());
     }
 }

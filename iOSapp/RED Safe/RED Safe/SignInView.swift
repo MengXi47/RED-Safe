@@ -60,6 +60,9 @@ struct SignInView: View {
             .sheet(item: $viewModel.pendingOTP) { pending in
                 OTPVerificationSheet(viewModel: viewModel, pending: pending)
             }
+            .sheet(item: $viewModel.pendingEmailVerification) { pending in
+                EmailVerificationSheet(viewModel: viewModel, pending: pending)
+            }
         }
     }
 
@@ -511,6 +514,205 @@ private struct OTPVerificationSheet: View {
     }
 }
 
+private struct EmailVerificationSheet: View {
+    enum Field: Hashable {
+        case code
+    }
+
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: SignInViewModel
+    let pending: SignInViewModel.PendingEmailVerification
+
+    @State private var verificationCode: String = ""
+    @State private var validationError: String?
+    @FocusState private var focusedField: Field?
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                HStack(spacing: 8) {
+                    Image(systemName: "envelope.badge")
+                        .foregroundColor(.accentColor)
+                    Text(pending.displayEmail)
+                        .font(.callout.monospaced())
+                        .foregroundColor(.primary)
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 14)
+                .background(.thinMaterial, in: Capsule())
+                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 8)
+                .padding(.top, 8)
+
+                VStack(spacing: 6) {
+                    Text("驗證信箱")
+                        .font(.title3.weight(.semibold))
+                    Text("我們已將 6 碼驗證碼寄送至你的 Email，請於 10 分鐘內輸入完成驗證。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                }
+
+                TextField("", text: $verificationCode)
+                    .keyboardType(.numberPad)
+                    .textContentType(.oneTimeCode)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focusedField, equals: .code)
+                    .onChange(of: verificationCode) { verificationCode = sanitize(code: $0) }
+                    .opacity(0.02)
+                    .frame(width: 1, height: 1)
+
+                HStack(spacing: 12) {
+                    ForEach(0..<6, id: \.self) { idx in
+                        let char: String = {
+                            let array = Array(verificationCode)
+                            return idx < array.count ? String(array[idx]) : ""
+                        }()
+
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.white.opacity(0.95))
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(
+                                    idx == min(verificationCode.count, 5) && focusedField == .code
+                                    ? Color.accentColor.opacity(0.6)
+                                    : Color.black.opacity(0.08),
+                                    lineWidth: 1.2
+                                )
+                            Text(char.isEmpty ? " " : char)
+                                .font(.title2.monospacedDigit().weight(.semibold))
+                                .foregroundColor(.primary)
+                        }
+                        .frame(width: 48, height: 56)
+                        .contentShape(Rectangle())
+                        .onTapGesture { focusedField = .code }
+                    }
+                }
+                .padding(.top, 4)
+
+                if let validationError {
+                    Text(validationError)
+                        .font(.footnote)
+                        .foregroundColor(.red)
+                        .padding(.top, 4)
+                }
+
+                Button(action: { Task { await verifyCode() } }) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: viewModel.isVerifyingEmail ? [
+                                        Color(UIColor.systemGray5),
+                                        Color(UIColor.systemGray4)
+                                    ] : [
+                                        Color(red: 118/255, green: 186/255, blue: 255/255),
+                                        Color(red: 78/255, green: 156/255, blue: 255/255)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .stroke(viewModel.isVerifyingEmail ? Color.black.opacity(0.08) : Color.white.opacity(0.4))
+                        HStack(spacing: 10) {
+                            if viewModel.isVerifyingEmail {
+                                ProgressView().tint(.white)
+                            } else {
+                                Image(systemName: "paperplane.fill")
+                                    .font(.headline)
+                                    .foregroundStyle(.white)
+                            }
+                            Text(viewModel.isVerifyingEmail ? "驗證中" : "送出驗證")
+                                .font(.headline.weight(.semibold))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.vertical, 14)
+                    }
+                    .frame(height: 54)
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isVerifyingEmail || verificationCode.count != 6)
+                .shadow(color: Color.black.opacity(verificationCode.count == 6 ? 0.25 : 0.0), radius: 18, x: 0, y: 12)
+
+                Button(action: { Task { await resendCode() } }) {
+                    if viewModel.isResendingEmailCode {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.accentColor)
+                    } else {
+                        Text("重新寄送驗證碼")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.accentColor)
+                    }
+                }
+                .padding(.top, 8)
+                .disabled(viewModel.isResendingEmailCode || viewModel.isVerifyingEmail)
+
+                Spacer(minLength: 8)
+            }
+            .padding(.horizontal, 24)
+            .padding(.vertical, 20)
+            .navigationTitle("Email 驗證")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") {
+                        viewModel.pendingEmailVerification = nil
+                        dismiss()
+                    }
+                }
+            }
+            .onAppear {
+                focusedField = .code
+            }
+        }
+    }
+
+    private func sanitize(code: String) -> String {
+        let filtered = code.filter { $0.isNumber }
+        return String(filtered.prefix(6))
+    }
+
+    private func verifyCode() async {
+        let trimmed = verificationCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            await MainActor.run { validationError = "請輸入驗證碼" }
+            return
+        }
+
+        await MainActor.run { validationError = nil }
+
+        let result = await viewModel.completeEmailVerification(code: trimmed)
+
+        if case .success = result {
+            dismiss()
+        } else if case .failure(let error) = result {
+            await MainActor.run {
+                if let localized = (error as? LocalizedError)?.errorDescription {
+                    validationError = localized
+                } else {
+                    validationError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func resendCode() async {
+        let result = await viewModel.resendVerificationEmail()
+        if case .failure(let error) = result {
+            await MainActor.run {
+                if let localized = (error as? LocalizedError)?.errorDescription {
+                    validationError = localized
+                } else {
+                    validationError = error.localizedDescription
+                }
+            }
+        }
+    }
+}
+
 // MARK: - View Model
 
 @MainActor
@@ -535,7 +737,24 @@ final class SignInViewModel: ObservableObject {
         let password: String
     }
 
+    struct PendingEmailVerification: Identifiable, Equatable {
+        let id = UUID()
+        let context: AuthManager.EmailVerificationContext
+        let displayEmail: String
+    }
+
     enum OTPFlowError: LocalizedError {
+        case missingContext
+
+        var errorDescription: String? {
+            switch self {
+            case .missingContext:
+                return "驗證流程已過期，請重新登入"
+            }
+        }
+    }
+
+    enum EmailVerificationFlowError: LocalizedError {
         case missingContext
 
         var errorDescription: String? {
@@ -553,6 +772,9 @@ final class SignInViewModel: ObservableObject {
     @Published var banner: Banner?
     @Published var pendingOTP: PendingOTP?
     @Published var isVerifyingOTP: Bool = false
+    @Published var pendingEmailVerification: PendingEmailVerification?
+    @Published var isVerifyingEmail: Bool = false
+    @Published var isResendingEmailCode: Bool = false
 
     private var bannerDismissTask: Task<Void, Never>?
 
@@ -615,6 +837,13 @@ final class SignInViewModel: ObservableObject {
                 pendingOTP = PendingOTP(email: email, password: password)
                 showBanner(title: "需要 OTP 驗證", message: signInError.errorDescription ?? "請輸入 OTP 驗證碼", kind: .error)
                 clearSensitiveFields()
+            case .emailVerificationRequired(let context):
+                pendingEmailVerification = PendingEmailVerification(
+                    context: context,
+                    displayEmail: trimmedEmail
+                )
+                showBanner(title: "需要信箱驗證", message: signInError.errorDescription ?? "請輸入 6 碼驗證碼", kind: .error)
+                clearSensitiveFields()
             }
         } catch {
             showBanner(title: "登入失敗", message: resolveMessage(from: error), kind: .error)
@@ -654,6 +883,59 @@ final class SignInViewModel: ObservableObject {
             return .success(())
         } catch {
             showBanner(title: "登入失敗", message: resolveMessage(from: error), kind: .error)
+            return .failure(error)
+        }
+    }
+
+    func completeEmailVerification(code: String) async -> Result<Void, Error> {
+        guard let pendingEmailVerification else {
+            return .failure(EmailVerificationFlowError.missingContext)
+        }
+
+        isVerifyingEmail = true
+        defer { isVerifyingEmail = false }
+
+        do {
+            let profile = try await AuthManager.shared.verifyEmail(context: pendingEmailVerification.context, code: code)
+            self.pendingEmailVerification = nil
+            showBanner(title: "驗證成功", message: "Email 已完成認證，歡迎回來，\(profile.displayName)", kind: .success)
+            clearSensitiveFields()
+            return .success(())
+        } catch let signInError as AuthManager.SignInError {
+            switch signInError {
+            case .otpRequired(let email, let password):
+                self.pendingEmailVerification = nil
+                pendingOTP = PendingOTP(email: email, password: password)
+                showBanner(title: "需要 OTP 驗證", message: signInError.errorDescription ?? "請輸入 OTP 驗證碼", kind: .error)
+                clearSensitiveFields()
+            case .emailVerificationRequired(let context):
+                self.pendingEmailVerification = PendingEmailVerification(
+                    context: context,
+                    displayEmail: pendingEmailVerification.displayEmail
+                )
+                showBanner(title: "仍需信箱驗證", message: signInError.errorDescription ?? "請輸入 6 碼驗證碼", kind: .error)
+            }
+            return .failure(signInError)
+        } catch {
+            showBanner(title: "驗證失敗", message: resolveMessage(from: error), kind: .error)
+            return .failure(error)
+        }
+    }
+
+    func resendVerificationEmail() async -> Result<Void, Error> {
+        guard let pendingEmailVerification else {
+            return .failure(EmailVerificationFlowError.missingContext)
+        }
+
+        isResendingEmailCode = true
+        defer { isResendingEmailCode = false }
+
+        do {
+            try await AuthManager.shared.resendEmailVerification(for: pendingEmailVerification.context)
+            showBanner(title: "已重新寄出", message: "請檢查 \(pendingEmailVerification.displayEmail) 的收件匣", kind: .success)
+            return .success(())
+        } catch {
+            showBanner(title: "寄送失敗", message: resolveMessage(from: error), kind: .error)
             return .failure(error)
         }
     }

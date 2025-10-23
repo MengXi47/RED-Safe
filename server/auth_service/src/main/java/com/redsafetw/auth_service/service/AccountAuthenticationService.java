@@ -47,6 +47,10 @@ public class AccountAuthenticationService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "128");
         }
 
+        if (!user.getEmailVerified()) {
+            throw new ResponseStatusException(HttpStatus.OK, "158");
+        }
+
         if (Boolean.TRUE.equals(user.getOtpEnabled())) {
             throw new ResponseStatusException(HttpStatus.OK, "150");
         }

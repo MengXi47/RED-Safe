@@ -9,11 +9,8 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class VerifyMailCodeRequest {
+public class sendEmailVerificationRequset {
     @NotBlank(message = "157")
     @JsonProperty("user_id")
     private UUID userId;
-
-    @NotBlank(message = "156")
-    private String code;
 }

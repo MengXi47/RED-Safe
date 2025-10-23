@@ -1,11 +1,11 @@
 # 🔐 Auth API 文件
 
-Auth 服務提供註冊、登入與刷新 Access Token 的功能。
+Auth 服務負責使用者註冊、登入、二階段驗證 (OTP) 與信箱驗證。所有回應皆為 JSON。
 
 ---
 
 ## POST /auth/signup
-建立全新的使用者帳號。
+建立全新的使用者帳號並同步建立 user profile。
 
 ### Headers
 - `Content-Type: application/json`
@@ -19,33 +19,32 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 }
 ```
 
-| 欄位 | 型別 | 必填 | 約束 |
+| 欄位 | 型別 | 必填 | 說明 |
 |------|------|------|------|
-| `email` | string | ✅ | 合法 Email 格式，不能為空 |
-| `user_name` | string | ✅ | 最長 16 字元，不能為空 |
-| `password` | string | ✅ | 不能為空 |
+| `email` | string | ✅ | 會轉為小寫；需符合 Email 格式 |
+| `user_name` | string | ✅ | 最長 16 字元 |
+| `password` | string | ✅ | 伺服器端會雜湊儲存 |
 
 ### 成功回應 (200)
 ```json
 {
   "user_id": "85f22dda-efc2-459d-b518-640400a69e8d",
-  "user_name": "displayName"
+  "user_name": "USER_NAME"
 }
 ```
 
-### 失敗回應範例
-```json
-{
-  "error_code": "133"
-}
-```
-
-**常見錯誤碼**：`124`、`129`、`130`、`131`、`139`、`133`
+### 常見錯誤碼
+- `124` Email 格式錯誤
+- `129` Email 為空
+- `130` Password 為空
+- `131` user_name 為空
+- `133` Email 已存在
+- `139` user_name 過長
 
 ---
 
 ## POST /auth/signin
-使用 Email 與密碼換取 JWT 與 Refresh Token。
+使用 Email 與密碼登入。若帳號已啟用二階段驗證，會以 `error_code` 回應通知改走 OTP 流程。
 
 ### Headers
 - `Content-Type: application/json`
@@ -54,14 +53,9 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 ```json
 {
   "email": "user@example.com",
-  "password": "Password"
+  "password": "Password123"
 }
 ```
-
-| 欄位 | 型別 | 必填 | 約束 |
-|------|------|------|------|
-| `email` | string | ✅ | 合法 Email 格式，不能為空 |
-| `password` | string | ✅ | 不能為空 |
 
 ### 成功回應 (200)
 ```json
@@ -72,33 +66,85 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 }
 ```
 
-### 啟用 OTP 時的回應 (200)
+### OTP 啟用時的回應 (200)
 ```json
 {
   "error_code": "150"
 }
 ```
-帳號若已啟用二階段驗證，會回傳 `error_code = 150`，此時必須改呼叫「/auth/signin/otp」。
 
-### 失敗回應範例
+### 常見錯誤碼
+- `124`、`128` 帳號或密碼錯誤
+- `150` 需要二階段認證 OTP
+
+---
+
+## POST /auth/signin/otp
+適用已啟用二階段驗證的帳號，需提供一次性 6 碼驗證碼或備援碼。
+
+### Headers
+- `Content-Type: application/json`
+
+### Request Body
 ```json
 {
-  "error_code": "128"
+  "email": "user@example.com",
+  "password": "Password123",
+  "otp_code": "123456"
 }
 ```
 
-**常見錯誤碼**：`124`、`128`、`129`、`130`、`150`
+| 欄位 | 型別 | 必填 | 說明 |
+|------|------|------|------|
+| `otp_code` | string | ✅ | 可輸入同步產生的 OTP 或尚未使用的備援碼 |
+
+### 成功回應 (200)
+```json
+{
+  "user_name": "USER_NAME",
+  "access_token": "eyJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "ajh23kjasd..."
+}
+```
+
+### 常見錯誤碼
+- `124`、`128` 帳號或密碼錯誤
+- `151` OTP 未啟用
+- `152` OTP 驗證失敗
+
+---
+
+## POST /auth/refresh
+以 Refresh Token 換取新的 Access Token。舊的存活時間不會被刷新。
+
+### Headers
+- `Content-Type: application/json`
+
+### Request Body
+```json
+{
+  "refresh_token": "rFT4nq9J..."
+}
+```
+
+### 成功回應 (200)
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+### 常見錯誤碼
+- `132` refresh_token 失效
+- `137` refresh_token 為空
 
 ---
 
 ## POST /auth/create/otp
-產生 TOTP 秘鑰並啟用二階段驗證，需提供已登入的 `access_token`。
+產生 TOTP 秘鑰並啟用二階段驗證。需提供有效的 Access Token。
 
 ### Headers
-- `Authorization: Bearer <access_token>`
-
-### Request Body
-無
+- `Authorization: Bearer {access_token}`
 
 ### 成功回應 (200)
 ```json
@@ -111,110 +157,20 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
   ]
 }
 ```
-回傳的 `otp_key` 可手動輸入或轉換成 QR Code 匯入 Authenticator App。`backup_codes` 為一次性備援碼，使用後會作廢。
 
-### 失敗回應範例
-```json
-{
-  "error_code": "153"
-}
-```
-
-**常見錯誤碼**：`126`（token 失效）、`142`（使用者不存在）、`153`（OTP 已啟用）
-
----
-
-## POST /auth/refresh
-透過 Refresh Token 換取新的 Access Token。
-
-### Headers
-- `Content-Type: application/json`
-
-### Request Body
-```json
-{
-  "refresh_token": "rFT4nq9J..."
-}
-```
-
-| 欄位 | 型別 | 必填 | 約束 |
-|------|------|------|------|
-| `refresh_token` | string | ✅ | 不能為空 |
-
-### 成功回應 (200)
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiJ9..."
-}
-```
-
-### 失敗回應範例
-```json
-{
-  "error_code": "132"
-}
-```
-
-**常見錯誤碼**：`132`、`137`
-
----
-
-## POST /auth/signin/otp
-針對已啟用 OTP 的帳號，使用 Email、密碼與單一 6 碼驗證碼登入。伺服器會同時檢查輸入的數值是否為當期 OTP 或尚未使用的備援碼。
-
-### Headers
-- `Content-Type: application/json`
-
-### Request Body
-```json
-{
-  "email": "user@example.com",
-  "password": "Password",
-  "otp_code": "123456"
-}
-```
-
-| 欄位 | 型別 | 必填 | 約束 |
-|------|------|------|------|
-| `email` | string | ✅ | 合法 Email 格式，不能為空 |
-| `password` | string | ✅ | 不能為空 |
-| `otp_code` | string | ⭕ | 6 位數字，可輸入當期 OTP 或備援碼 |
-
-### 成功回應 (200)
-```json
-{
-  "user_name": "USER_NAME",
-  "access_token": "eyJhbGciOiJIUzI1NiJ9...",
-  "refresh_token": "ajh23kjasd..."
-}
-```
-
-### 失敗回應範例
-```json
-{
-  "error_code": "152"
-}
-```
-
-**常見錯誤碼**：`124`、`128`、`129`、`130`、`150`、`151`、`152`
-
----
-
-## gRPC 介面：AuthService
-
-| Method | Request | Response | 說明 |
-|--------|---------|----------|------|
-| `CheckAccessToken` | `accesstokenchkRequset` | `accesstokenchkResponse` | 驗證 Access Token 並回傳 user_id |
-| `ChangePassword` | `ChangePasswordRequest` | `ChangePasswordResponse` | 驗證原密碼後更新登入密碼，`error_code` 同 REST 規則 |
-| `GetUserSecurityProfile` | `UserSecurityProfileRequest` | `UserSecurityProfileResponse` | 取得 OTP 啟用與最後登入資訊供其他服務使用 |
+### 常見錯誤碼
+- `126` access_token 失效
+- `127` 缺少 access_token
+- `142` user 不存在
+- `153` 已啟用 OTP
 
 ---
 
 ## POST /auth/delete/otp
-停用 OTP 並刪除伺服器上的 OTP 秘鑰與備援碼，需提供合法的 `access_token`。
+停用二階段驗證。需提供有效的 Access Token。
 
 ### Headers
-- `Authorization: Bearer <access_token>`
+- `Authorization: Bearer {access_token}`
 
 ### Request Body
 無
@@ -226,11 +182,63 @@ Auth 服務提供註冊、登入與刷新 Access Token 的功能。
 }
 ```
 
-### 失敗回應範例
+### 常見錯誤碼
+- `126` access_token 失效
+- `127` 缺少 access_token
+- `142` user 不存在
+- `154` 已停用 OTP
+
+---
+
+## POST /auth/mail/verify/send
+寄送 Email 驗證碼。呼叫者必須提供目標 `user_id`。
+
+### Headers
+- `Content-Type: application/json`
+
+### Request Body
 ```json
 {
-  "error_code": "154"
+  "user_id": "85f22dda-efc2-459d-b518-640400a69e8d"
 }
 ```
 
-**常見錯誤碼**：`126`（token 失效）、`142`（使用者不存在）、`154`（尚未啟用 OTP）
+### 成功回應 (200)
+```json
+{
+  "error_code": "0"
+}
+```
+
+### 常見錯誤碼
+- `142` user 不存在
+- `157` user_id 為空
+- `NOTIFY_GRPC_FAILED` 郵件服務呼叫失敗
+
+---
+
+## POST /auth/mail/verify
+驗證 Email 驗證碼並標記帳號為已驗證。
+
+### Headers
+- `Content-Type: application/json`
+
+### Request Body
+```json
+{
+  "user_id": "85f22dda-efc2-459d-b518-640400a69e8d",
+  "code": "123456"
+}
+```
+
+### 成功回應 (200)
+```json
+{
+  "error_code": "0"
+}
+```
+
+### 常見錯誤碼
+- `142` user 不存在
+- `156` email 驗證碼錯誤
+- `157` user_id 為空

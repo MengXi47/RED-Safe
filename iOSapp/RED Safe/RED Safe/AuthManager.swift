@@ -63,11 +63,14 @@ final class AuthManager: ObservableObject {
 
     enum SignInError: LocalizedError {
         case otpRequired(email: String, password: String)
+        case emailVerificationRequired(context: EmailVerificationContext)
 
         var errorDescription: String? {
             switch self {
             case .otpRequired:
                 return "此帳號已啟用二階段驗證，請輸入 OTP 驗證碼"
+            case .emailVerificationRequired:
+                return "信箱尚未認證，請輸入寄送到 Email 的 6 碼驗證碼"
             }
         }
     }
@@ -88,6 +91,12 @@ final class AuthManager: ObservableObject {
             copy.otpEnabled = enabled
             return copy
         }
+    }
+
+    struct EmailVerificationContext: Equatable {
+        let email: String
+        let password: String
+        let userId: String
     }
 
     static let shared = AuthManager()
@@ -166,6 +175,10 @@ final class AuthManager: ObservableObject {
         defer { isWorking = false }
 
         let response = try await APIClient.shared.signIn(email: email, password: password)
+        if response.requiresEmailVerification {
+            let context = try await prepareEmailVerificationContext(email: email, password: password)
+            throw SignInError.emailVerificationRequired(context: context)
+        }
         if response.requiresOTP {
             throw SignInError.otpRequired(email: email, password: password)
         }
@@ -179,10 +192,23 @@ final class AuthManager: ObservableObject {
         defer { isWorking = false }
 
         let response = try await APIClient.shared.signInWithOTP(email: email, password: password, otpCode: otpCode)
+        if response.requiresEmailVerification {
+            let context = try await prepareEmailVerificationContext(email: email, password: password)
+            throw SignInError.emailVerificationRequired(context: context)
+        }
         if response.requiresOTP {
             throw ApiError.invalidPayload(reason: "伺服器回傳要求再次輸入 OTP，請稍後再試")
         }
         return try await finalizeSignIn(with: response, email: email)
+    }
+
+    func resendEmailVerification(for context: EmailVerificationContext) async throws {
+        _ = try await APIClient.shared.requestEmailVerification(userId: context.userId)
+    }
+
+    func verifyEmail(context: EmailVerificationContext, code: String) async throws -> UserProfile {
+        _ = try await APIClient.shared.verifyEmail(userId: context.userId, code: code)
+        return try await signIn(email: context.email, password: context.password)
     }
 
     @discardableResult
@@ -231,6 +257,14 @@ final class AuthManager: ObservableObject {
         profile = nil
         clearPersistedSession()
         phase = .signedOut
+    }
+
+    private func prepareEmailVerificationContext(email: String, password: String) async throws -> EmailVerificationContext {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lookupEmail = trimmedEmail.lowercased()
+        let userId = try await APIClient.shared.lookupUserId(by: lookupEmail)
+        _ = try await APIClient.shared.requestEmailVerification(userId: userId)
+        return EmailVerificationContext(email: trimmedEmail, password: password, userId: userId)
     }
 
     private func finalizeSignIn(with response: SignInResponse, email: String) async throws -> UserProfile {

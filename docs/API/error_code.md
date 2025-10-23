@@ -32,11 +32,16 @@
 | 146 | edge_id已存在 |
 | 147 | edge_password錯誤 |
 | 148 | new_edge_password為空 |
-| 150 | 需要二階段驗證 OTP |
-| 151 | OTP 未啟用 |
-| 152 | OTP 驗證失敗 |
-| 153 | 已啟用 OTP，請先停用 |
-| 154 | 尚未啟用 OTP |
+| 149 | 缺少code |
+| 150 | 需要二階段認證OTP |
+| 151 | OTP未啟用 |
+| 152 | OTP驗證失敗 |
+| 153 | 已啟用OTP |
+| 154 | 已停用OTP |
+| 155 | 控制指令不存在 |
+| 156 | email驗證碼錯誤 |
+| 157 | user_id為空 |
+| 158 | email尚未認證 |
 
 ---
 
@@ -50,3 +55,17 @@
 | `IOS_DEVICE_NOT_FOUND` | 404 | 指定的裝置不屬於目前使用者 |
 | `APNS_TOKEN_IN_USE` | 409 | 其他裝置已使用該 APNS Token |
 | `USER_SERVICE_UNAVAILABLE` | 503 | 呼叫 user 服務進行 JWT 驗證時失敗 |
+
+---
+
+## 其他字串錯誤碼
+
+| 識別碼 | 說明 |
+|--------|------|
+| `AUTH_GRPC_FAILED` | 呼叫 auth gRPC 服務失敗 |
+| `EMAILNOTFOUND` | 依 Email 查無使用者 |
+| `MQTT_PUBLISH_FAILED` | MQTT 指令發佈失敗 |
+| `MQTT_SUBSCRIBE_FAILED` | MQTT 訂閱建立失敗 |
+| `NOTIFY_GRPC_FAILED` | 呼叫 notify gRPC 服務失敗 |
+| `USER_PROFILE_GRPC_FAILED` | 呼叫 user profile gRPC 服務失敗 |
+| `USER_SERVICE_UNAVAILABLE` | 呼叫 user 服務驗證 JWT 失敗 |
