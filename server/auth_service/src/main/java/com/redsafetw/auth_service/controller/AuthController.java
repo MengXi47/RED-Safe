@@ -4,7 +4,6 @@ import com.redsafetw.auth_service.dto.*;
 import com.redsafetw.auth_service.service.AuthService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -50,7 +49,7 @@ public class AuthController {
     }
 
     @PostMapping("/mail/verify/send")
-    public ErrorCodeResponse sendEmailVerification(@Valid @RequestBody sendEmailVerificationRequset request) {
+    public ErrorCodeResponse sendEmailVerification(@Valid @RequestBody SendEmailVerificationRequset request) {
         return authService.sendMailVerification(request.getUserId());
     }
 

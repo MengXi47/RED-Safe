@@ -31,7 +31,6 @@ public class MailVerificationService {
     private final NotifyGrpcClient notifyGrpcClient;
 
     public ErrorCodeResponse sendMailVerification(UUID userId) {
-        log.info("Sending email verification request for user {}", userId);
         AuthUser user = authUserRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "142"));
 

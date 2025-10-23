@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class sendEmailVerificationRequset {
+public class SendEmailVerificationRequset {
     @NotBlank(message = "157")
     @JsonProperty("user_id")
     private UUID userId;
