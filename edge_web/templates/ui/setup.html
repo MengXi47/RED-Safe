@@ -22,32 +22,40 @@
 
         <div class="form-field">
           <label for="pwd">設定密碼</label>
-          <input
-            id="pwd"
-            type="password"
-            name="password"
-            placeholder="至少 6 碼（僅限英文或數字）"
-            required minlength="6"
-            pattern="[A-Za-z0-9]{6,}"
-            title="密碼需至少 6 碼，且僅能使用英文或數字"
-          />
+          <div class="input-control">
+            <input
+              id="pwd"
+              type="password"
+              name="password"
+              placeholder="至少 6 碼（僅限英文或數字）"
+              required minlength="6"
+              pattern="[A-Za-z0-9]{6,}"
+              title="密碼需至少 6 碼，且僅能使用英文或數字"
+              autofocus
+            />
+          </div>
         </div>
 
         <div class="form-field">
           <label for="pwd2">再次輸入密碼</label>
-          <input
-            id="pwd2"
-            type="password"
-            name="confirm"
-            placeholder="再次輸入確認"
-            required minlength="6"
-            pattern="[A-Za-z0-9]{6,}"
-            title="密碼需至少 6 碼，且僅能使用英文或數字"
-          />
+          <div class="input-control">
+            <input
+              id="pwd2"
+              type="password"
+              name="confirm"
+              placeholder="再次輸入確認"
+              required minlength="6"
+              pattern="[A-Za-z0-9]{6,}"
+              title="密碼需至少 6 碼，且僅能使用英文或數字"
+            />
+          </div>
         </div>
 
         <div class="auth-actions">
-          <button class="btn" type="submit">繼續</button>
+          <button class="btn btn--primary w-full" type="submit">
+            <span class="btn__label">繼續</span>
+            <span class="btn__spinner" aria-hidden="true"></span>
+          </button>
         </div>
       </form>
     </div>

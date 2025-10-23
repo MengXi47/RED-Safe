@@ -16,7 +16,6 @@
     >
       {{ errorMessage }}
     </div>
-
     <form class="flex flex-col gap-6" @submit.prevent="handleSubmit" novalidate>
       <BaseInput
         id="register-email"
@@ -31,56 +30,33 @@
         @blur="touched.email = true"
       />
 
-      <BaseInput
+      <PasswordInputField
         id="register-password"
         v-model="password"
-        :type="showPassword ? 'text' : 'password'"
         label="密碼"
-        placeholder="至少 6 碼，限英數字"
+        placeholder="請輸入密碼"
         autocomplete="new-password"
         :error="passwordError"
         :invalid="Boolean(passwordError)"
-        help="至少 6 碼，僅限英文或數字"
         required
+        toggle-aria-show="顯示密碼"
+        toggle-aria-hide="隱藏密碼"
         @blur="touched.password = true"
-      >
-        <template #append>
-          <button
-            type="button"
-            class="rounded-xl px-3 py-2 text-sm font-semibold text-brand-600 transition hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
-            :aria-pressed="showPassword ? 'true' : 'false'"
-            :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
-            @click="toggleVisibility('password')"
-          >
-            <span aria-hidden="true">{{ showPassword ? '隱藏' : '顯示' }}</span>
-          </button>
-        </template>
-      </BaseInput>
+      />
 
-      <BaseInput
+      <PasswordInputField
         id="register-password-confirm"
         v-model="confirmPassword"
-        :type="showConfirm ? 'text' : 'password'"
         label="確認密碼"
-        placeholder="再次輸入確認"
+        placeholder="請再次輸入密碼"
         autocomplete="new-password"
         :error="confirmError"
         :invalid="Boolean(confirmError)"
         required
+        toggle-aria-show="顯示確認密碼"
+        toggle-aria-hide="隱藏確認密碼"
         @blur="touched.confirm = true"
-      >
-        <template #append>
-          <button
-            type="button"
-            class="rounded-xl px-3 py-2 text-sm font-semibold text-brand-600 transition hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
-            :aria-pressed="showConfirm ? 'true' : 'false'"
-            :aria-label="showConfirm ? '隱藏確認密碼' : '顯示確認密碼'"
-            @click="toggleVisibility('confirm')"
-          >
-            <span aria-hidden="true">{{ showConfirm ? '隱藏' : '顯示' }}</span>
-          </button>
-        </template>
-      </BaseInput>
+      />
 
       <BaseButton type="submit" variant="primary" shape="rounded" full-width :loading="isSubmitting">
         建立帳號
@@ -104,13 +80,8 @@ import { RouterLink, useRouter } from 'vue-router';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
 import BaseInput from '@/components/ui/BaseInput.vue';
+import PasswordInputField from '@/components/auth/PasswordInputField.vue';
 import { useAuthThemeMeta } from '@/lib/useAuthThemeMeta';
-
-/**
-  * 組件用途：提供首次使用者設定密碼的註冊表單，並維持既有動線。
-  * 輸入參數：無外部 props，內部整合 BaseInput、BaseButton 與 Vue Router 導頁。
-  * 與其他模組關聯：運用 AuthLayout 版型與 useAuthThemeMeta 調整主題色。
-  */
 
 const router = useRouter();
 
@@ -118,8 +89,6 @@ const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 
-const showPassword = ref(false);
-const showConfirm = ref(false);
 const isSubmitting = ref(false);
 const errorMessage = ref('');
 
@@ -163,14 +132,6 @@ const confirmError = computed(() => {
 watch([email, password, confirmPassword], () => {
   errorMessage.value = '';
 });
-
-const toggleVisibility = (field: 'password' | 'confirm') => {
-  if (field === 'password') {
-    showPassword.value = !showPassword.value;
-  } else {
-    showConfirm.value = !showConfirm.value;
-  }
-};
 
 const hasErrors = computed(
   () => Boolean(emailError.value || passwordError.value || confirmError.value)

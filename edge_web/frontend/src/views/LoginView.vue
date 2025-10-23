@@ -14,30 +14,17 @@
     </div>
 
     <form class="flex flex-col gap-6" @submit.prevent="handleSubmit" novalidate>
-      <BaseInput
+      <PasswordInputField
         id="login-password"
         v-model="password"
         label="密碼"
         placeholder="請輸入密碼"
-        :type="showPassword ? 'text' : 'password'"
         autocomplete="current-password"
         :error="passwordError"
         :invalid="Boolean(passwordError)"
         required
         @blur="passwordTouched = true"
-      >
-        <template #append>
-          <button
-            type="button"
-            class="rounded-xl px-3 py-2 text-sm font-semibold text-brand-600 transition hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-100"
-            :aria-pressed="showPassword ? 'true' : 'false'"
-            :aria-label="showPassword ? '隱藏密碼' : '顯示密碼'"
-            @click="togglePassword"
-          >
-            <span aria-hidden="true">{{ showPassword ? '隱藏' : '顯示' }}</span>
-          </button>
-        </template>
-      </BaseInput>
+      />
 
       <BaseButton type="submit" variant="primary" shape="rounded" full-width :loading="isSubmitting">
         登入
@@ -60,18 +47,17 @@ import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
-import BaseInput from '@/components/ui/BaseInput.vue';
+import PasswordInputField from '@/components/auth/PasswordInputField.vue';
 import { useAuthThemeMeta } from '@/lib/useAuthThemeMeta';
 
 /**
   * 組件用途：顯示登入表單並驗證密碼輸入，維持原本的 UI 與流程。
-  * 輸入參數：無外部 props，內部使用 BaseInput 及 BaseButton 管理互動。
+  * 輸入參數：無外部 props，內部使用 PasswordInputField 與 BaseButton 管理互動。
   * 與其他模組關聯：使用 AuthLayout 呈現版型，透過 useAuthThemeMeta 設定登入頁主題色。
   */
 
 const password = ref('');
 const passwordTouched = ref(false);
-const showPassword = ref(false);
 const isSubmitting = ref(false);
 const errorMessage = ref('');
 
@@ -85,11 +71,6 @@ const passwordError = computed(() => {
   if (!/^[A-Za-z0-9]+$/.test(password.value)) return '僅能使用英文或數字';
   return '';
 });
-
-// 切換密碼顯示狀態，維持視覺一致且無重新繪製負擔
-const togglePassword = () => {
-  showPassword.value = !showPassword.value;
-};
 
 // 提交表單前檢核格式並模擬登入流程，保留原始行為
 const handleSubmit = async () => {

@@ -1,7 +1,8 @@
 <template>
   <div :class="isAuth ? '' : 'min-h-screen bg-surface-subtle text-ink'">
     <AppShell v-if="!isAuth" />
-    <RouterView v-else />
+    <!-- 使用路由完整路徑作為 key，避免同一路由名稱快取導致畫面不更新 -->
+    <RouterView v-else :key="route.fullPath" />
   </div>
 </template>
 

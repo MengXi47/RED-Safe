@@ -16,15 +16,15 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '登入系統', authLayout: true }
   },
   {
-    path: '/register',
+    path: '/setup',
     name: 'Register',
-    component: () => import('@/views/RegisterView.vue'),
+    component: () => import('@/views/LoginView.vue'),
     meta: { title: '首次使用：設定密碼', authLayout: true }
   },
-  {
-    path: '/setup',
-    redirect: { name: 'Register' }
-  },
+  // {
+  //   path: '/setup',
+  //   redirect: { name: 'Register' }
+  // },
   {
     path: '/',
     name: 'dashboard',
