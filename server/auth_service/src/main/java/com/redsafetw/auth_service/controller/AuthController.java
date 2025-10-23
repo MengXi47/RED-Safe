@@ -50,7 +50,7 @@ public class AuthController {
     }
 
     @PostMapping("/mail/verify/send")
-    public ErrorCodeResponse sendEmailVerification(sendEmailVerificationRequset request) {
+    public ErrorCodeResponse sendEmailVerification(@Valid @RequestBody sendEmailVerificationRequset request) {
         return authService.sendMailVerification(request.getUserId());
     }
 
