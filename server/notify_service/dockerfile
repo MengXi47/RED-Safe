@@ -18,6 +18,10 @@ ENV TZ=Asia/Taipei
 # 預設圖片路徑（供程式讀取），也可在部署時覆蓋
 ENV LOGO_PATH=/app/assets/RED_Safe_icon1.png
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd -m appuser
 WORKDIR /app
 
@@ -30,5 +34,8 @@ RUN chown -R appuser:appuser /app && chmod 644 /app/assets/RED_Safe_icon1.png
 
 USER appuser
 EXPOSE 30041 30042
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:30041/health || exit 1
 
 ENTRYPOINT ["java","-XX:MaxRAMPercentage=75","-Duser.timezone=Asia/Taipei","-Dserver.port=30041","-Dgrpc.server.port=30042","-jar","/app/app.jar"]
