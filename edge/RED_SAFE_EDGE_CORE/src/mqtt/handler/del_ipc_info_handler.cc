@@ -18,20 +18,20 @@ boost::asio::awaitable<void> DelIPCInfoHandler::Handle(
 
   if (ip.empty()) {
     const auto res = BuildErrorResponse(
-        command.trace_id, folly::to<int>(command.code), "Invalid ..");
+        command.trace_id, command.code, "Invalid ..");
     co_await publish_response_(res, "Error to Send delipcinfo");
     co_return;
   }
 
   if (!sql::IPCinfo::del(ip)) {
     const auto res = BuildErrorResponse(
-        command.trace_id, folly::to<int>(command.code), "Error to del ..");
+        command.trace_id, command.code, "Error to del ..");
     co_await publish_response_(res, "Error to Send delipcinfo");
     co_return;
   }
 
   const auto res = BuildSuccessResponse(
-      command.trace_id, folly::to<int>(command.code), folly::dynamic{});
+      command.trace_id, command.code, folly::dynamic{});
   co_await publish_response_(res, "Error to Send delipcinfo");
 
   co_return;

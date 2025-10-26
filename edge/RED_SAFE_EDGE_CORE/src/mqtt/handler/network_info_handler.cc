@@ -61,7 +61,7 @@ awaitable<void> NetworkInfoHandler::Handle(const CommandMessage& command) {
         config_.iptool_target,
         interface_name);
     const std::string response =
-        BuildErrorResponse(command.trace_id, 102, "查詢網路設定失敗");
+        BuildErrorResponse(command.trace_id, command.code, "查詢網路設定失敗");
     co_await publish_response_(response, "發佈網路設定查詢結果失敗");
   } else {
     const auto& net = *network_config;
@@ -79,7 +79,7 @@ awaitable<void> NetworkInfoHandler::Handle(const CommandMessage& command) {
 
     auto result = BuildNetworkInfoResult(net);
     const std::string response =
-        BuildSuccessResponse(command.trace_id, 102, std::move(result));
+        BuildSuccessResponse(command.trace_id, command.code, std::move(result));
     const bool published =
         co_await publish_response_(response, "發佈網路設定查詢結果失敗");
     if (published) {

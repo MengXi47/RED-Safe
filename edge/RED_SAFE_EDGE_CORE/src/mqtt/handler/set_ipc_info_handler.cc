@@ -7,10 +7,10 @@ SetIPCInfoHandler::SetIPCInfoHandler(const CommandPublishFn& publish_response)
 boost::asio::awaitable<void> SetIPCInfoHandler::Handle(
     const CommandMessage& command) {
   auto get_sv = [](const folly::dynamic* ptr) -> std::string_view {
-    if (ptr && ptr->isString()) {
-      return ptr->getString();
+    if (ptr == nullptr) {
+      return std::string_view{};
     }
-    return std::string_view{};
+    return ptr->getString();
   };
 
   const auto* ip_ptr = command.payload.get_ptr("ip");
@@ -33,7 +33,7 @@ boost::asio::awaitable<void> SetIPCInfoHandler::Handle(
   if (ip.empty() || custom_name.empty() || fall_sensitivity.empty()) {
     LogWarn("payload 缺少必要欄位（ip/custom_name/fall_sensitivity）");
     const auto res = BuildErrorResponse(
-        command.trace_id, folly::to<int>(command.code), "Invalid ..");
+        command.trace_id, command.code, "Invalid ..");
     co_await publish_response_(res, command.trace_id);
     co_return;
   }
@@ -49,14 +49,14 @@ boost::asio::awaitable<void> SetIPCInfoHandler::Handle(
 
   if (!ok) {
     const auto res = BuildErrorResponse(
-        command.trace_id, folly::to<int>(command.code), "Failed to set ..");
+        command.trace_id, command.code, "Failed to set ..");
     co_await publish_response_(res, command.trace_id);
     co_return;
   }
 
   LogInfoFormat("SetIPCInfoHandler: success to set {}", ip);
   const auto res = BuildSuccessResponse(
-      command.trace_id, folly::to<int>(command.code), folly::dynamic{});
+      command.trace_id, command.code, folly::dynamic{});
   co_await publish_response_(res, command.trace_id);
 
   co_return;

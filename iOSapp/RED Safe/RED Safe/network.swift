@@ -641,6 +641,32 @@ struct EdgeListResponse: Decodable {
 struct EdgeCommandRequest: Encodable {
     let edgeId: String
     let code: String
+    private let payload: AnyEncodable?
+
+    init(edgeId: String, code: String, payload: (any Encodable)? = nil) {
+        self.edgeId = edgeId
+        self.code = code
+        if let payload {
+            self.payload = AnyEncodable(payload)
+        } else {
+            self.payload = nil
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case edgeId
+        case code
+        case payload
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(edgeId, forKey: .edgeId)
+        try container.encode(code, forKey: .code)
+        if let payload {
+            try container.encode(payload, forKey: .payload)
+        }
+    }
 }
 
 struct EdgeCommandResponseDTO: Decodable {
@@ -653,6 +679,89 @@ struct IPCameraDeviceDTO: Decodable, Identifiable, Hashable {
     let name: String
 
     var id: String { "\(mac)#\(ip)" }
+}
+
+struct AddedIPCameraDTO: Decodable, Identifiable, Hashable {
+    let fallSensitivity: Int?
+    let ipcPassword: String?
+    let ipcAccount: String?
+    let customName: String
+    let ipcName: String
+    let macAddress: String
+    let ipAddress: String
+
+    var id: String { "\(macAddress)#\(ipAddress)" }
+
+    private enum CodingKeys: String, CodingKey {
+        case fallSensitivity
+        case ipcPassword
+        case ipcAccount
+        case customName
+        case ipcName
+        case macAddress
+        case ipAddress
+    }
+
+    init(
+        fallSensitivity: Int?,
+        ipcPassword: String?,
+        ipcAccount: String?,
+        customName: String,
+        ipcName: String,
+        macAddress: String,
+        ipAddress: String
+    ) {
+        self.fallSensitivity = fallSensitivity
+        self.ipcPassword = ipcPassword
+        self.ipcAccount = ipcAccount
+        self.customName = customName
+        self.ipcName = ipcName
+        self.macAddress = macAddress
+        self.ipAddress = ipAddress
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        let fallSensitivityInt = try container.decodeIfPresent(Int.self, forKey: .fallSensitivity)
+        if let fallSensitivityInt {
+            fallSensitivity = fallSensitivityInt
+        } else if let fallSensitivityString = try container.decodeIfPresent(String.self, forKey: .fallSensitivity),
+                  let parsed = Int(fallSensitivityString) {
+            fallSensitivity = parsed
+        } else {
+            fallSensitivity = nil
+        }
+
+        ipcPassword = try container.decodeIfPresent(String.self, forKey: .ipcPassword)
+        ipcAccount = try container.decodeIfPresent(String.self, forKey: .ipcAccount)
+        customName = try container.decodeIfPresent(String.self, forKey: .customName) ?? ""
+        ipcName = try container.decodeIfPresent(String.self, forKey: .ipcName) ?? ""
+        macAddress = try container.decodeIfPresent(String.self, forKey: .macAddress) ?? ""
+        ipAddress = try container.decodeIfPresent(String.self, forKey: .ipAddress) ?? ""
+    }
+}
+
+struct AddIPCameraCommandPayload: Encodable {
+    let ip: String
+    let mac: String
+    let ipcName: String
+    let customName: String
+    let ipcAccount: String
+    let ipcPassword: String
+    let fallSensitivity: String
+}
+
+struct AddIPCameraResultDTO: Decodable {
+    let errorMessage: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case errorMessage
+    }
+}
+
+struct RemoveIPCameraCommandPayload: Encodable {
+    let ip: String
 }
 
 struct EdgeNetworkConfigDTO: Decodable, Hashable {
@@ -677,9 +786,36 @@ struct EdgeNetworkConfigDTO: Decodable, Hashable {
 
 struct EdgeCommandResultDTO<Result: Decodable>: Decodable {
     let code: Int
-    let result: Result
+    let result: Result?
     let status: String
     let traceId: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case code
+        case result
+        case status
+        case traceId
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        status = try container.decode(String.self, forKey: .status)
+        traceId = try container.decodeIfPresent(String.self, forKey: .traceId)
+
+        if let intCode = try? container.decode(Int.self, forKey: .code) {
+            code = intCode
+        } else if let stringCode = try? container.decode(String.self, forKey: .code),
+                  let parsedCode = Int(stringCode) {
+            code = parsedCode
+        } else {
+            var path = container.codingPath
+            path.append(CodingKeys.code)
+            let context = DecodingError.Context(codingPath: path, debugDescription: "無法解析 code 欄位")
+            throw DecodingError.typeMismatch(Int.self, context)
+        }
+
+        result = (try? container.decode(Result.self, forKey: .result))
+    }
 }
 
 struct ErrorCodeResponse: Decodable {
@@ -890,12 +1026,12 @@ extension APIClient {
         return try await send(endpoint)
     }
 
-    func sendEdgeCommand(edgeId: String, code: String) async throws -> EdgeCommandResponseDTO {
-        let payload = EdgeCommandRequest(edgeId: edgeId, code: code)
+    func sendEdgeCommand(edgeId: String, code: String, payload: (any Encodable)? = nil) async throws -> EdgeCommandResponseDTO {
+        let requestPayload = EdgeCommandRequest(edgeId: edgeId, code: code, payload: payload)
         let endpoint = Endpoint<EdgeCommandResponseDTO>(
             path: "/user/edge/command",
             method: .post,
-            body: AnyEncodable(payload)
+            body: AnyEncodable(requestPayload)
         )
         return try await send(endpoint)
     }
@@ -904,6 +1040,9 @@ extension APIClient {
         traceId: String,
         timeout: TimeInterval = 20
     ) async throws -> EdgeCommandResultDTO<Result> {
+#if DEBUG
+        print("\n📶 [SSE] Start fetch traceId=\(traceId)")
+#endif
         let sseURL = configuration.baseURL.appendingPathComponent("user/sse/get/command/\(traceId)")
         var request = URLRequest(url: sseURL)
         request.httpMethod = "GET"
@@ -938,23 +1077,45 @@ extension APIClient {
                 }
             }
         } catch {
+#if DEBUG
+            print("❌ [SSE] traceId=\(traceId) stream failed: \(error)")
+#endif
             throw ApiError.transport(error)
         }
 
         guard !dataLines.isEmpty else {
+#if DEBUG
+            print("⚠️ [SSE] traceId=\(traceId) no data lines")
+#endif
             throw ApiError.http(status: httpResponse.statusCode, code: nil, message: "SSE 無資料", payload: nil)
         }
 
         let merged = dataLines.joined(separator: "\n")
+#if DEBUG
+        print("✅ [SSE] traceId=\(traceId) merged payload=\(merged)")
+#endif
         if merged == "notfound" {
+#if DEBUG
+            print("⚠️ [SSE] traceId=\(traceId) result not found")
+#endif
             throw ApiError.http(status: httpResponse.statusCode, code: nil, message: "查無對應資料", payload: nil)
         }
 
         guard let payloadData = merged.data(using: .utf8) else {
+#if DEBUG
+            print("❌ [SSE] traceId=\(traceId) invalid UTF-8 payload")
+#endif
             throw ApiError.invalidPayload(reason: "SSE 資料格式錯誤")
         }
 
-        return try decoder.decode(EdgeCommandResultDTO<Result>.self, from: payloadData)
+        do {
+            return try decoder.decode(EdgeCommandResultDTO<Result>.self, from: payloadData)
+        } catch {
+#if DEBUG
+            print("❌ [SSE] traceId=\(traceId) decode failed: \(error)")
+#endif
+            throw error
+        }
     }
 
     private func mapSuccess(from response: ErrorCodeResponse) throws -> ApiErrorCode {

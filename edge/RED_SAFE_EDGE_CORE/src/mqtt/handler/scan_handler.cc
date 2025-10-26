@@ -90,10 +90,10 @@ std::string ScanCommandHandler::BuildScanSuccess(
   } catch (const folly::json::parse_error&) {
     data = folly::dynamic::array();
   }
-  return BuildSuccessResponse(trace_id, 101, std::move(data));
+  return BuildSuccessResponse(trace_id, "101", std::move(data));
 }
 
 std::string ScanCommandHandler::BuildScanError(
     const std::string& trace_id, std::string_view error_message) {
-  return BuildErrorResponse(trace_id, 101, error_message);
+  return BuildErrorResponse(trace_id, "101", error_message);
 }

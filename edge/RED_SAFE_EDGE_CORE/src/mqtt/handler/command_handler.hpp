@@ -25,7 +25,7 @@ class ICommandHandler {
 
  protected:
   static std::string BuildSuccessResponse(
-      std::string trace_id, const int code, folly::dynamic result) {
+      std::string trace_id, std::string_view code, folly::dynamic result) {
     folly::dynamic message = folly::dynamic::object;
     message["trace_id"] = std::move(trace_id);
     message["code"] = code;
@@ -36,7 +36,7 @@ class ICommandHandler {
 
   static std::string BuildErrorResponse(
       std::string trace_id,
-      const int code,
+      std::string_view code,
       const std::string_view error_message) {
     folly::dynamic message = folly::dynamic::object;
     message["trace_id"] = std::move(trace_id);

@@ -12,13 +12,13 @@ boost::asio::awaitable<void> GetIPCInfoHandler::Handle(
 
   if (!IPCinfo.has_value()) {
     const auto res =
-        BuildErrorResponse(command.trace_id, 103, "Error GetIPCInfo");
+        BuildErrorResponse(command.trace_id, command.code, "Error GetIPCInfo");
     co_await publish_response_(res, "Publish GetIPCInfo Error");
     co_return;
   }
 
   const auto res =
-      BuildSuccessResponse(command.trace_id, 103, std::move(IPCinfo.value()));
+      BuildSuccessResponse(command.trace_id, command.code, std::move(IPCinfo.value()));
   if (co_await publish_response_(res, "Publish GetIPCInfo Error")) {
     LogInfoFormat("獲取IPCInfo結果已送出 trace_id={}", command.trace_id);
   }

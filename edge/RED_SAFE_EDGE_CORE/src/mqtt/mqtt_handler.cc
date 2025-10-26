@@ -110,10 +110,9 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
     }
 
     if (code_str != "100") {
-      LogInfoFormat("收到指令 code={} trace_id={}", code_str, trace_value);
+      LogInfoFormat("收到指令 {}", raw_payload);
     }
 
-    // 根據指令代碼查找對應 handler
     auto handler_it = handlers_.find(code_str);
     ICommandHandler* handler =
         handler_it != handlers_.end() ? handler_it->second.get() : nullptr;
