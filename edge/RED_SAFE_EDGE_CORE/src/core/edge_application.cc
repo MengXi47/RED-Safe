@@ -34,7 +34,7 @@ int EdgeApplication::Run() {
       config_.edge_ip = *ip;
       LogInfoFormat("開機時取得 Edge IP: {}", config_.edge_ip);
     } else {
-      LogWarn("開機時未能取得 Edge IP，將嘗試以預設設定上線");
+      // LogWarn("開機時未能取得 Edge IP，將嘗試以預設設定上線");
     }
   }
 

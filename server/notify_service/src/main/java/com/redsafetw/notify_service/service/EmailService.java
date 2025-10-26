@@ -59,6 +59,69 @@ public class EmailService {
         }
     }
 
+    public void sendFallAlert(
+            String to,
+            String patientId,
+            String ipAddress,
+            String ipcName,
+            String eventTime,
+            String location
+    ) throws MessagingException {
+        String subject = "RED-SAFE 跌倒緊急通報";
+        String html = """
+                <!doctype html><html lang="zh-Hant"><head>
+                  <meta charset="utf-8">
+                  <meta name="viewport" content="width=device-width,initial-scale=1">
+                  <title>跌倒緊急通報</title>
+                  <style>
+                    body{margin:0;background:#f5f6f8;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans TC",Arial;}
+                    .wrap{max-width:640px;margin:0 auto;padding:24px;}
+                    .card{background:#fff;border-radius:12px;box-shadow:0 6px 20px rgba(16,24,40,.08);overflow:hidden;}
+                    .header{background:#d92d20;color:#fff;padding:20px 24px;}
+                    .header h1{margin:0;font-size:22px;font-weight:700;letter-spacing:.04em;}
+                    .content{padding:24px 24px 16px;color:#101828;}
+                    .content p{margin:0 0 16px;font-size:15px;line-height:1.6;}
+                    .badge{display:inline-block;background:#fee4e2;color:#b42318;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;margin-bottom:16px;}
+                    .info{border-top:1px solid #f2f4f7;padding:16px 24px;background:#f9fafb;}
+                    .info dt{font-size:12px;font-weight:600;color:#475467;margin:0 0 4px;text-transform:uppercase;letter-spacing:.08em;}
+                    .info dd{margin:0 0 16px;font-size:15px;color:#1d2939;}
+                    .footer{font-size:12px;color:#98a2b3;padding:18px 24px;background:#101828;color:#98a2b3;text-align:center;}
+                  </style>
+                </head><body>
+                  <div class="wrap">
+                    <div class="card">
+                      <div class="header">
+                        <h1>跌倒事件通報</h1>
+                      </div>
+                      <div class="content">
+                        <span class="badge">需要即時關注</span>
+                        <p>系統偵測到您的監測裝置發生跌倒事件，請即時確認當事人狀況。詳細資訊如下：</p>
+                      </div>
+                      <div class="info">
+                        <dl>
+                          <dt>裝置 ID</dt>
+                          <dd>%s</dd>
+                          <dt>攝影機 IP</dt>
+                          <dd>%s</dd>
+                          <dt>攝影機名稱</dt>
+                          <dd>%s</dd>
+                          <dt>發生時間</dt>
+                          <dd>%s</dd>
+                          <dt>發生地點</dt>
+                          <dd>%s</dd>
+                        </dl>
+                      </div>
+                      <div class="footer">
+                        本郵件由 RED-SAFE 系統自動發送
+                      </div>
+                    </div>
+                  </div>
+                </body></html>
+                """.formatted(patientId, ipAddress, ipcName, eventTime, location);
+
+        sendHtml(to, subject, html);
+    }
+
     public void sendEmailVerifyCode(String to, String code, int ttlMinutes) throws MessagingException {
         String subject = "驗證您的電子郵件地址";
         String html = """

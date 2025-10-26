@@ -7,14 +7,13 @@
 #include <string_view>
 #include <utility>
 
-#include <folly/dynamic.h>
 #include <folly/json.h>
 
 struct CommandMessage {
   std::string trace_id;
   std::string code;
   const folly::dynamic& payload;
-  std::string raw_payload;
+  const folly::dynamic& raw_payload;
 };
 
 class ICommandHandler {
@@ -26,7 +25,7 @@ class ICommandHandler {
 
  protected:
   static std::string BuildSuccessResponse(
-      std::string trace_id, int code, folly::dynamic result) {
+      std::string trace_id, const int code, folly::dynamic result) {
     folly::dynamic message = folly::dynamic::object;
     message["trace_id"] = std::move(trace_id);
     message["code"] = code;
@@ -37,14 +36,14 @@ class ICommandHandler {
 
   static std::string BuildErrorResponse(
       std::string trace_id,
-      int code,
-      std::string_view error_message) {
+      const int code,
+      const std::string_view error_message) {
     folly::dynamic message = folly::dynamic::object;
     message["trace_id"] = std::move(trace_id);
     message["code"] = code;
     message["status"] = "error";
-    message["result"] = folly::dynamic::object(
-        "error_message", std::string(error_message));
+    message["result"] =
+        folly::dynamic::object("error_message", std::string(error_message));
     return folly::toJson(message);
   }
 };

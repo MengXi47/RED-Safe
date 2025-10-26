@@ -8,7 +8,7 @@
 #include <string_view>
 
 // 未支援指令處理器
-class UnsupportedCommandHandler : public ICommandHandler {
+class UnsupportedCommandHandler final : public ICommandHandler {
  public:
   explicit UnsupportedCommandHandler(CommandPublishFn publish_response);
 

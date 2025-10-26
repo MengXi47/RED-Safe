@@ -76,6 +76,89 @@ def api_get(path, token=None):
     return request_json("get", path, token=token)
 
 
+def stream_edge_command_result(trace_id, token):
+    url = f"{BASE_URL}/user/sse/get/command/{trace_id}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "text/event-stream",
+    }
+    print(f"🔄 等待 Edge 回應中 (trace_id: {trace_id})，按 Ctrl+C 可中止。")
+    try:
+        with requests.get(
+            url,
+            headers=headers,
+            stream=True,
+            verify=False,
+            timeout=None,
+        ) as resp:
+            if resp.status_code != 200:
+                print(f"❌ SSE 連線失敗 (HTTP {resp.status_code})")
+                try:
+                    error_body = resp.json()
+                except ValueError:
+                    error_body = resp.text[:300]
+                print("回應:", error_body)
+                return
+
+            event_buffer = []
+            for raw_line in resp.iter_lines(decode_unicode=True):
+                if raw_line is None:
+                    continue
+
+                line = raw_line.strip("\ufeff")
+                if line == "":
+                    if not event_buffer:
+                        continue
+
+                    event = {}
+                    for entry in event_buffer:
+                        if entry.startswith(":"):
+                            continue
+                        if ":" in entry:
+                            field, value = entry.split(":", 1)
+                            event[field.strip()] = value.lstrip()
+
+                    print("📨 收到 SSE 事件:", event)
+
+                    data_field = event.get("data")
+                    if data_field is not None:
+                        try:
+                            parsed = json.loads(data_field)
+                            print(
+                                "   ↳ data (JSON):",
+                                json.dumps(parsed, ensure_ascii=False),
+                            )
+                            if isinstance(parsed, dict) and parsed.get("status"):
+                                return
+                        except ValueError:
+                            print("   ↳ data:", data_field)
+                            if data_field.strip('"') == "notfound":
+                                return
+
+                    event_buffer = []
+                    continue
+
+                event_buffer.append(line)
+
+            print("ℹ️ SSE 連線結束。")
+    except KeyboardInterrupt:
+        print("\n⏹️ 已中止 SSE 監聽。")
+    except requests.RequestException as exc:
+        print(f"❌ SSE 連線失敗: {exc}")
+
+
+def prompt_payload_object():
+    print("🔧 輸入 payload key/value (直接按 Enter 結束，不輸入則略過 payload)")
+    payload_data = {}
+    while True:
+        key = input("Payload key: ").strip()
+        if not key:
+            break
+        raw_value = input(f"Value for '{key}': ")
+        payload_data[key] = raw_value
+    return payload_data if payload_data else None
+
+
 def do_signup():
     email = input("Email: ")
     user_name = input("User Name: ")
@@ -129,7 +212,17 @@ def do_send_edge_command():
         print("❌ 請先 signin 取得 access_token")
         return
     payload = {"edge_id": edge_id, "code": code}
-    api_post("/user/edge/command", payload, token=token)
+    payload_obj = prompt_payload_object()
+    if payload_obj is not None:
+        payload["payload"] = payload_obj
+    data = api_post("/user/edge/command", payload, token=token)
+    if not data:
+        return
+    trace_id = data.get("trace_id")
+    if not trace_id:
+        print("⚠️ 回應中缺少 trace_id，無法建立 SSE 監聽。")
+        return
+    stream_edge_command_result(trace_id, token)
 
 
 def do_bind_edge():

@@ -3,6 +3,7 @@
 #include "http/http_client.hpp"
 #include "ipcscan/app/scan_executor.hpp"
 #include "mqtt/mqtt_workflow.hpp"
+#include "sql/SqlCRUD.hpp"
 #include "util/logging.hpp"
 
 #include <exception>
@@ -12,6 +13,9 @@
 #include <boost/mqtt5/mqtt_client.hpp>
 #include <boost/mqtt5/websocket_ssl.hpp>
 #include <curl/curl.h>
+#include <folly/Conv.h>
+#include <folly/dynamic.h>
+#include <folly/json.h>
 
 namespace asio = boost::asio;
 namespace mqtt5 = boost::mqtt5;

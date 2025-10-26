@@ -1,7 +1,7 @@
 #include "mqtt/handler/network_info_handler.hpp"
 
-#include "grpc/grpc_client.hpp"
 #include <iptool.pb.h>
+#include "grpc/grpc_client.hpp"
 #include "util/logging.hpp"
 
 #include <folly/dynamic.h>

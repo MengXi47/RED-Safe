@@ -71,8 +71,7 @@ std::string HeartbeatHandler::BuildAckMessage(
   message["trace_id"] = trace_id;
   message["code"] = code;
   message["status"] = "ok";
-  message["result"] =
-      folly::dynamic::object("message", "heartbeat_ack");
+  message["result"] = folly::dynamic::object("message", "heartbeat_ack");
   return folly::toJson(message);
 }
 
@@ -91,7 +90,7 @@ void HeartbeatHandler::RefreshEdgeIp() {
     config_.edge_ip = *ip;
     last_ip_refresh_at_ = now;
     has_refreshed_ip_ = true;
-    LogInfoFormat("取得 Edge IP: {}", config_.edge_ip);
+    // LogInfoFormat("取得 Edge IP: {}", config_.edge_ip);
   } else if (missing_ip) {
     LogWarn("取得 Edge IP 失敗");
   }

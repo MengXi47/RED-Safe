@@ -1,16 +1,14 @@
 #pragma once
 
-#include "handler/command_handler.hpp"
-#include "handler/heartbeat_handler.hpp"
-#include "handler/network_info_handler.hpp"
-#include "handler/scan_handler.hpp"
-#include "handler/unsupported_command_handler.hpp"
+#include "handler/hander.hpp"
 
 #include <array>
 #include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
+
+#include "handler/ipc_info_handler.hpp"
 
 struct HandlerRegistrationEntry {
   std::string code;
@@ -63,6 +61,14 @@ inline void RegisterDefaultHandlers(
       // 獲取網路配置
       MQTT_HANDLER_ENTRY("102", NetworkInfoHandler, config, publish_response),
 
+      // 獲取IPCInfo
+      MQTT_HANDLER_ENTRY("103", GetIPCInfoHandler, publish_response),
+
+      // 新增IPC
+      MQTT_HANDLER_ENTRY("104", SetIPCInfoHandler, publish_response),
+
+      // 刪除IPC
+      MQTT_HANDLER_ENTRY("105", DelIPCInfoHandler, publish_response),
       // TODO: 未來可在此加入更多Handler
   };
 

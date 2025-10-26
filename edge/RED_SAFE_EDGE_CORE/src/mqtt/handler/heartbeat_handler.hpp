@@ -8,7 +8,6 @@
 
 #include <chrono>
 #include <functional>
-#include <string_view>
 
 // 心跳處理器，負責回應 code=100 並定期推送狀態
 class HeartbeatHandler final : public ICommandHandler {

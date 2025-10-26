@@ -1,21 +1,19 @@
 #include "core/env_setting.hpp"
-
-#include "sql/config_repository.hpp"
 #include "util/logging.hpp"
 
 #include <algorithm>
-#include <cstdlib>
 #include <thread>
+#include <folly/Conv.h>
 
 namespace {
 constexpr int kMinHeartbeatMs = 100;
 constexpr int kMinScanTimeoutMs = 500;
-constexpr auto kEdgeIdRetryDelay = std::chrono::seconds(1);
 } // namespace
 
 std::string ConfigLoader::GetEnvOrDefault(
     const char* name, std::string default_value) {
   if (const char* value = std::getenv(name)) {
+    LogInfoFormat("讀取環境變數 {} : {}", name, value);
     return value;
   }
   return default_value;
@@ -24,7 +22,8 @@ std::string ConfigLoader::GetEnvOrDefault(
 std::optional<int> ConfigLoader::GetEnvInt(const char* name) {
   if (const char* value = std::getenv(name)) {
     try {
-      return std::stoi(value);
+      LogInfoFormat("讀取環境變數 {} : {}", name, value);
+      return folly::to<int>(value);
     } catch (const std::exception& ex) {
       LogWarnFormat(
           "環境變數 {} 無法轉為整數: {} - {}", name, value, ex.what());
@@ -37,18 +36,10 @@ std::optional<int> ConfigLoader::GetEnvInt(const char* name) {
 
 EdgeConfig ConfigLoader::Load() {
   EdgeConfig cfg;
-  while (true) {
-    if (const auto edge_id = sql::LoadEdgeId()) {
-      cfg.edge_id = *edge_id;
-      LogInfoFormat("從資料庫載入 edge_id: {}", cfg.edge_id);
-      break;
-    }
-    LogWarn("從資料庫載入 edge_id 失敗，稍後重試");
-    std::this_thread::sleep_for(kEdgeIdRetryDelay);
-  }
+  cfg.edge_id = GetEnvOrDefault("RED_SAFE_EDGE_ID", "RED-AAAAAAAA");
   cfg.version = GetEnvOrDefault("RED_SAFE_EDGE_VERSION", "1.0.0");
   cfg.edge_ip = GetEnvOrDefault("RED_SAFE_EDGE_IP", "");
-  cfg.network_interface = GetEnvOrDefault("RED_SAFE_NETWORK_INTERFACE", "");
+  cfg.network_interface = GetEnvOrDefault("RED_SAFE_NETWORK_INTERFACE", "eth0");
   cfg.iptool_target =
       GetEnvOrDefault("RED_SAFE_IPTOOL_TARGET", "localhost:20002");
   cfg.server_base_url =

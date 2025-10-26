@@ -7,7 +7,7 @@
 #include <boost/asio/awaitable.hpp>
 
 // 網路資訊查詢處理器 code=102
-class NetworkInfoHandler : public ICommandHandler {
+class NetworkInfoHandler final : public ICommandHandler {
  public:
   explicit NetworkInfoHandler(
       EdgeConfig& config, CommandPublishFn publish_response);

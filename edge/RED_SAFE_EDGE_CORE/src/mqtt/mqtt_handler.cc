@@ -34,7 +34,7 @@ std::string ExtractCodeFieldValue(const folly::dynamic* code_field) {
 // 接收 /cmd Topic 並分派至對應的處理器
 awaitable<void> MqttWorkflow::ConsumeCommands() {
   for (;;) {
-    auto [ec, topic, payload, props] = co_await client_.async_receive(
+    auto [ec, topic, raw_payload, props] = co_await client_.async_receive(
         boost::asio::as_tuple(boost::asio::deferred));
     (void)props;
 
@@ -71,13 +71,13 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
 
     folly::dynamic json;
     try {
-      json = folly::parseJson(payload);
+      json = folly::parseJson(raw_payload);
     } catch (const folly::json::parse_error&) {
-      LogWarnFormat("解析 MQTT 指令失敗，payload={}", payload);
+      LogWarnFormat("解析 MQTT 指令失敗，payload={}", raw_payload);
       continue;
     }
     if (!json.isObject()) {
-      LogWarnFormat("解析 MQTT 指令失敗，payload={}", payload);
+      LogWarnFormat("解析 MQTT 指令失敗，payload={}", raw_payload);
       continue;
     }
 
@@ -85,14 +85,14 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
     const auto* code_ptr = json.get_ptr("code");
 
     const std::string trace_value =
-        (trace_ptr != nullptr && trace_ptr->isString()) ? trace_ptr->asString()
-                                                        : "";
-    const std::string code_field_value =
-        ExtractCodeFieldValue(code_ptr);
+        trace_ptr != nullptr && trace_ptr->isString()
+        ? trace_ptr->asString()
+        : "";
+    const std::string code_field_value = ExtractCodeFieldValue(code_ptr);
 
     if (trace_ptr == nullptr || !trace_ptr->isString() || code_ptr == nullptr) {
-      LogWarnFormat("MQTT 指令欄位不完整，payload={}", payload);
-      CommandMessage command{trace_value, code_field_value, json, payload};
+      LogWarnFormat("MQTT 指令欄位不完整，payload={}", raw_payload);
+      CommandMessage command{trace_value, code_field_value, json, json};
       co_await unsupported_handler_->Handle(command);
       continue;
     }
@@ -103,8 +103,8 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
     } else if (code_ptr->isInt()) {
       code_str = folly::to<std::string>(code_ptr->asInt());
     } else {
-      LogWarnFormat("MQTT 指令 code 欄位型別不支援，payload={}", payload);
-      CommandMessage command{trace_value, code_field_value, json, payload};
+      LogWarnFormat("MQTT 指令 code 欄位型別不支援，payload={}", raw_payload);
+      CommandMessage command{trace_value, code_field_value, json, raw_payload};
       co_await unsupported_handler_->Handle(command);
       continue;
     }
@@ -123,12 +123,13 @@ awaitable<void> MqttWorkflow::ConsumeCommands() {
           "收到未支援的指令 code={} trace_id={}，回應錯誤",
           code_str,
           trace_value);
-      CommandMessage command{trace_value, code_str, json, payload};
+      CommandMessage command{trace_value, code_str, json, raw_payload};
       co_await unsupported_handler_->Handle(command);
       continue;
     }
 
-    CommandMessage command{trace_value, code_str, json, payload};
+    CommandMessage command{
+        trace_value, code_str, *json.get_ptr("payload"), json};
     co_await handler->Handle(command);
   }
 }

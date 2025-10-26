@@ -1,18 +1,38 @@
 """
 YOLO11 Pose + 追蹤 + 跌倒偵測（規則版基線，含視覺化與參數）
-需求：
-  pip install ultralytics opencv-python numpy
-使用：
-  # 直接在程式內設定來源（支援 攝影機/RTSP/本地影片檔）
-  # 1) 將 CAM_INDEX 設為 0 / 1 / 2 三者之一（使用實體攝影機）
-  # 2) 或將 USE_RTSP=True 並填入 RTSP_URL（使用網路串流）
-  # 3) 或將 USE_VIDEO=True 並填入 VIDEO_PATH（使用本地影片檔做 demo）
-  python main.py --show                   # 顯示視窗（預設已開，可省略）
 
-備註：
-- 以 Ultralytics YOLO 的 `model.track(..., stream=True)` 輸出逐幀 Results。
-- `Results.keypoints.xy` 取得 (N,17,2) 關鍵點（COCO 17 點），`Results.boxes.id` 取得追蹤 ID。
-- 本程式提供「規則」版跌倒偵測；建議未來以蒐集資料訓練時序分類器取代規則以降低誤報。
+功能摘要：
+  - 使用 Ultralytics YOLO11 Pose 模型偵測人體邊框與 17 點骨架。
+  - 將偵測結果交由 ByteTrack/BOTSORT 追蹤器維持同一人 ID。
+  - 針對每位受測者計算傾斜角、寬高比、相對身高與垂直速度，進行規則式跌倒判斷。
+  - 支援即時顯示、文字警示與選擇性錄影輸出，方便部署與偵錯。
+
+環境需求：
+  pip install ultralytics opencv-python numpy
+  （若在無 GUI 的環境請改裝 opencv-python-headless 或關閉 --show）
+
+快速開始：
+  1) 在程式內設定 RTSP_URL 為攝影機/串流來源（可含帳密）。
+  2) 執行 python main.py --show                # 顯示視窗；伺服器模式可加上 --no-show。
+  3) 如需保存推論影像，可加上 --save out.mp4。
+
+重要參數說明：
+  --weights        YOLO11 Pose 權重檔，依硬體可換成 s/m/l 版本。
+  --tracker        追蹤器設定檔，預設 bytetrack.yaml，另可選 botsort.yaml。
+  --win_size       每個 ID 的歷史視窗幀數，對應跌倒判斷的時間窗。
+  --alert_frames   規則連續符合的最少幀數；數值越大越不易誤報。
+  --cooldown       警報冷卻秒數，避免短時間多次重複通知。
+  --imgsz/--conf   YOLO 推論解析度與置信度，依網路與硬體調整。
+
+規則判斷邏輯：
+  - 當連續 alert_frames 幀內，人體傾角 angle > 55 度且寬高比 ratio > 1.1。
+  - 同時計算垂直位移平均值 v_y，大於 1.5 像素/幀才視為跌倒（避免靜躺誤判）。
+  - 可依實際攝影機角度、距離調整門檻降低誤報或漏報。
+
+部署建議：
+  - 確保 RTSP 串流延遲穩定；若遇到卡頓可調整攝影機輸出解析度或 fps。
+  - 伺服器模式可關閉顯示（--no-show）並透過日誌整合告警系統。
+  - 若需更進階的準確率，可將歷史特徵改由 ML 模型判別。
 """
 
 from __future__ import annotations
@@ -26,41 +46,17 @@ import cv2
 import os
 import sys
 
-# ===== 在程式內指定來源（攝影機 / RTSP / 影片檔） =====
-USE_RTSP: bool = False              # True 時使用 RTSP_URL；False 走 CAM_INDEX
-CAM_INDEX: int = 0                  # 只能為 0 / 1 / 2
-RTSP_URL: str | None = "rtsp://admin:@192.168.47.150:554/stream1"# e.g. "rtsp://user:pass@ip:554/Streaming/Channels/101"
-USE_VIDEO: bool = True             # True 時使用本地影片檔（demo 用）
-VIDEO_PATH: str | None = "fall.mp4"  # 影片檔路徑，例如 "/Users/dogmad/demo.mp4"
+# ===== 在程式內指定 RTSP 來源 =====
+# 僅支援透過 RTSP 串流輸入影像，請於部署前更新實際位址。
+RTSP_URL: str | None = "rtsp://admin:@192.168.47.150:554/stream1"  # e.g. "rtsp://user:pass@ip:554/Streaming/Channels/101"
 
 
-def resolve_source():
-    """回傳 Ultralytics 的 source 參數：0/1/2、RTSP 字串，或本地影片路徑。"""
-    # 優先使用影片檔（demo）
-    if USE_VIDEO:
-        if VIDEO_PATH and isinstance(VIDEO_PATH, str) and os.path.exists(VIDEO_PATH):
-            return VIDEO_PATH
-        print(f"[ERROR] USE_VIDEO=True 但 VIDEO_PATH 無效或檔案不存在：{VIDEO_PATH}")
-        sys.exit(1)
-
-    # 其次使用 RTSP
-    if USE_RTSP:
-        if RTSP_URL and isinstance(RTSP_URL, str):
-            return RTSP_URL
-        print("[ERROR] USE_RTSP=True 但未設定 RTSP_URL")
-        sys.exit(1)
-
-    # 否則使用實體攝影機，僅允許 0/1/2
-    if CAM_INDEX not in (0, 1, 2):
-        print("[WARN] CAM_INDEX 僅允許 0/1/2，已改為 0")
-        return 0
-    return CAM_INDEX
 # ==============================================================
 
 
 def parse_args():
     p = argparse.ArgumentParser(description="YOLO11 Pose 跌倒偵測")
-    p.epilog = "注意：來源已在程式內以 CAM_INDEX/RTSP_URL 指定，不再從終端機傳入。"
+    p.epilog = "注意：來源已在程式內以 RTSP_URL 指定，不再從終端機傳入。"
     p.add_argument("--weights", default="yolo11n-pose.pt", help="YOLO11 Pose 權重")
     p.add_argument("--tracker", default="bytetrack.yaml", help="追蹤器：bytetrack.yaml 或 botsort.yaml")
     p.add_argument("--conf", type=float, default=0.25, help="置信度閾值")
@@ -91,7 +87,6 @@ def body_tilt_angle_deg(kpts: np.ndarray) -> float:
 
 
 def height_ratio(kpts: np.ndarray, box_h: float) -> float:
-    """頭(0)到腳踝(15,16)中點的距離相對於框高的比例。"""
     head = kpts[0]
     ankle = kpts[[15, 16]].mean(axis=0)
     head_ankle = float(np.linalg.norm(ankle - head))
@@ -141,9 +136,14 @@ def main():
     last_time = time.time()
     fps = 0.0
 
+    if not RTSP_URL:
+        # 來源若未設定，直接中止以避免 YOLO track 內部再度拋錯。
+        print("[ERROR] RTSP_URL 未設定，請在程式內填入串流位址。")
+        sys.exit(1)
+
     # track: 產生器逐幀輸出
     generator = model.track(
-        source=resolve_source(),
+        source=RTSP_URL,
         stream=True,
         tracker=args.tracker,
         conf=args.conf,
@@ -158,7 +158,7 @@ def main():
         frame = res.plot()
 
         kps = res.keypoints  # 關鍵點 Results.Keypoints
-        boxes = res.boxes    # 邊框與 .id 追蹤 ID
+        boxes = res.boxes  # 邊框與 .id 追蹤 ID
         if kps is None or boxes is None:
             # 更新 FPS 顯示
             now = time.time()
@@ -180,7 +180,8 @@ def main():
             continue
 
         xyxy_all = boxes.xyxy.cpu().numpy() if hasattr(boxes, 'xyxy') else []
-        ids = boxes.id.cpu().numpy().astype(int) if (hasattr(boxes, 'id') and boxes.id is not None) else np.arange(len(xyxy_all))
+        ids = boxes.id.cpu().numpy().astype(int) if (hasattr(boxes, 'id') and boxes.id is not None) else np.arange(
+            len(xyxy_all))
         kpts_all = kps.xy.cpu().numpy() if hasattr(kps, 'xy') else []  # (N,17,2)
 
         # 對每個人計算特徵與決策
@@ -204,7 +205,8 @@ def main():
         # 警報（全域冷卻）
         now = time.time()
         if now > cooldown_until and any(fall_flags.values()):
-            print(f"[ALERT] 可能跌倒：IDs={[pid for pid, f in fall_flags.items() if f]}  @ {time.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(
+                f"[ALERT] 可能跌倒：IDs={[pid for pid, f in fall_flags.items() if f]}  @ {time.strftime('%Y-%m-%d %H:%M:%S')}")
             cooldown_until = now + float(args.cooldown)
 
         # 視覺化標註（在已繪製的 frame 上疊字）

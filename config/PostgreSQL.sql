@@ -85,7 +85,8 @@ CREATE TABLE connected_ipc (
     ipc_name TEXT, 
     custom_name TEXT,
     ipc_account TEXT,
-    ipc_password TEXT
+    ipc_password TEXT,
+    fall_sensitivity smallint
 );
 
 CREATE TABLE config (
