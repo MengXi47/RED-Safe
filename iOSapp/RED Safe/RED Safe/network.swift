@@ -785,7 +785,7 @@ struct EdgeNetworkConfigDTO: Decodable, Hashable {
 }
 
 struct EdgeCommandResultDTO<Result: Decodable>: Decodable {
-    let code: Int
+    let code: String
     let result: Result?
     let status: String
     let traceId: String?
@@ -802,16 +802,15 @@ struct EdgeCommandResultDTO<Result: Decodable>: Decodable {
         status = try container.decode(String.self, forKey: .status)
         traceId = try container.decodeIfPresent(String.self, forKey: .traceId)
 
-        if let intCode = try? container.decode(Int.self, forKey: .code) {
-            code = intCode
-        } else if let stringCode = try? container.decode(String.self, forKey: .code),
-                  let parsedCode = Int(stringCode) {
-            code = parsedCode
+        if let stringCode = try? container.decode(String.self, forKey: .code) {
+            code = stringCode
+        } else if let intCode = try? container.decode(Int.self, forKey: .code) {
+            code = String(intCode)
         } else {
             var path = container.codingPath
             path.append(CodingKeys.code)
             let context = DecodingError.Context(codingPath: path, debugDescription: "無法解析 code 欄位")
-            throw DecodingError.typeMismatch(Int.self, context)
+            throw DecodingError.typeMismatch(String.self, context)
         }
 
         result = (try? container.decode(Result.self, forKey: .result))
