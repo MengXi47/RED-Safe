@@ -12,17 +12,17 @@ public class NotifyServiceApplication {
         SpringApplication.run(NotifyServiceApplication.class, args);
     }
 
-    @Bean
-    CommandLineRunner sendTestMail(EmailService mailService) {
-        return args -> {
-            mailService.sendFallAlert(
-                    "3b017045@gm.student.ncut.edu.tw",
-                    "FUCK",
-                    "GAY.GAY.GAY.GAY",
-                    "炮房",
-                    "2025-11-11 14:32",
-                    "臺中市太平區中山路二段 57 號"
-            );
-        };
-    }
+//    @Bean
+//    CommandLineRunner sendTestMail(EmailService mailService) {
+//        return args -> {
+//            mailService.sendFallAlert(
+//                    "3b017045@gm.student.ncut.edu.tw",
+//                    "FUCK",
+//                    "GAY.GAY.GAY.GAY",
+//                    "炮房",
+//                    "2025-11-11 14:32",
+//                    "臺中市太平區中山路二段 57 號"
+//            );
+//        };
+//    }
 }

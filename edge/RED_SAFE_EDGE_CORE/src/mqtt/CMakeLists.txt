@@ -3,6 +3,7 @@ target_add_lib(RED_SAFE_EDGE_CORE_mqtt
     RED_SAFE_EDGE_CORE_http
     RED_SAFE_EDGE_CORE_grpc
     RED_SAFE_EDGE_CORE_ipcscan
+    RED_SAFE_EDGE_CORE_sql
     RSEC_protos
     gRPC::grpc++
     OpenSSL::SSL
