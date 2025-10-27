@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -98,17 +99,30 @@ public class EdgeController {
             if (metrics == null) {
                 continue;
             }
-            List<Double> values = List.of(
-                    metrics.getA1(), metrics.getR1(), metrics.getH1(),
-                    metrics.getA2(), metrics.getR2(), metrics.getH2(),
-                    metrics.getA3(), metrics.getR3(), metrics.getH3()
-            );
-            if (values.stream().anyMatch(Objects::isNull)) {
+            Double a1 = metrics.getA1();
+            Double r1 = metrics.getR1();
+            Double h1 = metrics.getH1();
+            Double a2 = metrics.getA2();
+            Double r2 = metrics.getR2();
+            Double h2 = metrics.getH2();
+            Double a3 = metrics.getA3();
+            Double r3 = metrics.getR3();
+            Double h3 = metrics.getH3();
+
+            if (Stream.of(a1, r1, h1, a2, r2, h2, a3, r3, h3).anyMatch(Objects::isNull)) {
                 log.warn("[gRPC] Skip {} group {} sample {} due to null feature values", windowName, groupIndex, idx + 1);
                 continue;
             }
             FallInferenceRequest grpcRequest = FallInferenceRequest.newBuilder()
-                    .addAllFeatures(values.stream().map(Double::floatValue).toList())
+                    .addFeatures(a1.floatValue())
+                    .addFeatures(r1.floatValue())
+                    .addFeatures(h1.floatValue())
+                    .addFeatures(a2.floatValue())
+                    .addFeatures(r2.floatValue())
+                    .addFeatures(h2.floatValue())
+                    .addFeatures(a3.floatValue())
+                    .addFeatures(r3.floatValue())
+                    .addFeatures(h3.floatValue())
                     .build();
             try {
                 FallInferenceResponse response = fallInferenceStub.inferFallProbability(grpcRequest);
