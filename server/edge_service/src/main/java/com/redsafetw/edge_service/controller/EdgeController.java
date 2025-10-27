@@ -62,7 +62,7 @@ public class EdgeController {
     }
 
     @PostMapping("/test")
-    public ErrorCodeResponse test() {
+    public ErrorCodeResponse test(@RequestBody EdgeWindowReportRequest request) {
         return ErrorCodeResponse.builder()
                 .errorCode("0")
                 .build();
