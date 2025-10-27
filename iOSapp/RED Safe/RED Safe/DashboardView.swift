@@ -29,6 +29,7 @@ struct DashboardView: View {
     @Binding var animateBackground: Bool
 
     @State private var navigationPath = NavigationPath()
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
@@ -101,33 +102,26 @@ struct DashboardView: View {
     // MARK: - 子區塊
 
     private var background: some View {
-        ZStack {
+        let largeGlowOpacity = colorScheme == .dark ? 0.22 : 0.45
+        let smallGlowOpacity = colorScheme == .dark ? 0.14 : 0.32
+
+        return ZStack {
             LinearGradient(
-                colors: [
-                    Color(red: 246/255, green: 250/255, blue: 255/255),
-                    Color(red: 223/255, green: 235/255, blue: 250/255),
-                    Color(red: 205/255, green: 222/255, blue: 245/255)
-                ],
+                colors: [.appBackgroundTop, .appBackgroundMid, .appBackgroundBottom],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
             Circle()
-                .fill(Color.white.opacity(0.6))
-
-            Color(.systemGroupedBackground)
-                .ignoresSafeArea()
-
-            Circle()
-                .fill(Color.white.opacity(0.45))
+                .fill(Color.white.opacity(largeGlowOpacity))
                 .frame(width: animateBackground ? 360 : 220)
                 .blur(radius: 60)
                 .offset(x: -150, y: animateBackground ? -260 : -140)
                 .animation(.easeOut(duration: 1.0), value: animateBackground)
 
             Circle()
-                .fill(Color.white.opacity(0.32))
+                .fill(Color.white.opacity(smallGlowOpacity))
                 .frame(width: animateBackground ? 320 : 200)
                 .blur(radius: 52)
                 .offset(x: 170, y: animateBackground ? 280 : 160)
@@ -210,7 +204,7 @@ struct DashboardView: View {
             if homeVM.isLoading && homeVM.edges.isEmpty {
                 ProgressView()
                     .progressViewStyle(.circular)
-                    .tint(.white)
+                    .tint(colorScheme == .dark ? .white : .accentColor)
                     .padding(.top, 40)
             } else if homeVM.edges.isEmpty {
                 emptyState
@@ -274,13 +268,13 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(Color.white.opacity(0.92))
+                .fill(Color.emptyStateBackground)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(Color.white.opacity(0.4))
+                .stroke(Color.surfaceStroke)
         )
-        .shadow(color: Color.black.opacity(0.08), radius: 14, x: 0, y: 10)
+        .shadow(color: Color.surfaceShadow, radius: 14, x: 0, y: 10)
     }
 
     private func quickActionButton(icon: String, action: @escaping () -> Void) -> some View {
@@ -289,10 +283,10 @@ struct DashboardView: View {
                 .font(.headline)
                 .foregroundStyle(Color.accentColor)
                 .frame(width: 44, height: 44)
-                .background(Circle().fill(Color.white.opacity(0.9)))
+                .background(Circle().fill(Color.controlBackground))
         }
         .buttonStyle(.plain)
-        .shadow(color: Color.black.opacity(0.1), radius: 6, x: 0, y: 4)
+        .shadow(color: Color.surfaceShadow, radius: 6, x: 0, y: 4)
     }
 }
 
@@ -336,7 +330,7 @@ private struct EdgeCard: View {
                 Spacer()
             }
             Divider()
-                .background(Color.gray.opacity(0.15))
+                .background(Color.separatorMuted)
             HStack(spacing: 8) {
                 Image(systemName: statusIcon)
                     .foregroundStyle(statusColor)
@@ -352,7 +346,7 @@ private struct EdgeCard: View {
             RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .fill(
                     LinearGradient(
-                        colors: [Color.white.opacity(0.90), Color.white.opacity(0.88)],
+                        colors: [Color.deviceCardTop, Color.deviceCardBottom],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -360,8 +354,9 @@ private struct EdgeCard: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .stroke(Color.white.opacity(0.28), lineWidth: 1)
+                .stroke(Color.surfaceStroke, lineWidth: 1)
         )
+        .shadow(color: Color.surfaceShadow, radius: 12, x: 0, y: 8)
         .padding(.horizontal, 4)
     }
 }

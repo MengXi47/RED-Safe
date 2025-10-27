@@ -7,6 +7,7 @@ struct SignUpView: View {
     @StateObject private var viewModel = SignUpViewModel()
     @FocusState private var focusedField: SignUpViewModel.Field?
     @State private var animateBackground = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
@@ -77,32 +78,27 @@ struct SignUpView: View {
     }
 
     private var backgroundLayer: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 230/255, green: 245/255, blue: 255/255),
-                    Color(red: 200/255, green: 230/255, blue: 255/255),
-                    Color(red: 255/255, green: 255/255, blue: 255/255)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+        let primaryGlow = colorScheme == .dark ? 0.22 : 0.3
+        let secondaryGlow = colorScheme == .dark ? 0.14 : 0.2
+
+        return LiquidGlassBackground()
+            .overlay(
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(primaryGlow))
+                        .frame(width: animateBackground ? 360 : 220)
+                        .blur(radius: 40)
+                        .offset(x: -150, y: animateBackground ? -250 : -140)
+                        .animation(.easeOut(duration: 1.0), value: animateBackground)
+
+                    Circle()
+                        .fill(Color.white.opacity(secondaryGlow))
+                        .frame(width: animateBackground ? 320 : 200)
+                        .blur(radius: 34)
+                        .offset(x: 160, y: animateBackground ? 260 : 150)
+                        .animation(.easeOut(duration: 1.0).delay(0.05), value: animateBackground)
+                }
             )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(Color.white.opacity(0.16))
-                .frame(width: animateBackground ? 360 : 220)
-                .blur(radius: 40)
-                .offset(x: -150, y: animateBackground ? -250 : -140)
-                .animation(.easeOut(duration: 1.0), value: animateBackground)
-
-            Circle()
-                .fill(Color.white.opacity(0.12))
-                .frame(width: animateBackground ? 320 : 200)
-                .blur(radius: 34)
-                .offset(x: 160, y: animateBackground ? 260 : 150)
-                .animation(.easeOut(duration: 1.0).delay(0.05), value: animateBackground)
-        }
     }
 
     private var heroSection: some View {
@@ -111,7 +107,7 @@ struct SignUpView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 150, height: 150)
-                .shadow(color: Color.black.opacity(0.24), radius: 18, x: 0, y: 14)
+                .shadow(color: Color.heroShadow, radius: 18, x: 0, y: 14)
                 .scaleEffect(animateBackground ? 1 : 0.85)
                 .opacity(animateBackground ? 1 : 0)
                 .animation(.spring(response: 0.7, dampingFraction: 0.65).delay(0.05), value: animateBackground)
@@ -195,13 +191,16 @@ struct SignUpView: View {
                                 colors: viewModel.canSubmit ? [
                                     Color(red: 120/255, green: 230/255, blue: 160/255),
                                     Color(red: 46/255, green: 204/255, blue: 113/255)
-                                ] : [Color.white.opacity(0.22), Color.white.opacity(0.14)],
+                                ] : [
+                                    Color(UIColor.systemGray5),
+                                    Color(UIColor.systemGray4)
+                                ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(Color.white.opacity(viewModel.canSubmit ? 0.35 : 0.2))
+                        .stroke(viewModel.canSubmit ? Color.actionStroke : Color.outlineMuted)
                     HStack(spacing: 12) {
                         if viewModel.isSubmitting {
                             ProgressView()
@@ -222,26 +221,10 @@ struct SignUpView: View {
             }
             .buttonStyle(.plain)
             .disabled(!viewModel.canSubmit)
-            .shadow(color: Color.black.opacity(viewModel.canSubmit ? 0.3 : 0), radius: 24, x: 0, y: 18)
+            .shadow(color: Color.surfaceShadow.opacity(viewModel.canSubmit ? 1 : 0), radius: 24, x: 0, y: 18)
         }
         .padding(24)
-        .background(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    LinearGradient(
-                        colors: [Color.white.opacity(0.22), Color.clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-                )
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(Color.white.opacity(0.16))
-        )
-        .shadow(color: Color.black.opacity(0.2), radius: 26, x: 0, y: 20)
+        .glassCard(cornerRadius: 32, opacity: 0.95)
     }
 
     private var tipsSection: some View {
@@ -327,7 +310,7 @@ private struct CustomTextField: View {
             .padding(.horizontal, 16)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.95))
+                    .fill(Color.fieldBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -363,7 +346,7 @@ private struct BannerView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(.thinMaterial, in: Capsule())
-        .shadow(color: Color.black.opacity(0.2), radius: 18, x: 0, y: 12)
+        .shadow(color: Color.surfaceShadow, radius: 18, x: 0, y: 12)
     }
 }
 

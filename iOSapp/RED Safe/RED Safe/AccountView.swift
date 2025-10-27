@@ -625,10 +625,10 @@ private struct RoundedButton: View {
                 .font(.headline)
                 .foregroundStyle(.white)
                 .frame(width: 46, height: 46)
-                .background(Circle().fill(Color.white.opacity(0.22)))
+                .background(Circle().fill(Color.iconCircleBackground))
         }
         .buttonStyle(.plain)
-        .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 8)
+        .shadow(color: Color.surfaceShadow, radius: 12, x: 0, y: 8)
     }
 }
 

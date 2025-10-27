@@ -6,6 +6,7 @@ struct SignInView: View {
     @StateObject private var viewModel = SignInViewModel()
     @FocusState private var focusedField: SignInViewModel.Field?
     @State private var animateBackground = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         NavigationStack {
@@ -69,32 +70,27 @@ struct SignInView: View {
     // MARK: - Sections
 
     private var backgroundLayer: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 244/255, green: 248/255, blue: 255/255),
-                    Color(red: 224/255, green: 234/255, blue: 250/255),
-                    Color(red: 204/255, green: 221/255, blue: 246/255)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+        let largeGlowOpacity = colorScheme == .dark ? 0.28 : 0.5
+        let smallGlowOpacity = colorScheme == .dark ? 0.18 : 0.35
+
+        return LiquidGlassBackground()
+            .overlay(
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(largeGlowOpacity))
+                        .frame(width: animateBackground ? 360 : 220)
+                        .blur(radius: 60)
+                        .offset(x: -150, y: animateBackground ? -260 : -140)
+                        .animation(.easeOut(duration: 1.0), value: animateBackground)
+
+                    Circle()
+                        .fill(Color.white.opacity(smallGlowOpacity))
+                        .frame(width: animateBackground ? 320 : 200)
+                        .blur(radius: 48)
+                        .offset(x: 170, y: animateBackground ? 280 : 160)
+                        .animation(.easeOut(duration: 1.0).delay(0.05), value: animateBackground)
+                }
             )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(Color.white.opacity(0.5))
-                .frame(width: animateBackground ? 360 : 220)
-                .blur(radius: 60)
-                .offset(x: -150, y: animateBackground ? -260 : -140)
-                .animation(.easeOut(duration: 1.0), value: animateBackground)
-
-            Circle()
-                .fill(Color.white.opacity(0.35))
-                .frame(width: animateBackground ? 320 : 200)
-                .blur(radius: 48)
-                .offset(x: 170, y: animateBackground ? 280 : 160)
-                .animation(.easeOut(duration: 1.0).delay(0.05), value: animateBackground)
-        }
     }
 
     private var heroSection: some View {
@@ -103,7 +99,7 @@ struct SignInView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 160, height: 160)
-                .shadow(color: Color.black.opacity(0.25), radius: 20, x: 0, y: 18)
+                .shadow(color: Color.heroShadow, radius: 20, x: 0, y: 18)
                 .scaleEffect(animateBackground ? 1 : 0.85)
                 .opacity(animateBackground ? 1 : 0)
                 .animation(.spring(response: 0.7, dampingFraction: 0.65).delay(0.05), value: animateBackground)
@@ -173,7 +169,7 @@ struct SignInView: View {
                             )
                         )
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .stroke(viewModel.canSubmit ? Color.white.opacity(0.4) : Color.black.opacity(0.08))
+                        .stroke(viewModel.canSubmit ? Color.actionStroke : Color.outlineMuted)
                     HStack(spacing: 12) {
                         if viewModel.isSubmitting {
                             ProgressView()
@@ -194,7 +190,7 @@ struct SignInView: View {
             }
             .buttonStyle(.plain)
             .disabled(!viewModel.canSubmit)
-            .shadow(color: Color.black.opacity(viewModel.canSubmit ? 0.35 : 0.0), radius: 24, x: 0, y: 18)
+            .shadow(color: Color.surfaceShadow.opacity(viewModel.canSubmit ? 1 : 0), radius: 24, x: 0, y: 18)
 
             NavigationLink(destination: SignUpView()) {
                 Text("還沒有帳號？立即註冊")
@@ -296,7 +292,7 @@ private struct CustomTextField: View {
             .padding(.horizontal, 16)
             .background(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color.white.opacity(0.95))
+                    .fill(Color.fieldBackground)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -332,7 +328,7 @@ private struct BannerView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(.thinMaterial, in: Capsule())
-        .shadow(color: Color.black.opacity(0.2), radius: 18, x: 0, y: 12)
+        .shadow(color: Color.surfaceShadow, radius: 18, x: 0, y: 12)
     }
 }
 
@@ -363,7 +359,7 @@ private struct OTPVerificationSheet: View {
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)
                 .background(.thinMaterial, in: Capsule())
-                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 8)
+                .shadow(color: Color.surfaceShadow, radius: 10, x: 0, y: 8)
                 .padding(.top, 8)
 
                 // Title & hint
@@ -398,12 +394,12 @@ private struct OTPVerificationSheet: View {
 
                         ZStack {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(0.95))
+                                .fill(Color.fieldBackground)
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(
                                     idx == min(otpCode.count, 5) && focusedField == .otp
                                     ? Color.accentColor.opacity(0.6)
-                                    : Color.black.opacity(0.08),
+                                    : Color.outlineMuted,
                                     lineWidth: 1.2
                                 )
                             Text(char.isEmpty ? " " : char)
@@ -442,7 +438,7 @@ private struct OTPVerificationSheet: View {
                                 )
                             )
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(viewModel.isVerifyingOTP ? Color.black.opacity(0.08) : Color.white.opacity(0.4))
+                            .stroke(viewModel.isVerifyingOTP ? Color.outlineMuted : Color.actionStroke)
                         HStack(spacing: 10) {
                             if viewModel.isVerifyingOTP {
                                 ProgressView().tint(.white)
@@ -461,7 +457,7 @@ private struct OTPVerificationSheet: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(viewModel.isVerifyingOTP || otpCode.count != 6)
-                .shadow(color: Color.black.opacity(otpCode.count == 6 ? 0.25 : 0.0), radius: 18, x: 0, y: 12)
+                .shadow(color: Color.surfaceShadow.opacity(otpCode.count == 6 ? 1 : 0), radius: 18, x: 0, y: 12)
 
                 Spacer(minLength: 8)
             }
@@ -540,7 +536,7 @@ private struct EmailVerificationSheet: View {
                 .padding(.vertical, 8)
                 .padding(.horizontal, 14)
                 .background(.thinMaterial, in: Capsule())
-                .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 8)
+                .shadow(color: Color.surfaceShadow, radius: 10, x: 0, y: 8)
                 .padding(.top, 8)
 
                 VStack(spacing: 6) {
@@ -572,12 +568,12 @@ private struct EmailVerificationSheet: View {
 
                         ZStack {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color.white.opacity(0.95))
+                                .fill(Color.fieldBackground)
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .stroke(
                                     idx == min(verificationCode.count, 5) && focusedField == .code
                                     ? Color.accentColor.opacity(0.6)
-                                    : Color.black.opacity(0.08),
+                                    : Color.outlineMuted,
                                     lineWidth: 1.2
                                 )
                             Text(char.isEmpty ? " " : char)
@@ -615,7 +611,7 @@ private struct EmailVerificationSheet: View {
                                 )
                             )
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .stroke(viewModel.isVerifyingEmail ? Color.black.opacity(0.08) : Color.white.opacity(0.4))
+                            .stroke(viewModel.isVerifyingEmail ? Color.outlineMuted : Color.actionStroke)
                         HStack(spacing: 10) {
                             if viewModel.isVerifyingEmail {
                                 ProgressView().tint(.white)
@@ -634,7 +630,7 @@ private struct EmailVerificationSheet: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(viewModel.isVerifyingEmail || verificationCode.count != 6)
-                .shadow(color: Color.black.opacity(verificationCode.count == 6 ? 0.25 : 0.0), radius: 18, x: 0, y: 12)
+                .shadow(color: Color.surfaceShadow.opacity(verificationCode.count == 6 ? 1 : 0), radius: 18, x: 0, y: 12)
 
                 Button(action: { Task { await resendCode() } }) {
                     if viewModel.isResendingEmailCode {

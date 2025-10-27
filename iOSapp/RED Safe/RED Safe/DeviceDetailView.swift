@@ -72,17 +72,10 @@ struct DeviceDetailView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color(red: 247/255, green: 250/255, blue: 255/255),
-                    Color(red: 228/255, green: 236/255, blue: 250/255)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .listRowBackground(Color.white.opacity(0.9))
+        .background {
+            LiquidGlassBackground()
+        }
+        .listRowBackground(Color.surfaceBackground)
         .navigationTitle(edge.displayName.isEmpty ? edge.edgeId : edge.displayName)
         .navigationBarTitleDisplayMode(.inline)
     }
