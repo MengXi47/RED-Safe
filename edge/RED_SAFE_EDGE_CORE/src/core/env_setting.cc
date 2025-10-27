@@ -36,7 +36,7 @@ std::optional<int> ConfigLoader::GetEnvInt(const char* name) {
 
 EdgeConfig ConfigLoader::Load() {
   EdgeConfig cfg;
-  cfg.edge_id = GetEnvOrDefault("RED_SAFE_EDGE_ID", "RED-AAAAAAAA");
+  cfg.edge_id = GetEnvOrDefault("RED_SAFE_EDGE_ID", "RED-BBBBBBBB");
   cfg.version = GetEnvOrDefault("RED_SAFE_EDGE_VERSION", "1.0.0");
   cfg.edge_ip = GetEnvOrDefault("RED_SAFE_EDGE_IP", "");
   cfg.network_interface = GetEnvOrDefault("RED_SAFE_NETWORK_INTERFACE", "eth0");
