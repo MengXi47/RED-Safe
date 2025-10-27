@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package fall;
+
+option java_multiple_files = true;
+option java_package = "com.grpc.fall";
+option java_generic_services = true;
+
+message FallInferenceRequest {
+  repeated float features = 1;
+}
+
+message FallInferenceResponse {
+  double probability = 1;
+}
+
+service FallInferenceService {
+  rpc InferFallProbability (FallInferenceRequest) returns (FallInferenceResponse);
+}
