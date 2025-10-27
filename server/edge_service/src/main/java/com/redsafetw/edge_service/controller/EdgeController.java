@@ -60,4 +60,11 @@ public class EdgeController {
     public ErrorCodeResponse unbindUser(@Valid @RequestBody EdgeUserUnbindRequest request) {
         return edgeUserBindService.unbindUser(request.getEdgeId(), null, request.getEmail());
     }
+
+    @PostMapping("/test")
+    public ErrorCodeResponse test() {
+        return ErrorCodeResponse.builder()
+                .errorCode("0")
+                .build();
+    }
 }
