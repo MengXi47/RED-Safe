@@ -1,6 +1,7 @@
 import { onScopeDispose, reactive, ref, shallowRef, type Ref } from 'vue';
 import {
   bindCamera,
+  fetchBoundCameras,
   previewHangup,
   previewOffer,
   previewProbe,
@@ -92,6 +93,15 @@ export const useCameraBinding = (options: CameraBindingOptions) => {
   const bindModalOpen = ref(false);
   const bindLoading = ref(false);
   const unbindLoading = ref(false);
+  const boundRefreshing = ref(false);
+
+  const syncSearchBoundState = () => {
+    const boundMacSet = new Set(boundCameras.value.map((item) => item.mac));
+    options.searchResults.value = options.searchResults.value.map((item) => ({
+      ...item,
+      is_bound: boundMacSet.has(item.mac)
+    }));
+  };
 
   const markSearchResult = (camera: Camera, isBound: boolean) => {
     options.searchResults.value = options.searchResults.value.map((item) =>
@@ -114,6 +124,28 @@ export const useCameraBinding = (options: CameraBindingOptions) => {
     bindModalOpen.value = true;
   };
 
+  const loadBoundCameras = async ({ silent = false }: { silent?: boolean } = {}) => {
+    boundRefreshing.value = true;
+    try {
+      const response = await fetchBoundCameras();
+      if (!response.ok) {
+        if (!silent) {
+          options.notify(response.error ?? '無法載入已綁定攝影機', 'danger');
+        }
+        return;
+      }
+      boundCameras.value = response.items ?? [];
+      syncSearchBoundState();
+    } catch (error) {
+      console.error(error);
+      if (!silent) {
+        options.notify('無法載入已綁定攝影機', 'danger');
+      }
+    } finally {
+      boundRefreshing.value = false;
+    }
+  };
+
   const confirmBind = async (payload: { custom_name: string; ipc_account?: string; ipc_password?: string }) => {
     const camera = options.selectedCamera.value;
     if (!camera) return;
@@ -132,6 +164,7 @@ export const useCameraBinding = (options: CameraBindingOptions) => {
         updateBoundList(response.item);
         options.notify('綁定成功', 'success');
         bindModalOpen.value = false;
+        syncSearchBoundState();
       } else if (response.code === 'ALREADY_BOUND') {
         options.notify('此攝影機已綁定', 'info');
         bindModalOpen.value = false;
@@ -155,6 +188,7 @@ export const useCameraBinding = (options: CameraBindingOptions) => {
         boundCameras.value = boundCameras.value.filter((item) => item.mac !== camera.mac);
         markSearchResult(camera, false);
         options.notify('已解除綁定', 'success');
+        syncSearchBoundState();
       } else {
         options.notify(response.error ?? '解除失敗', 'danger');
       }
@@ -166,16 +200,22 @@ export const useCameraBinding = (options: CameraBindingOptions) => {
     }
   };
 
+  // 初始化時同步搜尋結果的綁定狀態，避免載入舊資料
+  syncSearchBoundState();
+
   return {
     boundCameras,
     bindModalOpen,
     bindLoading,
     unbindLoading,
+    boundRefreshing,
     prepareBind,
     confirmBind,
-    removeBind
+    removeBind,
+    loadBoundCameras
   };
 };
+
 
 /**
  * Hook 用途：管理攝影機預覽的 WebRTC 連線與錯誤處理。
@@ -301,7 +341,7 @@ export const useCameraPreview = (options: CameraPreviewOptions) => {
     previewConnection.value = null;
     const sessionId = previewSessionId.value;
     previewSessionId.value = '';
-  if (sessionId) {
+    if (sessionId) {
       try {
         await previewHangup({ session_id: sessionId });
       } catch (error) {

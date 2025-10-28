@@ -8,7 +8,7 @@
         </div>
         <div class="flex items-center gap-3">
           <BaseButton :loading="scanning" @click="performScan">搜尋攝影機</BaseButton>
-          <BaseButton variant="ghost" @click="refresh">重新整理</BaseButton>
+          <BaseButton variant="ghost" :loading="boundRefreshing || scanning" @click="refresh">重新整理</BaseButton>
         </div>
       </div>
     </header>
@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onActivated, onMounted, ref } from 'vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
 import BaseCard from '@/components/ui/BaseCard.vue';
 import BaseTable, { type ColumnDefinition } from '@/components/ui/BaseTable.vue';
@@ -124,9 +124,11 @@ const {
   bindModalOpen,
   bindLoading,
   unbindLoading,
+  boundRefreshing,
   prepareBind,
   confirmBind,
-  removeBind
+  removeBind,
+  loadBoundCameras
 } = useCameraBinding({
   initialBound: initialState.bound ?? [],
   searchResults,
@@ -149,6 +151,14 @@ const {
   onError: (message) => previewRef.value?.handleError(message)
 });
 
+onMounted(() => {
+  void loadBoundCameras({ silent: true });
+});
+
+onActivated(() => {
+  void loadBoundCameras({ silent: true });
+});
+
 const searchColumns: ColumnDefinition<Camera & { actions: string }>[] = [
   { key: 'ip', label: 'IP 位址' },
   { key: 'mac', label: 'MAC 位址' },
@@ -163,5 +173,8 @@ const boundColumns: ColumnDefinition<Camera & { actions: string }>[] = [
   { key: 'actions', label: '操作' }
 ];
 
-const refresh = () => window.location.reload();
+const refresh = async () => {
+  await loadBoundCameras();
+  await performScan();
+};
 </script>

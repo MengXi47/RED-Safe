@@ -240,12 +240,27 @@ def login_view(request: HttpRequest):
 
         if not PASSWORD_REGEX.fullmatch(pwd):
             ctx["error"] = "密碼格式不正確：僅能使用英文或數字，且至少 6 碼。"
+            _log_web_action(
+                request,
+                action="user_login_failed",
+                message="嘗試登入失敗：密碼格式不符合規範",
+                level="WARN",
+                metadata={"reason": "invalid_format"},
+            )
             return render(request, "ui/login.html", ctx)
 
         if pwd == (config.edge_password or ""):
             request.session[SESSION_KEY] = True
+            _log_web_action(request, action="user_login", message="使用者透過網頁介面登入系統")
             return redirect("dashboard")
 
+        _log_web_action(
+            request,
+            action="user_login_failed",
+            message="嘗試登入失敗：密碼錯誤",
+            level="WARN",
+            metadata={"reason": "wrong_password"},
+        )
         ctx["error"] = "密碼錯誤。"
 
     return render(request, "ui/login.html", ctx)
@@ -255,6 +270,7 @@ def logout_view(request: HttpRequest):
     """登出並回到登入頁面。"""
 
     request.session.pop(SESSION_KEY, None)
+    _log_web_action(request, action="user_logout", message="使用者自網頁介面登出")
     return redirect("login")
 
 
@@ -434,6 +450,12 @@ def api_user_remove(request: HttpRequest):
 
     edge_id = _edge_id()
     if not edge_id or edge_id == "RED-UNKNOWN":
+        _log_web_action(
+            request,
+            action="user_unbind_failed",
+            message="解除使用者綁定失敗：edge_id 未設定",
+            level="ERROR",
+        )
         return JsonResponse(
             {"status": "error", "message": "edge_id_not_configured"},
             status=400,
@@ -442,6 +464,12 @@ def api_user_remove(request: HttpRequest):
     try:
         payload = json.loads(request.body or "{}")
     except json.JSONDecodeError:
+        _log_web_action(
+            request,
+            action="user_unbind_failed",
+            message="解除使用者綁定失敗：JSON 格式錯誤",
+            level="WARN",
+        )
         return JsonResponse(
             {"status": "error", "message": "invalid_json"},
             status=400,
@@ -449,6 +477,12 @@ def api_user_remove(request: HttpRequest):
 
     email = str(payload.get("email", "")).strip()
     if not email:
+        _log_web_action(
+            request,
+            action="user_unbind_failed",
+            message="解除使用者綁定失敗：缺少 Email",
+            level="WARN",
+        )
         return JsonResponse(
             {"status": "error", "message": "email_required"},
             status=400,
@@ -456,6 +490,13 @@ def api_user_remove(request: HttpRequest):
 
     api_result = remove_bound_user(edge_id, email)
     if not isinstance(api_result, dict):
+        _log_web_action(
+            request,
+            action="user_unbind_failed",
+            message="解除使用者綁定失敗：雲端回傳格式異常",
+            level="ERROR",
+            metadata={"email": email},
+        )
         return JsonResponse(
             {"status": "error", "message": "unexpected_response"},
             status=502,
@@ -466,6 +507,13 @@ def api_user_remove(request: HttpRequest):
         if not isinstance(status_code, int) or status_code < 400:
             status_code = 502
         detail = {k: v for k, v in api_result.items() if k != "error"}
+        _log_web_action(
+            request,
+            action="user_unbind_failed",
+            message=f"解除使用者綁定失敗：{api_result['error']}",
+            level="WARN",
+            metadata={"email": email, "detail": detail},
+        )
         return JsonResponse(
             {"status": "error", "message": api_result["error"], "detail": detail},
             status=status_code,
@@ -473,11 +521,24 @@ def api_user_remove(request: HttpRequest):
 
     error_code = str(api_result.get("error_code", ""))
     if error_code != "0":
+        _log_web_action(
+            request,
+            action="user_unbind_failed",
+            message="解除使用者綁定失敗：遠端錯誤",
+            level="WARN",
+            metadata={"email": email, "error_code": error_code},
+        )
         return JsonResponse(
             {"status": "error", "message": error_code or "unknown_error"},
             status=400,
         )
 
+    _log_web_action(
+        request,
+        action="user_unbind_success",
+        message="解除使用者綁定成功",
+        metadata={"email": email},
+    )
     return JsonResponse({"status": "ok"})
 
 
@@ -537,16 +598,34 @@ def device_change_password(request):
                     data = resp.json()
                 except Exception:
                     pass
-                if resp.status_code == 200 and str(data.get("error_code")) == "0":
+                error_code = str(data.get("error_code", ""))
+                if resp.status_code == 200 and error_code == "0":
                     config.edge_password = new1
                     config.save(update_fields=["edge_password"])
                     request.session.flush()
+                    _log_web_action(
+                        request,
+                        action="device_password_change_success",
+                        message="變更裝置密碼成功並已登出使用者",
+                    )
                     return redirect("login")
-                errors["new_password2"] = (
-                    f"遠端更新失敗：HTTP {resp.status_code} code={data.get('error_code')}"
-                )
+                if resp.status_code == 401 or error_code == "147":
+                    errors["old_password"] = "遠端驗證失敗，請確認舊密碼"
+                else:
+                    errors["new_password2"] = (
+                        f"遠端更新失敗：HTTP {resp.status_code} code={error_code or '未知'}"
+                    )
             except requests.RequestException as exc:
                 errors["new_password2"] = f"遠端連線失敗：{exc}"
+
+    if request.method == "POST" and errors:
+        _log_web_action(
+            request,
+            action="device_password_change_failed",
+            message="變更裝置密碼失敗",
+            level="WARN",
+            metadata={"error_fields": list(errors.keys()), "messages": errors},
+        )
 
     return render(
         request,
@@ -1133,15 +1212,33 @@ def api_cameras_preview_probe(request: HttpRequest):
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except Exception:
+        _log_web_action(
+            request,
+            action="camera_preview_probe_payload_error",
+            message="攝影機預覽探測失敗：JSON 解析錯誤",
+            level="WARN",
+        )
         payload = {}
 
     ip_value = (payload.get("ip") or "").strip()
     account_value = payload.get("account") or ""
     password_value = payload.get("password") or ""
+    probe_meta = {
+        "camera_ip": ip_value,
+        "has_account": bool(account_value),
+        "has_password": bool(password_value),
+    }
 
     try:
         rtsp_url = _build_rtsp_url(ip_value, account_value, password_value)
     except ValueError as exc:
+        _log_web_action(
+            request,
+            action="camera_preview_probe_failed",
+            message=f"攝影機預覽探測失敗：{exc}",
+            level="WARN",
+            metadata=probe_meta,
+        )
         return JsonResponse({"ok": False, "error": str(exc), "code": "BAD_INPUT"}, status=400)
 
     command = [
@@ -1163,6 +1260,13 @@ def api_cameras_preview_probe(request: HttpRequest):
             timeout=8,
         )
     except FileNotFoundError:
+        _log_web_action(
+            request,
+            action="camera_preview_probe_failed",
+            message="攝影機預覽探測失敗：系統缺少 ffmpeg",
+            level="ERROR",
+            metadata=probe_meta,
+        )
         return JsonResponse(
             {
                 "ok": False,
@@ -1172,6 +1276,13 @@ def api_cameras_preview_probe(request: HttpRequest):
             status=500,
         )
     except subprocess.TimeoutExpired:
+        _log_web_action(
+            request,
+            action="camera_preview_probe_failed",
+            message="攝影機預覽探測失敗：逾時",
+            level="WARN",
+            metadata=probe_meta,
+        )
         return JsonResponse(
             {"ok": False, "error": "攝影機連線逾時", "code": "TIMEOUT"},
             status=504,
@@ -1181,8 +1292,21 @@ def api_cameras_preview_probe(request: HttpRequest):
         stderr_text = completed.stderr.decode("utf-8", errors="ignore")
         message, code = _describe_preview_error(stderr_text)
         status_code = 401 if code == "AUTH_REQUIRED" else 504 if code == "TIMEOUT" else 502
+        _log_web_action(
+            request,
+            action="camera_preview_probe_failed",
+            message=f"攝影機預覽探測失敗：{message}",
+            level="WARN",
+            metadata={**probe_meta, "error_code": code},
+        )
         return JsonResponse({"ok": False, "error": message, "code": code}, status=status_code)
 
+    _log_web_action(
+        request,
+        action="camera_preview_probe_success",
+        message="攝影機預覽探測成功",
+        metadata=probe_meta,
+    )
     return JsonResponse({"ok": True})
 
 
@@ -1190,6 +1314,12 @@ def api_cameras_preview_probe(request: HttpRequest):
 @require_http_methods(["POST"])
 def api_cameras_preview_webrtc_offer(request: HttpRequest):
     if not AIORTC_AVAILABLE:
+        _log_web_action(
+            request,
+            action="camera_preview_webrtc_failed",
+            message="攝影機 WebRTC 建立失敗：aiortc 未安裝",
+            level="ERROR",
+        )
         return JsonResponse(
             {
                 "ok": False,
@@ -1202,19 +1332,44 @@ def api_cameras_preview_webrtc_offer(request: HttpRequest):
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except Exception:
+        _log_web_action(
+            request,
+            action="camera_preview_webrtc_failed",
+            message="攝影機 WebRTC 建立失敗：JSON 解析錯誤",
+            level="WARN",
+        )
         return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
 
     ip_value = (payload.get("ip") or "").strip()
     account_value = payload.get("account") or ""
     password_value = payload.get("password") or ""
     offer_data = payload.get("offer") or {}
+    offer_meta = {
+        "camera_ip": ip_value,
+        "has_account": bool(account_value),
+        "has_password": bool(password_value),
+    }
 
     if not isinstance(offer_data, dict) or "sdp" not in offer_data or "type" not in offer_data:
+        _log_web_action(
+            request,
+            action="camera_preview_webrtc_failed",
+            message="攝影機 WebRTC 建立失敗：缺少 SDP 參數",
+            level="WARN",
+            metadata=offer_meta,
+        )
         return JsonResponse({"ok": False, "error": "Missing SDP offer"}, status=400)
 
     try:
         rtsp_url = _build_rtsp_url(ip_value, account_value, password_value)
     except ValueError as exc:
+        _log_web_action(
+            request,
+            action="camera_preview_webrtc_failed",
+            message=f"攝影機 WebRTC 建立失敗：{exc}",
+            level="WARN",
+            metadata=offer_meta,
+        )
         return JsonResponse({"ok": False, "error": str(exc), "code": "BAD_INPUT"}, status=400)
 
     try:
@@ -1222,12 +1377,32 @@ def api_cameras_preview_webrtc_offer(request: HttpRequest):
     except PreviewStreamError as exc:
         message, code = _describe_preview_error(exc.stderr, default_message=str(exc), code=exc.code)
         status_code = _preview_error_status(code)
+        _log_web_action(
+            request,
+            action="camera_preview_webrtc_failed",
+            message=f"攝影機 WebRTC 建立失敗：{message}",
+            level="WARN",
+            metadata={**offer_meta, "error_code": code},
+        )
         return JsonResponse({"ok": False, "error": message, "code": code}, status=status_code)
     except Exception as exc:  # pragma: no cover - defensive path
         logger.exception("WebRTC offer handling failed")
+        _log_web_action(
+            request,
+            action="camera_preview_webrtc_failed",
+            message="攝影機 WebRTC 建立失敗：伺服器例外",
+            level="ERROR",
+            metadata={**offer_meta, "error": str(exc)},
+        )
         return JsonResponse({"ok": False, "error": str(exc) or "SERVER_ERROR", "code": "SERVER_ERROR"}, status=500)
 
     answer_payload = {"type": local_desc.type, "sdp": local_desc.sdp}
+    _log_web_action(
+        request,
+        action="camera_preview_webrtc_success",
+        message="攝影機 WebRTC 建立成功",
+        metadata={**offer_meta, "session_id": session_id},
+    )
     return JsonResponse({"ok": True, "session_id": session_id, "answer": answer_payload})
 
 
@@ -1235,15 +1410,33 @@ def api_cameras_preview_webrtc_offer(request: HttpRequest):
 @require_http_methods(["POST"])
 def api_cameras_preview_webrtc_hangup(request: HttpRequest):
     if not AIORTC_AVAILABLE:
+        _log_web_action(
+            request,
+            action="camera_preview_hangup_skipped",
+            message="攝影機 WebRTC 結束通知：aiortc 未安裝",
+            level="WARN",
+        )
         return JsonResponse({"ok": True, "detail": "WEBRTC_DISABLED"})
 
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except Exception:
+        _log_web_action(
+            request,
+            action="camera_preview_hangup_payload_error",
+            message="攝影機 WebRTC 結束通知失敗：JSON 解析錯誤",
+            level="WARN",
+        )
         payload = {}
 
     session_id = (payload.get("session_id") or "").strip()
     if not session_id:
+        _log_web_action(
+            request,
+            action="camera_preview_hangup_failed",
+            message="攝影機 WebRTC 結束通知失敗：缺少 session_id",
+            level="WARN",
+        )
         return JsonResponse({"ok": False, "error": "Missing session_id"}, status=400)
 
     try:
@@ -1251,13 +1444,40 @@ def api_cameras_preview_webrtc_hangup(request: HttpRequest):
     except PreviewStreamError as exc:
         message, code = _describe_preview_error(exc.stderr, default_message=str(exc), code=exc.code)
         status_code = _preview_error_status(code)
+        _log_web_action(
+            request,
+            action="camera_preview_hangup_failed",
+            message=f"攝影機 WebRTC 結束通知失敗：{message}",
+            level="WARN",
+            metadata={"session_id": session_id, "error_code": code},
+        )
         return JsonResponse({"ok": False, "error": message, "code": code}, status=status_code)
     except Exception as exc:  # pragma: no cover
         logger.exception("WebRTC hangup failed")
+        _log_web_action(
+            request,
+            action="camera_preview_hangup_failed",
+            message="攝影機 WebRTC 結束通知失敗：伺服器例外",
+            level="ERROR",
+            metadata={"session_id": session_id, "error": str(exc)},
+        )
         return JsonResponse({"ok": False, "error": str(exc) or "SERVER_ERROR"}, status=500)
 
     if not closed:
+        _log_web_action(
+            request,
+            action="camera_preview_hangup_not_found",
+            message="攝影機 WebRTC 結束通知：找不到 session",
+            level="WARN",
+            metadata={"session_id": session_id},
+        )
         return JsonResponse({"ok": True, "detail": "SESSION_NOT_FOUND"})
+    _log_web_action(
+        request,
+        action="camera_preview_hangup_success",
+        message="攝影機 WebRTC 連線已結束",
+        metadata={"session_id": session_id},
+    )
     return JsonResponse({"ok": True})
 
 
@@ -1287,6 +1507,12 @@ def api_cameras_scan(request: HttpRequest):
         bound_map_by_mac,
         raw_search_results,
     )
+    _log_web_action(
+        request,
+        action="camera_scan",
+        message="執行一次攝影機掃描",
+        metadata={"result_count": len(search_results)},
+    )
     return JsonResponse({"ok": True, "results": search_results})
 
 
@@ -1298,6 +1524,8 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import psycopg2
 from psycopg2 import errors
+from psycopg2.extensions import connection as PgConnection, cursor as PgCursor
+from psycopg2.extras import Json, RealDictCursor
 
 DB_CONFIG = {
     "dbname": "redsafedb",
@@ -1307,6 +1535,290 @@ DB_CONFIG = {
     "port": "5432"
 }
 
+# 系統日誌設定：可依部署環境調整最大保留筆數，避免佔滿本地端儲存空間。
+SYSTEM_LOG_TABLE = "web_system_logs"
+MAX_SYSTEM_LOG_ROWS = int(getattr(settings, "SYSTEM_LOG_MAX_ROWS", 2000))
+# 前端預設分頁大小，同樣提供中文註解方便後續調整與最佳化。
+DEFAULT_SYSTEM_LOG_PAGE_SIZE = 50
+MAX_SYSTEM_LOG_PAGE_SIZE = 200
+
+
+def _ensure_system_log_table(conn: PgConnection) -> None:
+    """建立系統日誌資料表與索引（若尚未存在）。"""
+
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {SYSTEM_LOG_TABLE} (
+                id BIGSERIAL PRIMARY KEY,
+                category VARCHAR(64) NOT NULL DEFAULT 'web',
+                action VARCHAR(128) NOT NULL,
+                level VARCHAR(16) NOT NULL DEFAULT 'INFO',
+                message TEXT NOT NULL,
+                metadata JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+        cur.execute(
+            f"CREATE INDEX IF NOT EXISTS idx_{SYSTEM_LOG_TABLE}_created_at ON {SYSTEM_LOG_TABLE} (created_at DESC, id DESC)"
+        )
+    conn.commit()
+
+
+def _prune_system_logs(cur: PgCursor) -> None:
+    """依照先進先出自動刪除超出上限的舊資料。"""
+
+    cur.execute(f"SELECT COUNT(*) FROM {SYSTEM_LOG_TABLE}")
+    total = cur.fetchone()
+    count = int(total[0] if total else 0)
+    overflow = count - MAX_SYSTEM_LOG_ROWS
+    if overflow <= 0:
+        return
+    cur.execute(
+        f"""
+        DELETE FROM {SYSTEM_LOG_TABLE}
+        WHERE id IN (
+            SELECT id FROM {SYSTEM_LOG_TABLE}
+            ORDER BY created_at ASC, id ASC
+            LIMIT %s
+        )
+        """,
+        (overflow,),
+    )
+
+
+def _normalize_system_log_row(row: dict[str, Any]) -> dict[str, Any]:
+    """整理資料庫取出的列，確保 metadata 與時間格式一致。"""
+
+    normalized = dict(row)
+    metadata = normalized.get("metadata")
+    if isinstance(metadata, memoryview):
+        metadata = metadata.tobytes().decode("utf-8")
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except Exception:
+            pass
+    normalized["metadata"] = metadata
+    created_at = normalized.get("created_at")
+    if hasattr(created_at, "isoformat"):
+        normalized["created_at"] = created_at.isoformat()
+    return normalized
+
+
+def _write_system_log(
+    action: str,
+    message: str,
+    *,
+    level: str = "INFO",
+    category: str = "web",
+    metadata: Optional[dict[str, Any]] = None,
+) -> None:
+    """將 Web 端操作寫入系統日誌並觸發自動裁切。"""
+
+    conn = None
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        _ensure_system_log_table(conn)
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"""
+                    INSERT INTO {SYSTEM_LOG_TABLE} (category, action, level, message, metadata)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    (
+                        category,
+                        action,
+                        level.upper(),
+                        message,
+                        Json(metadata) if metadata is not None else None,
+                    ),
+                )
+                _prune_system_logs(cur)
+    except Exception:
+        logger.exception("Failed to write system log")
+    finally:
+        if conn:
+            conn.close()
+
+
+def _client_ip(request: HttpRequest) -> str:
+    """取得使用者來源 IP，優先採用 Proxy 標頭。"""
+
+    forwarded = (request.META.get("HTTP_X_FORWARDED_FOR") or "").strip()
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return (request.META.get("REMOTE_ADDR") or "").strip()
+
+
+def _request_context_metadata(request: HttpRequest) -> dict[str, str]:
+    """整理請求環境資訊，供系統日誌參考。"""
+
+    user_agent = (request.META.get("HTTP_USER_AGENT") or "").strip()
+    if len(user_agent) > 255:
+        user_agent = user_agent[:255]
+    return {
+        "ip": _client_ip(request),
+        "user_agent": user_agent,
+        "path": request.path,
+    }
+
+
+def _log_web_action(
+    request: HttpRequest,
+    action: str,
+    message: str,
+    *,
+    level: str = "INFO",
+    metadata: Optional[dict[str, Any]] = None,
+) -> None:
+    """統一記錄 Web 端動作，會自動帶入請求端環境資訊。"""
+
+    base_meta: dict[str, Any] = dict(_request_context_metadata(request))
+    if metadata:
+        base_meta.update(metadata)
+    _write_system_log(action=action, message=message, level=level, metadata=base_meta)
+
+
+def _system_logs_handle_get(request: HttpRequest, conn: PgConnection) -> JsonResponse:
+    """處理日誌列表查詢，支援分頁與簡易篩選。"""
+
+    limit_param = request.GET.get("limit")
+    offset_param = request.GET.get("offset")
+    level_param = (request.GET.get("level") or "").strip().upper()
+    category_param = (request.GET.get("category") or "").strip()
+
+    try:
+        limit = int(limit_param) if limit_param is not None else DEFAULT_SYSTEM_LOG_PAGE_SIZE
+    except (TypeError, ValueError):
+        limit = DEFAULT_SYSTEM_LOG_PAGE_SIZE
+    limit = max(1, min(limit, MAX_SYSTEM_LOG_PAGE_SIZE))
+
+    try:
+        offset = int(offset_param) if offset_param is not None else 0
+    except (TypeError, ValueError):
+        offset = 0
+    offset = max(0, offset)
+
+    filters: list[str] = []
+    params: list[Any] = []
+
+    if level_param:
+        filters.append("level = %s")
+        params.append(level_param)
+    if category_param:
+        filters.append("category = %s")
+        params.append(category_param)
+
+    where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+    with conn.cursor() as cur:
+        cur.execute(f"SELECT COUNT(*) FROM {SYSTEM_LOG_TABLE} {where_clause}", params)
+        total_raw = cur.fetchone()
+    total = int(total_raw[0] if total_raw else 0)
+
+    query_params = list(params)
+    query_params.extend([limit, offset])
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            f"""
+            SELECT id, category, action, level, message, metadata, created_at
+            FROM {SYSTEM_LOG_TABLE}
+            {where_clause}
+            ORDER BY created_at DESC, id DESC
+            LIMIT %s OFFSET %s
+            """,
+            query_params,
+        )
+        rows = [_normalize_system_log_row(dict(row)) for row in cur.fetchall()]
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "items": rows,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "max_rows": MAX_SYSTEM_LOG_ROWS,
+        }
+    )
+
+
+def _system_logs_handle_post(request: HttpRequest, conn: PgConnection) -> JsonResponse:
+    """處理新增日誌的請求並立即回傳新增資料。"""
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except Exception:
+        return JsonResponse({"ok": False, "error": "Invalid JSON"}, status=400)
+
+    if not isinstance(payload, dict):
+        return JsonResponse({"ok": False, "error": "Invalid payload"}, status=400)
+
+    action = (payload.get("action") or "").strip()
+    message = (payload.get("message") or "").strip()
+    if not action or not message:
+        return JsonResponse({"ok": False, "error": "Missing action or message"}, status=400)
+
+    level = (payload.get("level") or "INFO").strip().upper() or "INFO"
+    category = (payload.get("category") or "web").strip() or "web"
+    metadata_raw = payload.get("metadata")
+    if metadata_raw is not None and not isinstance(metadata_raw, (dict, list)):
+        metadata_raw = None
+
+    with conn:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                f"""
+                INSERT INTO {SYSTEM_LOG_TABLE} (category, action, level, message, metadata)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id, category, action, level, message, metadata, created_at
+                """,
+                (
+                    category,
+                    action,
+                    level,
+                    message,
+                    Json(metadata_raw) if metadata_raw is not None else None,
+                ),
+            )
+            inserted = cur.fetchone()
+            _prune_system_logs(cur)
+
+    if not inserted:
+        return JsonResponse({"ok": False, "error": "Failed to insert log"}, status=500)
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "item": _normalize_system_log_row(dict(inserted)),
+            "max_rows": MAX_SYSTEM_LOG_ROWS,
+        }
+    )
+
+
+@_require_auth
+@require_http_methods(["GET", "POST"])
+def api_system_logs(request: HttpRequest):
+    """提供系統日誌查詢與新增功能，資料寫入本地 PostgreSQL。"""
+
+    conn: PgConnection | None = None
+    try:
+        conn = psycopg2.connect(**DB_CONFIG)
+        _ensure_system_log_table(conn)
+        if request.method == "GET":
+            return _system_logs_handle_get(request, conn)
+        return _system_logs_handle_post(request, conn)
+    except Exception as exc:
+        logger.exception("System log API error: {0}".format(exc))
+        return JsonResponse({"ok": False, "error": "SERVER_ERROR"}, status=500)
+    finally:
+        if conn:
+            conn.close()
+
+
 @csrf_exempt
 def api_cameras_bind(request):
     print("==== 接收到綁定請求 ====")
@@ -1314,6 +1826,12 @@ def api_cameras_bind(request):
         try:
             data = json.loads(request.body.decode())
         except json.JSONDecodeError:
+            _log_web_action(
+                request,
+                action="camera_bind_failed",
+                message="綁定攝影機失敗：JSON 格式錯誤",
+                level="WARN",
+            )
             return JsonResponse({"ok": False, "error": "Invalid JSON"})
 
         ip_address = (data.get("ip_address") or "").strip()
@@ -1339,7 +1857,24 @@ def api_cameras_bind(request):
         password_value = ipc_password if ipc_password else None
 
         if not ip_address or not mac_address:
+            _log_web_action(
+                request,
+                action="camera_bind_failed",
+                message="綁定攝影機失敗：缺少 IP 或 MAC",
+                level="WARN",
+                metadata={
+                    "camera_ip": ip_address,
+                    "camera_mac": mac_address,
+                },
+            )
             return JsonResponse({"ok": False, "error": "Missing required fields"})
+
+        log_metadata = {
+            "camera_ip": ip_address,
+            "camera_mac": mac_address,
+            "ipc_name": ipc_name,
+            "custom_name": custom_name,
+        }
 
         conn = None
         cur = None
@@ -1380,6 +1915,13 @@ def api_cameras_bind(request):
                         "name": (row[2] or "IPC"),
                         "is_bound": True
                     }
+                _log_web_action(
+                    request,
+                    action="camera_bind_conflict",
+                    message="綁定攝影機失敗：裝置已存在",
+                    level="WARN",
+                    metadata={**log_metadata, "name": item["name"] if item else custom_name},
+                )
                 return JsonResponse({"ok": False, "error": "攝影機已綁定", "code": "ALREADY_BOUND", "item": item})
 
             cur.execute(
@@ -1397,6 +1939,12 @@ def api_cameras_bind(request):
                 ),
             )
             conn.commit()
+            _log_web_action(
+                request,
+                action="camera_bind_success",
+                message="綁定攝影機成功",
+                metadata=log_metadata,
+            )
             return JsonResponse({
                 "ok": True,
                 "item": {
@@ -1430,33 +1978,71 @@ def api_cameras_bind(request):
                 row = None
             item = None
             if row:
-                item = {
-                    "ip": (row[0] or "").strip(),
-                    "mac": (row[1] or "").replace("-", ":").strip().upper(),
-                    "name": (row[2] or "IPC"),
-                    "is_bound": True
-                }
+                    item = {
+                        "ip": (row[0] or "").strip(),
+                        "mac": (row[1] or "").replace("-", ":").strip().upper(),
+                        "name": (row[2] or "IPC"),
+                        "is_bound": True
+                    }
+            _log_web_action(
+                request,
+                action="camera_bind_conflict",
+                message="綁定攝影機失敗：資料庫唯一值衝突",
+                level="WARN",
+                metadata={**log_metadata, "name": item["name"] if item else custom_name},
+            )
             return JsonResponse({"ok": False, "error": "攝影機已綁定", "code": "ALREADY_BOUND", "item": item})
         except Exception as e:
             if conn:
                 conn.rollback()
             print("DB insert error:", e)
+            _log_web_action(
+                request,
+                action="camera_bind_failed",
+                message="綁定攝影機失敗：資料庫錯誤",
+                level="ERROR",
+                metadata={**log_metadata, "error": str(e)},
+            )
             return JsonResponse({"ok": False, "error": str(e)})
         finally:
             if cur:
                 cur.close()
             if conn:
                 conn.close()
+    else:
+        _log_web_action(
+            request,
+            action="camera_bind_invalid_method",
+            message="綁定攝影機失敗：HTTP 方法不被允許",
+            level="WARN",
+        )
     return JsonResponse({"ok": False, "error": "Invalid method"})
 
 @csrf_exempt
 def api_cameras_unbind(request):
     print("==== 接收到刪除請求 ====")
     if request.method == "POST":
-        data = json.loads(request.body.decode())
+        try:
+            data = json.loads(request.body.decode())
+        except json.JSONDecodeError:
+            _log_web_action(
+                request,
+                action="camera_unbind_failed",
+                message="解除攝影機綁定失敗：JSON 格式錯誤",
+                level="WARN",
+            )
+            return JsonResponse({"ok": False, "error": "Invalid JSON"})
+
         mac_address = (data.get("mac_address") or "").replace("-", ":").strip().upper()
         ip_address = (data.get("ip_address") or "").strip()
         if not mac_address and not ip_address:
+            _log_web_action(
+                request,
+                action="camera_unbind_failed",
+                message="解除攝影機綁定失敗：缺少辨識資訊",
+                level="WARN",
+                metadata={"camera_ip": ip_address, "camera_mac": mac_address},
+            )
             return JsonResponse({"ok": False, "error": "Missing MAC or IP address"})
         try:
             conn = psycopg2.connect(**DB_CONFIG)
@@ -1476,7 +2062,23 @@ def api_cameras_unbind(request):
             cur.close()
             conn.close()
             if not deleted:
+                _log_web_action(
+                    request,
+                    action="camera_unbind_not_found",
+                    message="解除攝影機綁定失敗：找不到指定裝置",
+                    level="WARN",
+                    metadata={"camera_ip": ip_address, "camera_mac": mac_address},
+                )
                 return JsonResponse({"ok": False, "error": "NOT_FOUND"})
+            _log_web_action(
+                request,
+                action="camera_unbind_success",
+                message="解除攝影機綁定成功",
+                metadata={
+                    "camera_ip": (deleted[0] or "").strip(),
+                    "camera_mac": (deleted[1] or "").replace("-", ":").strip().upper(),
+                },
+            )
             return JsonResponse({
                 "ok": True,
                 "item": {
@@ -1486,7 +2088,25 @@ def api_cameras_unbind(request):
             })
         except Exception as e:
             print("DB delete error:", e)
+            _log_web_action(
+                request,
+                action="camera_unbind_failed",
+                message="解除攝影機綁定失敗：資料庫錯誤",
+                level="ERROR",
+                metadata={
+                    "camera_ip": ip_address,
+                    "camera_mac": mac_address,
+                    "error": str(e),
+                },
+            )
             return JsonResponse({"ok": False, "error": str(e)})
+    else:
+        _log_web_action(
+            request,
+            action="camera_unbind_invalid_method",
+            message="解除攝影機綁定失敗：HTTP 方法不被允許",
+            level="WARN",
+        )
     return JsonResponse({"ok": False, "error": "Invalid method"})
 
 # ====== API（啟用；登入保護） ======

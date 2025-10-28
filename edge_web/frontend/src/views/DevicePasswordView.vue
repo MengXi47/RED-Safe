@@ -6,20 +6,61 @@
     </header>
     <BaseCard>
       <form class="space-y-4" @submit.prevent="submit">
-        <BaseInput v-model="form.old_password" label="舊密碼" type="password" :error="errors.old_password" />
+        <BaseInput
+          v-model="form.old_password"
+          label="舊密碼"
+          :type="visibility.old ? 'text' : 'password'"
+          :error="errors.old_password"
+        >
+          <template #append>
+            <button
+              type="button"
+              class="text-xs font-semibold text-brand-600 transition hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-100 rounded-lg px-1 py-0.5"
+              :aria-label="visibility.old ? '隱藏舊密碼' : '顯示舊密碼'"
+              tabindex="-1"
+              @click="toggleVisibility('old')"
+            >
+              {{ visibility.old ? '隱藏' : '顯示' }}
+            </button>
+          </template>
+        </BaseInput>
         <BaseInput
           v-model="form.new_password1"
           label="新密碼"
-          type="password"
+          :type="visibility.new1 ? 'text' : 'password'"
           help="至少 6 碼，僅限英數"
           :error="errors.new_password1"
-        />
+        >
+          <template #append>
+            <button
+              type="button"
+              class="text-xs font-semibold text-brand-600 transition hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-100 rounded-lg px-1 py-0.5"
+              :aria-label="visibility.new1 ? '隱藏新密碼' : '顯示新密碼'"
+              tabindex="-1"
+              @click="toggleVisibility('new1')"
+            >
+              {{ visibility.new1 ? '隱藏' : '顯示' }}
+            </button>
+          </template>
+        </BaseInput>
         <BaseInput
           v-model="form.new_password2"
           label="再次輸入新密碼"
-          type="password"
+          :type="visibility.new2 ? 'text' : 'password'"
           :error="errors.new_password2"
-        />
+        >
+          <template #append>
+            <button
+              type="button"
+              class="text-xs font-semibold text-brand-600 transition hover:text-brand-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-100 rounded-lg px-1 py-0.5"
+              :aria-label="visibility.new2 ? '隱藏再次輸入新密碼' : '顯示再次輸入新密碼'"
+              tabindex="-1"
+              @click="toggleVisibility('new2')"
+            >
+              {{ visibility.new2 ? '隱藏' : '顯示' }}
+            </button>
+          </template>
+        </BaseInput>
         <div class="flex justify-end gap-3">
           <BaseButton type="submit" :loading="submitting">確認修改</BaseButton>
         </div>
@@ -54,8 +95,17 @@ const form = reactive({
   new_password2: ''
 });
 const errors = reactive<Record<string, string>>({ ...initialFormErrors });
+const visibility = reactive({
+  old: false,
+  new1: false,
+  new2: false
+});
 const submitting = ref(false);
 const uiStore = useUiStore();
+
+const toggleVisibility = (field: keyof typeof visibility) => {
+  visibility[field] = !visibility[field];
+};
 
 // 提交密碼更新請求，並解析回傳的表單錯誤
 const submit = async () => {
@@ -80,6 +130,8 @@ const submit = async () => {
     parseErrors(html);
     if (Object.keys(errors).length === 0) {
       uiStore.pushToast('密碼更新完成，請重新登入', 'success');
+    } else {
+      uiStore.pushToast('密碼變更失敗，請檢查輸入', 'danger');
     }
   } catch (error) {
     console.error(error);

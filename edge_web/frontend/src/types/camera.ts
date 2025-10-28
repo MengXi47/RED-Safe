@@ -36,6 +36,13 @@ export interface CameraUnbindResponse {
   code?: string;
 }
 
+export interface CameraBoundListResponse {
+  ok: boolean;
+  items: Camera[];
+  count: number;
+  error?: string;
+}
+
 export interface CameraPreviewProbePayload {
   ip: string;
   account?: string;

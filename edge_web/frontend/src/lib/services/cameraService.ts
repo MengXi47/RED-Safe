@@ -6,6 +6,7 @@ import type {
   CameraPreviewOfferResponse,
   CameraPreviewProbePayload,
   CameraScanResponse,
+  CameraBoundListResponse,
   CameraUnbindResponse
 } from '@/types/camera';
 
@@ -81,4 +82,12 @@ export function previewHangup(payload: { session_id: string }) {
     method: 'POST',
     json: payload
   });
+}
+
+/**
+ * 函式用途：向後端請求目前已綁定的攝影機清單。
+ * @returns Promise 解析為已綁定的攝影機陣列與總筆數。
+ */
+export function fetchBoundCameras() {
+  return http<CameraBoundListResponse>('/api/cameras/bound');
 }
