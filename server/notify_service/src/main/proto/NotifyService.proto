@@ -10,10 +10,20 @@ option java_generic_services = true;
 
 service NotifyService {
   rpc SendEmailVerifyCode (SendEmailVerifyCodeRequest) returns (google.protobuf.Empty);
+  rpc SendFallAlert (SendFallAlertRequest) returns (google.protobuf.Empty);
 }
 
 message SendEmailVerifyCodeRequest {
   string to = 1;
   string code = 2;
   int32 ttl_minutes = 3;
+}
+
+message SendFallAlertRequest {
+  string to = 1;
+  string patient_id = 2;
+  string ip_address = 3;
+  string ipc_name = 4;
+  string event_time = 5;
+  string location = 6;
 }
