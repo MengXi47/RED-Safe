@@ -5,7 +5,7 @@ pipeline {
         SERVICE_DIR     = 'server/heartbeat_service'
         IMAGE_NAME      = 'heartbeat-service:latest'
         CONTAINER_NAME  = 'heartbeat-service'
-        DOCKERFILE_PATH = 'dockerfile'
+        DOCKERFILE_PATH = 'Dockerfile'
     }
 
     options {

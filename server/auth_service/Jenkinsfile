@@ -5,7 +5,7 @@ pipeline {
         SERVICE_DIR     = 'server/auth_service'
         IMAGE_NAME      = 'auth-service:latest'
         CONTAINER_NAME  = 'auth-service'
-        DOCKERFILE_PATH = 'dockerfile'
+        DOCKERFILE_PATH = 'Dockerfile'
     }
 
     options {

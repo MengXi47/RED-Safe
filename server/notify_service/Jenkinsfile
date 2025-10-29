@@ -5,7 +5,7 @@ pipeline {
         SERVICE_DIR     = 'server/notify_service'
         IMAGE_NAME      = 'notify-service:latest'
         CONTAINER_NAME  = 'notify-service'
-        DOCKERFILE_PATH = 'dockerfile'
+        DOCKERFILE_PATH = 'Dockerfile'
     }
 
     options {

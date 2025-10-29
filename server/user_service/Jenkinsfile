@@ -5,7 +5,7 @@ pipeline {
         SERVICE_DIR     = 'server/user_service'
         IMAGE_NAME      = 'user-service:latest'
         CONTAINER_NAME  = 'user-service'
-        DOCKERFILE_PATH = 'dockerfile'
+        DOCKERFILE_PATH = 'Dockerfile'
     }
 
     options {

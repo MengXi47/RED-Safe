@@ -5,7 +5,7 @@ pipeline {
         SERVICE_DIR     = 'server/edge_service'
         IMAGE_NAME      = 'edge-service:latest'
         CONTAINER_NAME  = 'edge-service'
-        DOCKERFILE_PATH = 'dockerfile'
+        DOCKERFILE_PATH = 'Dockerfile'
     }
 
     options {
