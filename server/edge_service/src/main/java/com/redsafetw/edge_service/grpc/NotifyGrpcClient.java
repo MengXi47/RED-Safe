@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Component
 @RequiredArgsConstructor
@@ -34,12 +35,17 @@ public class NotifyGrpcClient {
     }
 
     public void sendFallAlertEmail(String to, String edge_id, String ip, String ipc_name) {
+        OffsetDateTime now = OffsetDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+        String formatted = now.format(formatter);
+
         SendFallAlertRequest request = SendFallAlertRequest.newBuilder()
                 .setTo(to)
                 .setIpAddress(ip)
                 .setEdgeId(edge_id)
                 .setIpcName(ipc_name)
-                .setEventTime(String.valueOf(OffsetDateTime.now()))
+                .setLocation("臺中市太平區中山路二段57號")
+                .setEventTime(formatted)
                 .build();
 
         try {
