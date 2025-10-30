@@ -47,7 +47,7 @@ class AppConfig:
         model_imgsz = int(os.getenv("MODEL_IMGSZ", "640"))
         show_windows = os.getenv("MODEL_SHOW", "0").lower() in {"1", "true", "yes"}
         max_fps = float(os.getenv("MAX_FPS", "3"))
-        api_endpoint = os.getenv("FALL_WINDOW_API", "https://api.redsafe-tw.com/edge/test")
+        api_endpoint = os.getenv("FALL_WINDOW_API", "https://api.redsafe-tw.com/edge/fall/inference")
         edge_id = os.getenv("EDGE_ID", "RED-AAAAAAAA")
         window_frames = int(os.getenv("WINDOW_FRAMES", "3"))
         window_batch_size = int(os.getenv("WINDOW_BATCH_SIZE", "3"))

@@ -63,7 +63,7 @@ public class FallInferenceService {
             WindowFrame frame = frames.get(frameIndex);
             try {
                 double probability = fallInferenceGrpcClient.inferFallProbability(toFeatureVector(frame));
-                if (probability <= requestDto.getFallSensitivity()) {
+                if ((probability * 100) <= requestDto.getFallSensitivity()) {
                     continue;
                 }
 
