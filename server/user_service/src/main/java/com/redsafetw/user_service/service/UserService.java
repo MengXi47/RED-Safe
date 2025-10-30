@@ -158,7 +158,7 @@ public class UserService {
 
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("edge_id", updateEdgePasswordRequest.getEdgeId());
-        payload.put("edge_password", updateEdgePasswordRequest.getEdgePassword());
+        payload.put("edge_password", updateEdgePasswordRequest.getNewEdgePassword());
 
         EdgeCommandRequest req =  new EdgeCommandRequest();
         req.setEdgeId(edgeId);
