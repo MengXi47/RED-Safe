@@ -64,7 +64,7 @@ public class EdgeController {
     }
 
     @PostMapping("/fall/inference")
-    public ErrorCodeResponse fallInference(@Valid @RequestBody FallInferenceRequestDto request) {
+    public ErrorCodeResponse fallInference(@Valid @RequestBody FallInferenceRequest request) {
         return fallInferenceService.inferFall(request);
     }
 }

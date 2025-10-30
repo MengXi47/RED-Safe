@@ -3,6 +3,7 @@ target_add_lib(fall_inference_service_grpc
     RSEC_protos
     gRPC::grpc++
     gRPC::grpc++_reflection
+    Folly::folly
 )
 
 target_include_directories(fall_inference_service_grpc

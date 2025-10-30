@@ -1,12 +1,19 @@
 package com.redsafetw.edge_service.service;
 
+import com.grpc.notify.NotifyService;
+import com.grpc.user.ListEdgeUsersResponse;
+import com.redsafetw.edge_service.dto.EdgeUserBindListResponse;
 import com.redsafetw.edge_service.dto.ErrorCodeResponse;
-import com.redsafetw.edge_service.dto.FallInferenceRequestDto;
-import com.redsafetw.edge_service.dto.FallInferenceRequestDto.WindowBatch;
-import com.redsafetw.edge_service.dto.FallInferenceRequestDto.WindowFrame;
+import com.redsafetw.edge_service.dto.FallInferenceRequest;
+import com.redsafetw.edge_service.dto.FallInferenceRequest.WindowBatch;
+import com.redsafetw.edge_service.dto.FallInferenceRequest.WindowFrame;
 import com.redsafetw.edge_service.grpc.FallInferenceGrpcClient;
+import com.redsafetw.edge_service.grpc.NotifyGrpcClient;
+import com.redsafetw.edge_service.grpc.UserGrpcClient;
 import io.grpc.StatusRuntimeException;
+
 import java.util.List;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -20,7 +27,11 @@ public class FallInferenceService {
 
     private final FallInferenceGrpcClient fallInferenceGrpcClient;
 
-    public ErrorCodeResponse inferFall(FallInferenceRequestDto requestDto) {
+    private final UserGrpcClient userGrpcClient;
+    private final NotifyGrpcClient notifySGrpcClient;
+
+
+    public ErrorCodeResponse inferFall(FallInferenceRequest requestDto) {
         List<WindowBatch> windowBatches = requestDto.getWindows();
         if (windowBatches == null || windowBatches.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "windows_required");
@@ -39,7 +50,7 @@ public class FallInferenceService {
     }
 
     private void processWindowFrames(
-            FallInferenceRequestDto requestDto,
+            FallInferenceRequest requestDto,
             List<WindowFrame> frames,
             String windowLabel,
             int batchIndex
@@ -52,14 +63,24 @@ public class FallInferenceService {
             WindowFrame frame = frames.get(frameIndex);
             try {
                 double probability = fallInferenceGrpcClient.inferFallProbability(toFeatureVector(frame));
-                log.info(
-                        "Fall inference result edge={} window={} batch={} frame={} probability={}",
-                        requestDto.getEdgeId(),
-                        windowLabel,
-                        batchIndex,
-                        frameIndex,
-                        probability
-                );
+                if (probability <= requestDto.getFallSensitivity()) {
+                    continue;
+                }
+
+                ListEdgeUsersResponse grpcResponse;
+                grpcResponse = userGrpcClient.listEdgeUsers(requestDto.getEdgeId());
+
+                List<EdgeUserBindListResponse.UserItem> users = grpcResponse.getUsersList().stream()
+                        .map(user -> EdgeUserBindListResponse.UserItem.builder()
+                                .userId(user.getUserId())
+                                .email(user.getEmail())
+                                .build())
+                        .toList();
+
+                for (EdgeUserBindListResponse.UserItem user : users) {
+                    notifySGrpcClient.sendFallAlertEmail(user.getEmail(), requestDto.getEdgeId(), requestDto.getIpAddress(), requestDto.getIpcName());
+                }
+
             } catch (StatusRuntimeException ex) {
                 log.error(
                         "Fall inference gRPC call failed for edge {} window {} batch {} frame {}",

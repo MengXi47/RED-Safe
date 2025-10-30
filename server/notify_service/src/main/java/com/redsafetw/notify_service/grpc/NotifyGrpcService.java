@@ -65,15 +65,15 @@ public class NotifyGrpcService extends NotifyServiceGrpc.NotifyServiceImplBase {
     @Override
     public void sendFallAlert(SendFallAlertRequest request, StreamObserver<Empty> responseObserver) {
         String to = request.getTo();
-        String patientId = request.getPatientId();
+        String edgeId = request.getEdgeId();
         String ipAddress = request.getIpAddress();
         String ipcName = request.getIpcName();
         String eventTime = request.getEventTime();
         String location = request.getLocation();
 
-        log.info("gRPC Notify.SendFallAlert to={} patientId={}", to, patientId);
+        log.info("gRPC Notify.SendFallAlert to={} patientId={}", to, edgeId);
 
-        if (!StringUtils.hasText(to) || !StringUtils.hasText(patientId) || !StringUtils.hasText(eventTime)) {
+        if (!StringUtils.hasText(to) || !StringUtils.hasText(edgeId) || !StringUtils.hasText(eventTime)) {
             responseObserver.onError(Status.INVALID_ARGUMENT
                     .withDescription("to, patient_id and event_time must not be blank")
                     .asRuntimeException());
@@ -81,7 +81,7 @@ public class NotifyGrpcService extends NotifyServiceGrpc.NotifyServiceImplBase {
         }
 
         try {
-            emailService.sendFallAlert(to, patientId, ipAddress, ipcName, eventTime, location);
+            emailService.sendFallAlert(to, edgeId, ipAddress, ipcName, eventTime, location);
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
         } catch (MessagingException ex) {

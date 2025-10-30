@@ -2,6 +2,7 @@ package com.redsafetw.edge_service.grpc;
 
 import com.grpc.fallinference.FallInferenceServiceGrpc;
 import com.grpc.heartbeat.HeartbeatServiceGrpc;
+import com.grpc.notify.NotifyServiceGrpc;
 import com.grpc.user.UserServiceGrpc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,5 +24,10 @@ public class GrpcClientsConfig {
     @Bean
     FallInferenceServiceGrpc.FallInferenceServiceBlockingStub fallInferenceBlockingStub(GrpcChannelFactory channels) {
         return FallInferenceServiceGrpc.newBlockingStub(channels.createChannel("fallInference"));
+    }
+
+    @Bean
+    NotifyServiceGrpc.NotifyServiceBlockingStub notifyServiceBlockingStub(GrpcChannelFactory channels) {
+        return NotifyServiceGrpc.newBlockingStub(channels.createChannel("notify"));
     }
 }
