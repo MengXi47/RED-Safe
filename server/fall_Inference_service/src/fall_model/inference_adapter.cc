@@ -29,4 +29,4 @@ float InferenceAdapter::infer_one(const std::array<float, 9>& features) {
   return impl_->infer_one(features);
 }
 
-}  // namespace fall_model
+} // namespace fall_model

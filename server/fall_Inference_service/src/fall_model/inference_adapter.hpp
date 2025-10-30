@@ -28,4 +28,4 @@ class InferenceAdapter {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace fall_model
+} // namespace fall_model

@@ -19,7 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 @GrpcService
 @RequiredArgsConstructor
 @Slf4j
-public class EdgeServicegRPC extends EdgeServiceGrpc.EdgeServiceImplBase {
+public class EdgeServiceServer extends EdgeServiceGrpc.EdgeServiceImplBase {
     private final EdgeRepository edgeRepository;
     private final EdgeVerify edgeVerify;
 

@@ -1,6 +1,6 @@
 package com.redsafetw.edge_service.grpc;
 
-import com.grpc.fall.FallInferenceServiceGrpc;
+import com.grpc.fallinference.FallInferenceServiceGrpc;
 import com.grpc.heartbeat.HeartbeatServiceGrpc;
 import com.grpc.user.UserServiceGrpc;
 import org.springframework.context.annotation.Bean;

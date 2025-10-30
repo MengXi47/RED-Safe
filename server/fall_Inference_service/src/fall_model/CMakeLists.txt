@@ -1,3 +1,3 @@
-target_add_lib(FALL_INFERENCE_SERVICE_FALL_MODEL
+target_add_lib(fall_inference_service_fall_model
     ${TORCH_LIBRARIES}
 )
