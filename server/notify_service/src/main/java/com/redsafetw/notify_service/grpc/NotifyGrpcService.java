@@ -79,6 +79,7 @@ public class NotifyGrpcService extends NotifyServiceGrpc.NotifyServiceImplBase {
                     .asRuntimeException());
             return;
         }
+        
 
         try {
             emailService.sendFallAlert(to, edgeId, ipAddress, ipcName, eventTime, location);
