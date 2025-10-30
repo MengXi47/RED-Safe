@@ -14,17 +14,21 @@ from django.utils.safestring import mark_safe
 
 register = template.Library()
 
-MANIFEST_NAME = "manifest.json"
-FRONTEND_STATIC_DIR = Path(__file__).resolve().parents[1] / "static" / "frontend"
+FRONTEND_STATIC_DIR = Path(__file__).resolve().parents[2] / "static" / "frontend"
+MANIFEST_CANDIDATES = [
+    FRONTEND_STATIC_DIR / "manifest.json",
+    FRONTEND_STATIC_DIR / ".vite" / "manifest.json",
+]
 
 
 @lru_cache(maxsize=1)
 def _load_manifest() -> dict[str, dict[str, object]]:
-    manifest_path = FRONTEND_STATIC_DIR / MANIFEST_NAME
-    if not manifest_path.exists():
-        return {}
-    with manifest_path.open(encoding="utf-8") as manifest_file:
-        return json.load(manifest_file)
+    for manifest_path in MANIFEST_CANDIDATES:
+        if not manifest_path.exists():
+            continue
+        with manifest_path.open(encoding="utf-8") as manifest_file:
+            return json.load(manifest_file)
+    return {}
 
 
 def _build_static_path(asset_path: str) -> str:
