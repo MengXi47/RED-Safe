@@ -1,10 +1,7 @@
-########################
-# Build stage
-########################
+# Build
 FROM --platform=linux/amd64 debian:trixie-slim AS build
 ARG DEBIAN_FRONTEND=noninteractive
 
-# 基本編譯工具與相依套件
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
     build-essential \
@@ -37,13 +34,12 @@ RUN apt-get update \
     g++-14 \
     && rm -rf /var/lib/apt/lists/*
 
-# 使用 GCC 14
 ENV CC=gcc-14 \
     CXX=g++-14
 
 WORKDIR /workspace
 
-# 引入最新版 FastFloat
+# FastFloat
 RUN git clone --depth=1 https://github.com/fastfloat/fast_float.git /tmp/fast_float \
     && cmake -S /tmp/fast_float -B /tmp/fast_float/build -GNinja \
     -DCMAKE_BUILD_TYPE=Release \
@@ -56,7 +52,7 @@ RUN git clone --depth=1 https://github.com/fastfloat/fast_float.git /tmp/fast_fl
 ENV CMAKE_PREFIX_PATH=/opt/fast_float:$CMAKE_PREFIX_PATH \
     LD_LIBRARY_PATH=/opt/fast_float/lib:$LD_LIBRARY_PATH
 
-# 建置最新 Folly 供後續 CMake 尋找
+# Folly
 RUN git clone --depth=1 https://github.com/facebook/folly.git /tmp/folly \
     && cmake -S /tmp/folly -B /tmp/folly/build -GNinja \
     -DCMAKE_BUILD_TYPE=Release \
@@ -85,16 +81,13 @@ COPY . .
 
 RUN rm -rf libtorch
 
-# 建置與安裝到臨時目的地
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
     && cmake --build build -j \
     && mkdir -p /opt/fall_inference_service/bin \
     && cp build/bin/fall_inference_service_bin /opt/fall_inference_service/bin/ \
     && cp fall_probability_model_ts.pt /opt/fall_inference_service/bin/
 
-########################
-# Runtime stage
-########################
+# Runtime
 FROM --platform=linux/amd64 debian:trixie-slim AS runtime
 ARG DEBIAN_FRONTEND=noninteractive
 
