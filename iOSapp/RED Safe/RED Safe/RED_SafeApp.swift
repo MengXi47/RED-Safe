@@ -16,6 +16,11 @@ struct RED_SafeApp: App {
 private struct RootRouter: View {
     @EnvironmentObject private var auth: AuthManager
     @State private var showSplashOverlay = true
+    @AppStorage("appAppearance") private var appearanceSelection = AppearanceMode.system.rawValue
+
+    private var currentAppearance: AppearanceMode {
+        AppearanceMode(rawValue: appearanceSelection) ?? .system
+    }
 
     var body: some View {
         ZStack {
@@ -43,5 +48,6 @@ private struct RootRouter: View {
                 }
             }
         }
+        .preferredColorScheme(currentAppearance.colorScheme)
     }
 }

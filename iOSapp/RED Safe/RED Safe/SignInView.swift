@@ -6,7 +6,6 @@ struct SignInView: View {
     @StateObject private var viewModel = SignInViewModel()
     @FocusState private var focusedField: SignInViewModel.Field?
     @State private var animateBackground = false
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         NavigationStack {
@@ -70,27 +69,7 @@ struct SignInView: View {
     // MARK: - Sections
 
     private var backgroundLayer: some View {
-        let largeGlowOpacity = colorScheme == .dark ? 0.28 : 0.5
-        let smallGlowOpacity = colorScheme == .dark ? 0.18 : 0.35
-
-        return LiquidGlassBackground()
-            .overlay(
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(largeGlowOpacity))
-                        .frame(width: animateBackground ? 360 : 220)
-                        .blur(radius: 60)
-                        .offset(x: -150, y: animateBackground ? -260 : -140)
-                        .animation(.easeOut(duration: 1.0), value: animateBackground)
-
-                    Circle()
-                        .fill(Color.white.opacity(smallGlowOpacity))
-                        .frame(width: animateBackground ? 320 : 200)
-                        .blur(radius: 48)
-                        .offset(x: 170, y: animateBackground ? 280 : 160)
-                        .animation(.easeOut(duration: 1.0).delay(0.05), value: animateBackground)
-                }
-            )
+        AppBackground(animate: $animateBackground)
     }
 
     private var heroSection: some View {

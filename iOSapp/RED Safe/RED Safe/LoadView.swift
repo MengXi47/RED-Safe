@@ -5,14 +5,7 @@ struct LoadView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [.appBackgroundTop, .appBackgroundMid, .appBackgroundBottom],
-                startPoint: animate ? .topTrailing : .topLeading,
-                endPoint: animate ? .bottomLeading : .bottomTrailing
-            )
-            .ignoresSafeArea()
-            .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true), value: animate)
-
+            AppBackground(animate: $animate)
             VStack(spacing: 24) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 40, style: .continuous)

@@ -1,29 +1,39 @@
 import SwiftUI
 
-/// 共用的 Liquid Glass 介面風格工具。
-struct LiquidGlassBackground: View {
+/// 全域 App 背景：與儀表板一致的漸層與光暈效果。
+struct AppBackground: View {
+    @Binding private var animate: Bool
     @Environment(\.colorScheme) private var colorScheme
 
+    init(animate: Binding<Bool> = .constant(true)) {
+        _animate = animate
+    }
+
     var body: some View {
-        LinearGradient(
-            colors: [.appBackgroundTop, .appBackgroundMid, .appBackgroundBottom],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .overlay(
-            ZStack {
-                Circle()
-                    .fill(colorScheme == .dark ? Color.white.opacity(0.18) : Color.white.opacity(0.45))
-                    .frame(width: 360)
-                    .blur(radius: 60)
-                    .offset(x: -150, y: -220)
-                Circle()
-                    .fill(colorScheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.32))
-                    .frame(width: 300)
-                    .blur(radius: 52)
-                    .offset(x: 180, y: 260)
-            }
-        )
+        let largeGlowOpacity = colorScheme == .dark ? 0.22 : 0.45
+        let smallGlowOpacity = colorScheme == .dark ? 0.14 : 0.32
+
+        return ZStack {
+            LinearGradient(
+                colors: [.appBackgroundTop, .appBackgroundMid, .appBackgroundBottom],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            Circle()
+                .fill(Color.white.opacity(largeGlowOpacity))
+                .frame(width: animate ? 360 : 220)
+                .blur(radius: 60)
+                .offset(x: -150, y: animate ? -260 : -140)
+                .animation(.easeOut(duration: 1.0), value: animate)
+
+            Circle()
+                .fill(Color.white.opacity(smallGlowOpacity))
+                .frame(width: animate ? 320 : 200)
+                .blur(radius: 52)
+                .offset(x: 170, y: animate ? 280 : 160)
+                .animation(.easeOut(duration: 1.0).delay(0.05), value: animate)
+        }
         .ignoresSafeArea()
     }
 }

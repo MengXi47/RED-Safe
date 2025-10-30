@@ -144,6 +144,11 @@ struct IPCameraConfigView: View {
         }
         .navigationTitle("IP Camera配置")
         .navigationBarTitleDisplayMode(.inline)
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background { AppBackground() }
+        .listRowBackground(Color.surfaceBackground)
+        .toolbar(.hidden, for: .tabBar)
         .task(id: edge.edgeId) {
             await fetchAddedCameras()
         }

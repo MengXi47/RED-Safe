@@ -6,14 +6,12 @@ import UIKit
 enum ProfileSheet: Identifiable {
     case displayName
     case password
-    case push
     case otp
 
     var id: String {
         switch self {
         case .displayName: return "display-name"
         case .password: return "password"
-        case .push: return "push"
         case .otp: return "otp"
         }
     }
@@ -24,22 +22,23 @@ struct AccountView: View {
     @ObservedObject var auth: AuthManager
     @ObservedObject var profileVM: ProfileViewModel
     @Binding var profileSheet: ProfileSheet?
-    @State private var showDisableOtpConfirmation = false
+    @AppStorage("appAppearance") private var appearanceSelection = AppearanceMode.system.rawValue
 
     var body: some View {
         NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    header
-                    infoCard
-                    pushCard
-                    signOutButton
+            ZStack {
+                AppBackground()
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        header
+                        infoCard
+                        signOutButton
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 18)
+                    .padding(.bottom, 48)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 32)
-                .padding(.bottom, 48)
             }
-            .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .sheet(item: $profileSheet) { sheet in
                 switch sheet {
                 case .displayName:
@@ -64,14 +63,6 @@ struct AccountView: View {
                             completion(success)
                         }
                     }
-                case .push:
-                    RegisterDeviceSheet { deviceId, token, deviceName, completion in
-                        Task { @MainActor in
-                            let success = await profileVM.registerDevice(deviceId: deviceId, apnsToken: token, deviceName: deviceName)
-                            if success { profileSheet = nil }
-                            completion(success)
-                        }
-                    }
                 case .otp:
                     OTPSetupIntroSheet(
                         viewModel: profileVM,
@@ -80,8 +71,10 @@ struct AccountView: View {
                     )
                 }
             }
-            .navigationTitle("帳號")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
+            .toolbar(.visible, for: .tabBar)
             .task {
                 await auth.refreshProfileFromRemote()
             }
@@ -89,13 +82,13 @@ struct AccountView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             Text("帳號與安全")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.primary)
             Text("管理個人資料與通知設定")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundStyle(Color.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -134,12 +127,16 @@ struct AccountView: View {
                     profileSheet = .password
                 }
                 otpStatusRow
+                appearanceRow
             }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
-        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Color.black.opacity(0.04)))
+        .glassCard(cornerRadius: 28)
+    }
+
+    private var currentAppearance: AppearanceMode {
+        AppearanceMode(rawValue: appearanceSelection) ?? .system
     }
 
     private var otpStatusRow: some View {
@@ -162,38 +159,42 @@ struct AccountView: View {
         .buttonStyle(.plain)
     }
 
-    private var pushCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("推播裝置")
-                        .font(.headline)
-                    if let device = profileVM.lastRegisteredDevice {
-                        Text(device.deviceName ?? "未命名裝置")
-                            .font(.subheadline)
-                        Text(device.iosDeviceId)
-                            .font(.caption.monospaced())
-                            .foregroundColor(.secondary)
-                        Text(device.apnsToken)
-                            .font(.caption2.monospaced())
-                            .foregroundColor(.secondary)
-                            .lineLimit(2)
+    private var appearanceRow: some View {
+        let current = currentAppearance
+
+        return Menu {
+            ForEach(AppearanceMode.allCases) { mode in
+                Button {
+                    appearanceSelection = mode.rawValue
+                } label: {
+                    if mode == current {
+                        Label(mode.displayName, systemImage: "checkmark")
                     } else {
-                        Text("尚未註冊任何 APNS 裝置")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                        Text(mode.displayName)
                     }
                 }
+            }
+        } label: {
+            HStack {
+                HStack(spacing: 10) {
+                    Image(systemName: "circle.lefthalf.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.primary)
+                    Text("介面模式")
+                        .foregroundStyle(Color.primary)
+                }
                 Spacer()
-                RoundedButton(symbol: "antenna.radiowaves.left.and.right") {
-                    profileSheet = .push
+                HStack(spacing: 6) {
+                    Text(current.displayName)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.secondary)
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.secondary)
                 }
             }
+            .padding(.vertical, 10)
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
-        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Color.black.opacity(0.04)))
     }
 
     private var signOutButton: some View {
@@ -296,7 +297,7 @@ private struct EnableOTPSheet: View {
                 .font(.title3.monospaced())
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .center)
-                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.surfaceBackground))
             Button(action: { copyToClipboard(key) }) {
                 Label("複製金鑰", systemImage: "doc.on.doc")
                     .font(.subheadline.weight(.semibold))
@@ -305,8 +306,8 @@ private struct EnableOTPSheet: View {
             .buttonStyle(.bordered)
         }
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.surfaceBackground))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.surfaceStroke))
     }
 
     private var backupCodesSection: some View {
@@ -335,12 +336,12 @@ private struct EnableOTPSheet: View {
                 }
                 .padding(.vertical, 6)
                 .padding(.horizontal, 12)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.surfaceBackground))
             }
         }
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.surfaceBackground))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.surfaceStroke))
     }
 
     private func generateOTP() async {
@@ -470,11 +471,11 @@ private struct OTPSetupIntroSheet: View {
                                     .scaledToFit()
                                     .frame(maxWidth: 240)
                                     .padding()
-                                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                                    .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.surfaceBackground))
                             }
                             .padding(20)
-                            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
-                            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+                            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.surfaceBackground))
+                            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.surfaceStroke))
                         }
                     }
                     if !backupCodes.isEmpty {
@@ -524,7 +525,7 @@ private struct OTPSetupIntroSheet: View {
                 .font(.title3.monospaced())
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .center)
-                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Color.surfaceBackground))
             Button(action: { copyToClipboard(key) }) {
                 Label("複製金鑰", systemImage: "doc.on.doc")
                     .font(.subheadline.weight(.semibold))
@@ -533,8 +534,8 @@ private struct OTPSetupIntroSheet: View {
             .buttonStyle(.bordered)
         }
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.surfaceBackground))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.surfaceStroke))
     }
 
     private var backupCodesSection: some View {
@@ -562,12 +563,12 @@ private struct OTPSetupIntroSheet: View {
                 }
                 .padding(.vertical, 6)
                 .padding(.horizontal, 12)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color(uiColor: .secondarySystemGroupedBackground)))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.surfaceBackground))
             }
         }
         .padding(20)
-        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color(uiColor: .systemBackground)))
-        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.black.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Color.surfaceBackground))
+        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.surfaceStroke))
     }
 
     private func qrImage(for secret: String) -> UIImage? {
@@ -612,23 +613,6 @@ private struct ButtonRow: View {
             .padding(.vertical, 10)
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct RoundedButton: View {
-    let symbol: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.headline)
-                .foregroundStyle(.white)
-                .frame(width: 46, height: 46)
-                .background(Circle().fill(Color.iconCircleBackground))
-        }
-        .buttonStyle(.plain)
-        .shadow(color: Color.surfaceShadow, radius: 12, x: 0, y: 8)
     }
 }
 
@@ -727,76 +711,6 @@ private struct UpdatePasswordSheet: View {
                         }
                     }
                     .disabled(!isValid || isSubmitting)
-                }
-            }
-        }
-    }
-}
-
-private struct RegisterDeviceSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var deviceId = ""
-    @State private var apnsToken = ""
-    @State private var deviceName = ""
-    @State private var isSubmitting = false
-
-    let onSubmit: (String?, String, String?, @escaping (Bool) -> Void) -> Void
-
-    private var normalizedDeviceId: String? {
-        let trimmed = deviceId.trimmed
-        return trimmed.isEmpty ? nil : trimmed
-    }
-    private var normalizedDeviceName: String? {
-        let trimmed = deviceName.trimmed
-        return trimmed.isEmpty ? nil : trimmed
-    }
-    private var normalizedToken: String { apnsToken.trimmed }
-    private var isDeviceIdValid: Bool {
-        guard let value = normalizedDeviceId else { return true }
-        return UUID(uuidString: value) != nil
-    }
-    private var isFormValid: Bool { !normalizedToken.isEmpty && isDeviceIdValid }
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("裝置資訊") {
-                    TextField("iOS Device ID (UUID)", text: $deviceId)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    TextField("裝置名稱 (選填)", text: $deviceName)
-                }
-                Section("APNS Token") {
-                    TextEditor(text: $apnsToken)
-                        .frame(height: 120)
-                        .font(.footnote.monospaced())
-                }
-                if !isDeviceIdValid {
-                    Text("Device ID 必須為合法的 UUID")
-                        .font(.footnote)
-                        .foregroundColor(.red)
-                }
-                if normalizedToken.isEmpty {
-                    Text("APNS Token 不可為空")
-                        .font(.footnote)
-                        .foregroundColor(.red)
-                }
-            }
-            .navigationTitle("推播裝置註冊")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") { dismiss() }
-                        .disabled(isSubmitting)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("送出") {
-                        isSubmitting = true
-                        onSubmit(normalizedDeviceId, normalizedToken, normalizedDeviceName) { success in
-                            isSubmitting = false
-                            if success { dismiss() }
-                        }
-                    }
-                    .disabled(!isFormValid || isSubmitting)
                 }
             }
         }

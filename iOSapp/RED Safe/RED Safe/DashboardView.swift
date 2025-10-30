@@ -97,36 +97,13 @@ struct DashboardView: View {
         } message: {
             Text("解除綁定後，需要重新輸入 Edge 密碼才能再次連結。")
         }
+        .toolbar(navigationPath.isEmpty ? .visible : .hidden, for: .tabBar)
     }
 
     // MARK: - 子區塊
 
     private var background: some View {
-        let largeGlowOpacity = colorScheme == .dark ? 0.22 : 0.45
-        let smallGlowOpacity = colorScheme == .dark ? 0.14 : 0.32
-
-        return ZStack {
-            LinearGradient(
-                colors: [.appBackgroundTop, .appBackgroundMid, .appBackgroundBottom],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(Color.white.opacity(largeGlowOpacity))
-                .frame(width: animateBackground ? 360 : 220)
-                .blur(radius: 60)
-                .offset(x: -150, y: animateBackground ? -260 : -140)
-                .animation(.easeOut(duration: 1.0), value: animateBackground)
-
-            Circle()
-                .fill(Color.white.opacity(smallGlowOpacity))
-                .frame(width: animateBackground ? 320 : 200)
-                .blur(radius: 52)
-                .offset(x: 170, y: animateBackground ? 280 : 160)
-                .animation(.easeOut(duration: 1.0).delay(0.05), value: animateBackground)
-        }
+        AppBackground(animate: $animateBackground)
     }
 
     private var header: some View {

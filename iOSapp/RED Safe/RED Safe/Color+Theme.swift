@@ -88,6 +88,16 @@ extension Color {
         dark: UIColor.white.withAlphaComponent(0.14)
     )
 
+    static let detailTextPrimary = adaptive(
+        light: UIColor(red: 24/255, green: 36/255, blue: 62/255, alpha: 1),
+        dark: UIColor(red: 94/255, green: 138/255, blue: 209/255, alpha: 1)
+    )
+
+    static let detailTextSecondary = adaptive(
+        light: UIColor(red: 92/255, green: 108/255, blue: 138/255, alpha: 1),
+        dark: UIColor(red: 132/255, green: 166/255, blue: 214/255, alpha: 1)
+    )
+
     static let loadingBackdrop = adaptive(
         light: UIColor.white.withAlphaComponent(0.38),
         dark: UIColor.white.withAlphaComponent(0.12)

@@ -7,7 +7,6 @@ struct SignUpView: View {
     @StateObject private var viewModel = SignUpViewModel()
     @FocusState private var focusedField: SignUpViewModel.Field?
     @State private var animateBackground = false
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
@@ -78,27 +77,7 @@ struct SignUpView: View {
     }
 
     private var backgroundLayer: some View {
-        let primaryGlow = colorScheme == .dark ? 0.22 : 0.3
-        let secondaryGlow = colorScheme == .dark ? 0.14 : 0.2
-
-        return LiquidGlassBackground()
-            .overlay(
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(primaryGlow))
-                        .frame(width: animateBackground ? 360 : 220)
-                        .blur(radius: 40)
-                        .offset(x: -150, y: animateBackground ? -250 : -140)
-                        .animation(.easeOut(duration: 1.0), value: animateBackground)
-
-                    Circle()
-                        .fill(Color.white.opacity(secondaryGlow))
-                        .frame(width: animateBackground ? 320 : 200)
-                        .blur(radius: 34)
-                        .offset(x: 160, y: animateBackground ? 260 : 150)
-                        .animation(.easeOut(duration: 1.0).delay(0.05), value: animateBackground)
-                }
-            )
+        AppBackground(animate: $animateBackground)
     }
 
     private var heroSection: some View {

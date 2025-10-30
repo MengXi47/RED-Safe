@@ -67,6 +67,11 @@ struct NetworkConfigView: View {
         }
         .navigationTitle("網路配置")
         .navigationBarTitleDisplayMode(.inline)
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background { AppBackground() }
+        .listRowBackground(Color.surfaceBackground)
+        .toolbar(.hidden, for: .tabBar)
     }
 
     private func fetchNetworkConfig() async {
