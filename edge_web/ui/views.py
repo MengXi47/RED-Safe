@@ -76,6 +76,15 @@ DEFAULT_EDGE_VERSION = getattr(settings, "EDGE_VERSION", "1.0.0")
 logger = logging.getLogger(__name__)
 
 
+def _normalize_fall_sensitivity(value: Any, default: int = 70) -> int:
+    """確保靈敏度值維持在 0-100 範圍內。"""
+    try:
+        numeric = int(value)
+    except (TypeError, ValueError):
+        numeric = default
+    return max(0, min(100, numeric))
+
+
 def _get_edge_config() -> EdgeConfig | None:
     """取得唯一一筆 edge 設定資料。"""
 
@@ -842,10 +851,12 @@ def _load_bound_entries():
             custom_name_value = (r.custom_name or "").strip()
             ipc_name_value = (r.ipc_name or "").strip()
             name_value = custom_name_value or ipc_name_value or mac_value or "IPC"
+            fall_sensitivity = _normalize_fall_sensitivity(r.fall_sensitivity)
             entry = {
                 "ip": ip_value,
                 "mac": mac_value,
                 "name": name_value,
+                "fall_sensitivity": fall_sensitivity,
             }
             bound.append(entry)
             if ip_value:
@@ -1528,7 +1539,7 @@ from psycopg2.extensions import connection as PgConnection, cursor as PgCursor
 from psycopg2.extras import Json, RealDictCursor
 
 DB_CONFIG = {
-    "dbname": "redsafedb",
+    "dbname": "postgres",
     "user": "redsafedb",
     "password": "redsafedb",
     "host": "127.0.0.1",
@@ -1846,6 +1857,8 @@ def api_cameras_bind(request):
         elif ipc_password_raw is not None:
             ipc_password = str(ipc_password_raw)
 
+        fall_sensitivity = _normalize_fall_sensitivity(data.get("fall_sensitivity"))
+
         if not custom_name:
             custom_name = ipc_name
         if not custom_name:
@@ -1874,6 +1887,7 @@ def api_cameras_bind(request):
             "camera_mac": mac_address,
             "ipc_name": ipc_name,
             "custom_name": custom_name,
+            "fall_sensitivity": fall_sensitivity,
         }
 
         conn = None
@@ -1897,7 +1911,8 @@ def api_cameras_bind(request):
                         SELECT
                             ip_address,
                             mac_address,
-                            COALESCE(NULLIF(custom_name, ''), NULLIF(ipc_name, ''), mac_address) AS name
+                            COALESCE(NULLIF(custom_name, ''), NULLIF(ipc_name, ''), mac_address) AS name,
+                            COALESCE(fall_sensitivity, 70) AS fall_sensitivity
                         FROM connected_ipc
                         WHERE ip_address = %s OR mac_address = %s
                         LIMIT 1
@@ -1913,7 +1928,8 @@ def api_cameras_bind(request):
                         "ip": (row[0] or "").strip(),
                         "mac": (row[1] or "").replace("-", ":").strip().upper(),
                         "name": (row[2] or "IPC"),
-                        "is_bound": True
+                        "is_bound": True,
+                        "fall_sensitivity": _normalize_fall_sensitivity(row[3]),
                     }
                 _log_web_action(
                     request,
@@ -1926,8 +1942,8 @@ def api_cameras_bind(request):
 
             cur.execute(
                 """
-                INSERT INTO connected_ipc (ip_address, mac_address, ipc_name, custom_name, ipc_account, ipc_password)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO connected_ipc (ip_address, mac_address, ipc_name, custom_name, ipc_account, ipc_password, fall_sensitivity)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     ip_address,
@@ -1936,6 +1952,7 @@ def api_cameras_bind(request):
                     custom_name,
                     account_value,
                     password_value,
+                    fall_sensitivity,
                 ),
             )
             conn.commit()
@@ -1951,7 +1968,8 @@ def api_cameras_bind(request):
                     "ip": ip_address,
                     "mac": mac_address,
                     "name": custom_name,
-                    "is_bound": True
+                    "is_bound": True,
+                    "fall_sensitivity": fall_sensitivity,
                 }
             })
         except errors.UniqueViolation:
@@ -1966,7 +1984,8 @@ def api_cameras_bind(request):
                     SELECT
                         ip_address,
                         mac_address,
-                        COALESCE(NULLIF(custom_name, ''), NULLIF(ipc_name, ''), mac_address) AS name
+                        COALESCE(NULLIF(custom_name, ''), NULLIF(ipc_name, ''), mac_address) AS name,
+                        COALESCE(fall_sensitivity, 70) AS fall_sensitivity
                     FROM connected_ipc
                     WHERE ip_address = %s OR mac_address = %s
                     LIMIT 1
@@ -1978,12 +1997,13 @@ def api_cameras_bind(request):
                 row = None
             item = None
             if row:
-                    item = {
-                        "ip": (row[0] or "").strip(),
-                        "mac": (row[1] or "").replace("-", ":").strip().upper(),
-                        "name": (row[2] or "IPC"),
-                        "is_bound": True
-                    }
+                item = {
+                    "ip": (row[0] or "").strip(),
+                    "mac": (row[1] or "").replace("-", ":").strip().upper(),
+                    "name": (row[2] or "IPC"),
+                    "is_bound": True,
+                    "fall_sensitivity": _normalize_fall_sensitivity(row[3]),
+                }
             _log_web_action(
                 request,
                 action="camera_bind_conflict",
@@ -2134,6 +2154,7 @@ def api_cameras_bound_list(request: HttpRequest):
             "mac": (b.get("mac") or "").upper(),
             "name": b.get("name") or "IPC",
             "is_bound": True,
+            "fall_sensitivity": _normalize_fall_sensitivity(b.get("fall_sensitivity")),
         }
         for b in bound
     ]

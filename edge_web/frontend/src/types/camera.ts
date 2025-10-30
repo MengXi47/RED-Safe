@@ -3,6 +3,7 @@ export interface Camera {
   mac: string;
   name: string;
   is_bound?: boolean;
+  fall_sensitivity?: number;
 }
 
 export interface CameraScanResponse {
@@ -18,6 +19,7 @@ export interface CameraBindPayload {
   custom_name: string;
   ipc_account?: string;
   ipc_password?: string;
+  fall_sensitivity: number;
 }
 
 export type CameraActionCode = 'AUTH_REQUIRED' | 'ALREADY_BOUND' | 'UNKNOWN_ERROR' | (string & {});

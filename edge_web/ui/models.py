@@ -25,6 +25,7 @@ class ConnectedIPC(models.Model):
     custom_name = models.CharField(max_length=255, blank=True, null=True)
     ipc_account = models.CharField(max_length=255, blank=True, null=True)
     ipc_password = models.CharField(max_length=255, blank=True, null=True)
+    fall_sensitivity = models.IntegerField(blank=True, null=True, default=70)
 
     class Meta:
         db_table = "connected_ipc"

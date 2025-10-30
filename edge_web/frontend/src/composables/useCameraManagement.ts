@@ -146,18 +146,28 @@ export const useCameraBinding = (options: CameraBindingOptions) => {
     }
   };
 
-  const confirmBind = async (payload: { custom_name: string; ipc_account?: string; ipc_password?: string }) => {
+  const confirmBind = async (payload: {
+    custom_name: string;
+    ipc_account?: string;
+    ipc_password?: string;
+    fall_sensitivity?: number;
+  }) => {
     const camera = options.selectedCamera.value;
     if (!camera) return;
     bindLoading.value = true;
     try {
+      const fallSensitivity = Math.min(
+        100,
+        Math.max(0, typeof payload.fall_sensitivity === 'number' ? Math.round(payload.fall_sensitivity) : 70)
+      );
       const requestPayload: CameraBindPayload = {
         ip_address: camera.ip,
         mac_address: camera.mac,
         ipc_name: camera.name,
         custom_name: payload.custom_name || camera.name,
         ipc_account: payload.ipc_account,
-        ipc_password: payload.ipc_password
+        ipc_password: payload.ipc_password,
+        fall_sensitivity: fallSensitivity
       };
       const response: CameraBindResponse = await bindCamera(requestPayload);
       if (response.ok && response.item) {

@@ -14,6 +14,20 @@
       <BaseInput v-model="form.custom_name" label="顯示名稱" placeholder="例如：大門攝影機" />
       <BaseInput v-model="form.ipc_account" label="登入帳號" placeholder="選填" />
       <BaseInput v-model="form.ipc_password" label="登入密碼" placeholder="選填" type="password" />
+      <label class="grid gap-2">
+        <span class="text-sm font-medium text-ink">靈敏度</span>
+        <div class="flex items-center gap-3">
+          <input
+            v-model.number="form.fall_sensitivity"
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            class="h-1.5 w-full cursor-pointer rounded-full bg-surface/60 outline-none"
+          />
+          <span class="w-10 text-right text-sm font-medium text-ink">{{ form.fall_sensitivity }}</span>
+        </div>
+      </label>
     </div>
     <template #footer>
       <BaseButton variant="ghost" @click="emit('close')">取消</BaseButton>
@@ -43,14 +57,26 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'submit', payload: { custom_name: string; ipc_account?: string; ipc_password?: string }): void;
+  (
+    e: 'submit',
+    payload: { custom_name: string; ipc_account?: string; ipc_password?: string; fall_sensitivity: number }
+  ): void;
 }>();
+
+const clampSensitivity = (value: unknown): number => {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  if (Number.isFinite(numeric)) {
+    return Math.min(100, Math.max(0, Math.round(numeric)));
+  }
+  return 70;
+};
 
 // 表單狀態：綁定前預填攝影機名稱並保留可修改欄位
 const form = reactive({
   custom_name: '',
   ipc_account: '',
-  ipc_password: ''
+  ipc_password: '',
+  fall_sensitivity: 70
 });
 
 // 監看選擇攝影機變化，預先填入名稱並清除帳密
@@ -61,12 +87,21 @@ watch(
     form.custom_name = next.name ?? 'IPC';
     form.ipc_account = '';
     form.ipc_password = '';
+    form.fall_sensitivity = clampSensitivity(next.fall_sensitivity ?? 70);
   },
   { immediate: true }
 );
 
+watch(
+  () => props.open,
+  (open) => {
+    if (!open) return;
+    form.fall_sensitivity = clampSensitivity(props.camera?.fall_sensitivity ?? 70);
+  }
+);
+
 // 送出表單並透過事件將資料交還外層
 const submit = () => {
-  emit('submit', { ...form });
+  emit('submit', { ...form, fall_sensitivity: clampSensitivity(form.fall_sensitivity) });
 };
 </script>
