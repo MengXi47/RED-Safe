@@ -1,5 +1,8 @@
 package com.redsafetw.user_service.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.redsafetw.user_service.domain.UserEdgeBindDomain;
 import com.redsafetw.user_service.dto.*;
 import com.grpc.auth.ChangePasswordResponse;
@@ -33,6 +36,9 @@ public class UserService {
     private final AuthGrpcClient authGrpcClient;
     private final TokenVerifier tokenVerifier;
     private final EdgeGrpcClient edgeGrpcClient;
+    private final EdgeCommandService edgeCommandService;
+    private final ObjectMapper objectMapper;
+
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
     public UserInfoResponse getUserInfo(String accessToken) {
@@ -150,6 +156,18 @@ public class UserService {
             throw new ResponseStatusException(status, errorCode);
         }
 
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("edge_id", updateEdgePasswordRequest.getEdgeId());
+        payload.put("edge_password", updateEdgePasswordRequest.getEdgePassword());
+
+        EdgeCommandRequest req =  new EdgeCommandRequest();
+        req.setEdgeId(edgeId);
+        req.setCode("106");
+        req.setPayload(payload);
+
+        EdgeCommandResponse ec = edgeCommandService.sendCommand(req, accessToken);
+        // TODO: 檢查ec回呼
+        
         return ErrorCodeResponse.builder()
                 .errorCode("0")
                 .build();

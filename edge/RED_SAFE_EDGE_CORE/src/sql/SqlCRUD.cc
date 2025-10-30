@@ -87,4 +87,21 @@ bool IPCinfo::del(std::string_view ip_address) {
   }
   return true;
 }
+
+bool config::updateEdgePassword(
+    std::string_view edge_id, std::string_view edge_password) {
+  try {
+    pqxx::work tx{connection()};
+    const auto r = tx.exec(
+        pqxx::prepped("update_edge_password"),
+        pqxx::params(edge_password, edge_id));
+    if (r.affected_rows() == 0) {
+      return false;
+    }
+    tx.commit();
+  } catch (pqxx::sql_error& e) {
+    LogErrorFormat("PostgreSQL error in updateEdgePassword(): {}", e.what());
+  }
+  return true;
+}
 } // namespace sql

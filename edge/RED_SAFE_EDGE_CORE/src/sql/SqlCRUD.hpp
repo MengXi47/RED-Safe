@@ -18,4 +18,9 @@ class IPCinfo : public ConnectionManager {
       std::string_view fall_sensitivity);
   static bool del(std::string_view ip_address);
 };
+class config : public ConnectionManager {
+ public:
+  static bool updateEdgePassword(
+      std::string_view edge_id, std::string_view edge_password);
+};
 } // namespace sql

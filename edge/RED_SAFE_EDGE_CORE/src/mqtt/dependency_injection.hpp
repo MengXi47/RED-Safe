@@ -54,22 +54,25 @@ inline void RegisterDefaultHandlers(
           publish_response,
           reset_keepalive),
 
-      // IPC掃描
+      // IPC 掃描
       MQTT_HANDLER_ENTRY(
           "101", ScanCommandHandler, config.ipcscan_timeout, publish_response),
 
       // 獲取網路配置
       MQTT_HANDLER_ENTRY("102", NetworkInfoHandler, config, publish_response),
 
-      // 獲取IPCInfo
+      // 獲取 IPCInfo
       MQTT_HANDLER_ENTRY("103", GetIPCInfoHandler, publish_response),
 
-      // 新增IPC
+      // 新增 IPC
       MQTT_HANDLER_ENTRY("104", SetIPCInfoHandler, publish_response),
 
-      // 刪除IPC
+      // 刪除 IPC
       MQTT_HANDLER_ENTRY("105", DelIPCInfoHandler, publish_response),
-      // TODO: 未來可在此加入更多Handler
+
+      // 更新 edge_password
+      MQTT_HANDLER_ENTRY(
+          "106", UpdateEdgePassword, publish_response, config.edge_id),
   };
 
   for (auto& [code, factory] : handler_entries) {

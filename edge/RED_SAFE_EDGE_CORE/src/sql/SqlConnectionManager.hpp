@@ -49,6 +49,11 @@ class ConnectionManager {
           "VALUES ($1, $2, $3, $4, $5, $6, $7)");
       conn.prepare(
           "delete_ipc_info", "DELETE FROM connected_ipc WHERE ip_address = $1");
+      conn.prepare(
+          "update_edge_password",
+          "UPDATE config "
+          "SET edge_password = $1 "
+          "WHERE edge_id = $2");
     } catch (const pqxx::sql_error& e) {
       if (e.sqlstate() != "42P05") {
         throw;

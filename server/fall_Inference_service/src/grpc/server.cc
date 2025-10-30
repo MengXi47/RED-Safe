@@ -49,13 +49,13 @@ grpc::Status FallInferenceServiceImpl::InferFallProbability(
   try {
     std::lock_guard<std::mutex> guard(infer_mutex_);
     const float probability = adapter_->infer_one(features);
-    const auto rounded_probability_str =
-        folly::sformat("{:.3f}", static_cast<double>(probability));
     const double rounded_probability =
-        folly::to<double>(rounded_probability_str);
-    const auto features_str = folly::join(",", features);
-    XLOGF(INFO, "features: {} , probability : {}", features_str,
-          rounded_probability_str);
+        std::round(probability * 1000.0) / 1000.0;
+    XLOGF(
+        INFO,
+        "probability_raw: {} probability: {}",
+        probability,
+        rounded_probability);
     response->set_probability(rounded_probability);
   } catch (const std::exception& ex) {
     return grpc::Status(
