@@ -219,8 +219,7 @@ class StreamWorker:
                                 send_windows_to_api(self.app_config, self.stream, list(window_batch))
                                 window_batch.clear()
 
-                    if frame_delay:
-                        time.sleep(frame_delay)
+                    time.sleep(1 / 3.7)
             except Exception as exc:
                 LOGGER.error("Error during tracking loop for %s: %s", self.stream.stream_url, exc)
             finally:

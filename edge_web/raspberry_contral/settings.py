@@ -80,7 +80,7 @@ WSGI_APPLICATION = "raspberry_contral.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "postgres",
+        "NAME": "redsafedb",
         "USER": "redsafedb",
         "PASSWORD": "redsafedb",
         "HOST": "127.0.0.1",
@@ -135,3 +135,23 @@ STATICFILES_STORAGE = (
 # SESSION_COOKIE_AGE = 60 * 60 * 24  # 一天 (不再使用固定天數)
 SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True  # 瀏覽器關閉後自動過期
+
+
+def _print_database_connection(sender, connection, **kwargs):
+    params = connection.get_connection_params()
+    host = params.get("host") or connection.settings_dict.get("HOST") or "localhost"
+    port = params.get("port") or connection.settings_dict.get("PORT") or "N/A"
+    db_name = connection.settings_dict.get("NAME") or "N/A"
+    print(
+        "[Database] connection established:",
+        f"alias={connection.alias}",
+        f"vendor={connection.vendor}",
+        f"host={host}",
+        f"port={port}",
+        f"name={db_name}",
+    )
+
+
+from django.db.backends.signals import connection_created
+
+connection_created.connect(_print_database_connection, dispatch_uid="raspberry_contral.database.print_connection")

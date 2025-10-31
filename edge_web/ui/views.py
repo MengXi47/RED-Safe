@@ -1538,12 +1538,13 @@ from psycopg2 import errors
 from psycopg2.extensions import connection as PgConnection, cursor as PgCursor
 from psycopg2.extras import Json, RealDictCursor
 
+_DEFAULT_DB = settings.DATABASES.get("default", {})
 DB_CONFIG = {
-    "dbname": "postgres",
-    "user": "redsafedb",
-    "password": "redsafedb",
-    "host": "127.0.0.1",
-    "port": "5432"
+    "dbname": (_DEFAULT_DB.get("NAME") or ""),
+    "user": (_DEFAULT_DB.get("USER") or ""),
+    "password": (_DEFAULT_DB.get("PASSWORD") or ""),
+    "host": (_DEFAULT_DB.get("HOST") or "localhost"),
+    "port": str(_DEFAULT_DB.get("PORT") or "5432"),
 }
 
 # 系統日誌設定：可依部署環境調整最大保留筆數，避免佔滿本地端儲存空間。

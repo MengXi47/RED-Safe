@@ -46,7 +46,6 @@ ENV CC=gcc-14 \
     CXX=g++-14
 
 WORKDIR /workspace
-COPY . .
 
 # 引入最新版 FastFloat
 RUN git clone --depth=1 https://github.com/fastfloat/fast_float.git /tmp/fast_float \
@@ -82,6 +81,8 @@ RUN set -eux; \
     mkdir -p /usr/local/include/boost; \
     cp -r /tmp/mqtt5/include/boost/mqtt5 /usr/local/include/boost/; \
     rm -rf /tmp/mqtt5
+
+COPY . .
 
 # 建置與安裝到臨時目的地
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \

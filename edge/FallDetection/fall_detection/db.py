@@ -54,7 +54,7 @@ class DatabaseClient:
     def fetch_connected_ipc(self) -> List[IPCStreamConfig]:
         sql = (
             "SELECT "
-            "ip_address::text, "
+            "host(ip_address), "
             "mac_address, "
             "ipc_name, "
             "custom_name, "
