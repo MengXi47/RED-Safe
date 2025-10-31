@@ -19,6 +19,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     torch --index-url https://download.pytorch.org/whl/cpu && \
     pip install --no-cache-dir \
     ultralytics \
+    "lap>=0.5.12" \
     numpy \
     opencv-python \
     requests \

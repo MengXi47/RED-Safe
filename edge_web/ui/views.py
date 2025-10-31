@@ -73,6 +73,38 @@ PASSWORD_REGEX = re.compile(r'^[A-Za-z0-9]{6,}$')
 
 DEFAULT_EDGE_VERSION = getattr(settings, "EDGE_VERSION", "1.0.0")
 
+
+def _error_code_ok(value: Any) -> bool:
+    """判斷 error_code 是否代表成功（0 或 "0"）。"""
+    try:
+        return int(str(value).strip(), 10) == 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _registration_success(status_code: int, data: Any, expected_edge_id: str) -> bool:
+    """判斷遠端註冊是否成功，容許多種回應格式。"""
+
+    if status_code != 200:
+        return False
+
+    if isinstance(data, dict):
+        edge_id = data.get("edge_id") or data.get("edgeId")
+        if edge_id:
+            return edge_id == expected_edge_id
+
+        if "error_code" in data:
+            return _error_code_ok(data.get("error_code"))
+
+        if "success" in data:
+            return bool(data["success"])
+
+        # 未提供明確狀態但 HTTP 200，視為成功
+        return True
+
+    # 非 dict（例如空字串、null）且 HTTP 200，也視為成功
+    return True
+
 logger = logging.getLogger(__name__)
 
 
@@ -219,14 +251,17 @@ def setup_view(request: HttpRequest):
         }
         try:
             resp = requests.post(url, json=payload, timeout=timeout)
-            data = {}
+            data: Any = {}
             try:
                 data = resp.json()
             except Exception:
                 pass
-            if resp.status_code == 200 and data.get("edge_id") == config.edge_id:
+            success = _registration_success(resp.status_code, data, config.edge_id)
+
+            if success:
                 request.session[SESSION_KEY] = True
                 return redirect("dashboard")
+
             ctx["error"] = f"遠端註冊失敗：HTTP {resp.status_code} 回應 {data}"
         except requests.RequestException as exc:
             ctx["error"] = f"遠端註冊連線失敗：{exc}"

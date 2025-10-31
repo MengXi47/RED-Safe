@@ -213,7 +213,7 @@ class StreamWorker:
                         if len(feature_seq[pid]) == self.app_config.window_frames:
                             feature_window = list(feature_seq[pid])
                             window_payload = _flatten_feature_window(feature_window)
-                            feature_seq[pid].clear()
+                            feature_seq[pid].popleft()
                             window_batch.append(window_payload)
                             if len(window_batch) >= self.app_config.window_batch_size:
                                 send_windows_to_api(self.app_config, self.stream, list(window_batch))
