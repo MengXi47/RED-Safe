@@ -38,6 +38,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '攝影機管理', requiresAuth: true }
   },
   {
+    path: '/cameras/live',
+    name: 'camera-live',
+    component: () => import('@/views/CameraRealtimeView.vue'),
+    meta: { title: '即時顯示頁面', requiresAuth: true }
+  },
+  {
     path: '/user/bound',
     name: 'user-bound',
     component: () => import('@/views/UserBoundView.vue'),

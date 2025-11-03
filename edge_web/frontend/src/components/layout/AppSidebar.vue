@@ -85,7 +85,11 @@ const navGroups: NavGroup[] = [
   },
   {
     label: '攝影機',
-    items: [{ to: '/cameras', label: '攝影機管理' }]
+    items: [
+      { to: '/cameras/live', label: '即時顯示' },
+      { to: '/cameras', label: '攝影機管理' }
+      
+    ]
   },
   {
     label: '使用者',
