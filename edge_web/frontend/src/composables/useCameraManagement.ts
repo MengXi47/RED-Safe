@@ -154,6 +154,9 @@ export const useCameraBinding = (options: CameraBindingOptions) => {
   }) => {
     const camera = options.selectedCamera.value;
     if (!camera) return;
+    if (typeof window !== 'undefined' && !window.confirm(`確認要綁定攝影機「${camera.name}」嗎？`)) {
+      return;
+    }
     bindLoading.value = true;
     try {
       const fallSensitivity = Math.min(
@@ -190,6 +193,9 @@ export const useCameraBinding = (options: CameraBindingOptions) => {
   };
 
   const removeBind = async (camera: Camera) => {
+    if (typeof window !== 'undefined' && !window.confirm(`確認要解除攝影機「${camera.name}」的綁定嗎？`)) {
+      return;
+    }
     unbindLoading.value = true;
     try {
       const payload = camera.mac ? { mac_address: camera.mac } : { ip_address: camera.ip };

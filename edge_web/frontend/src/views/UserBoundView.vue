@@ -83,6 +83,9 @@ const load = async () => {
 // 向後端發送解除綁定請求，成功後從列表移除
 const unbound = async (email: string) => {
   if (!email) return;
+  if (typeof window !== 'undefined' && !window.confirm(`確認要解除使用者 ${email} 的綁定嗎？`)) {
+    return;
+  }
   removing.value = true;
   try {
     const response = await removeBoundUser(email);

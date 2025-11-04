@@ -34,7 +34,12 @@
       </div>
     </nav>
     <div class="app-sidebar__bottom">
-      <a class="sidebar-logout flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-ink-muted" href="/logout/" aria-label="登出">
+      <a
+        class="sidebar-logout flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-ink-muted"
+        href="/logout/"
+        aria-label="登出"
+        @click.prevent="handleLogout"
+      >
         <span class="sidebar-logout__icon" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path
@@ -123,4 +128,11 @@ const year = new Date().getFullYear();
 
 // 判斷連結是否為目前頁面或其子路徑，用於啟用態樣式
 const isActive = (to: string) => route.path === to || route.path.startsWith(`${to}/`);
+
+const handleLogout = () => {
+  if (typeof window === 'undefined') return;
+  if (window.confirm('確定要登出嗎？')) {
+    window.location.href = '/logout/';
+  }
+};
 </script>
