@@ -121,7 +121,7 @@ public class EmailService {
                     .info dt{font-size:12px;font-weight:600;color:#475467;margin:0 0 4px;text-transform:uppercase;letter-spacing:.08em;}
                     .info dd{margin:0 0 16px;font-size:15px;color:#1d2939;}
                     .snapshot{padding:0 24px 24px;}
-                    .snapshot img{display:block;width:100%;max-height:420px;object-fit:cover;border-radius:10px;box-shadow:0 4px 18px rgba(15,23,42,.2);}
+                    .snapshot img{display:block;width:100%%;max-height:420px;object-fit:cover;border-radius:10px;box-shadow:0 4px 18px rgba(15,23,42,.2);}
                     .snapshot.placeholder{color:#475467;font-size:14px;}
                     .footer{font-size:12px;color:#98a2b3;padding:18px 24px;background:#101828;color:#98a2b3;text-align:center;}
                   </style>
