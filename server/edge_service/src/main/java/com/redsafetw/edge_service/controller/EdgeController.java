@@ -5,6 +5,7 @@ import com.redsafetw.edge_service.service.EdgeOnlineService;
 import com.redsafetw.edge_service.service.EdgeRegisterService;
 import com.redsafetw.edge_service.service.EdgeUserBindService;
 import com.redsafetw.edge_service.service.EdgeVerify;
+import com.redsafetw.edge_service.service.FallEventService;
 import com.redsafetw.edge_service.service.FallInferenceService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -30,6 +31,7 @@ public class EdgeController {
     private final EdgeOnlineService edgeOnlineService;
     private final EdgeUserBindService edgeUserBindService;
     private final FallInferenceService fallInferenceService;
+    private final FallEventService fallEventService;
 
     @PostMapping("/reg")
     public ErrorCodeResponse registerEdge(@Valid @RequestBody EdgeRegisterRequest edgeRegisterRequest) {
@@ -66,5 +68,10 @@ public class EdgeController {
     @PostMapping("/fall/inference")
     public ErrorCodeResponse fallInference(@Valid @RequestBody FallInferenceRequest request) {
         return fallInferenceService.inferFall(request);
+    }
+
+    @PostMapping("/event/fall")
+    public ErrorCodeResponse reportFallEvent(@Valid @RequestBody FallEventReportRequest request) {
+        return fallEventService.handleFallEvent(request);
     }
 }

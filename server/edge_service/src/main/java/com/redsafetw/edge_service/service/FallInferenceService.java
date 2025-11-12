@@ -79,7 +79,16 @@ public class FallInferenceService {
                         .toList();
 
                 for (EdgeUserBindListResponse.UserItem user : users) {
-                    notifySGrpcClient.sendFallAlertEmail(user.getEmail(), requestDto.getEdgeId(), requestDto.getIpAddress(), requestDto.getIpcName());
+                    notifySGrpcClient.sendFallAlertEmail(
+                            user.getEmail(),
+                            requestDto.getEdgeId(),
+                            requestDto.getIpAddress(),
+                            requestDto.getIpcName(),
+                            requestDto.getTime(),
+                            null,
+                            null,
+                            null
+                    );
                 }
 
             } catch (StatusRuntimeException ex) {

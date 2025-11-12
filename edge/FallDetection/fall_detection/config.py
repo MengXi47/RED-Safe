@@ -40,6 +40,11 @@ class AppConfig:
     mosaic_fps: float
     webrtc_host: str
     webrtc_port: int
+    fall_event_endpoint: str
+    fall_event_enabled: bool
+    fall_event_timeout: float
+    fall_event_cooldown: float
+    fall_event_location: str
     db: DatabaseConfig
 
     @classmethod
@@ -67,6 +72,11 @@ class AppConfig:
         mosaic_fps = float(os.getenv("MOSAIC_FPS", "5.0"))
         webrtc_host = os.getenv("WEBRTC_HOST", "0.0.0.0")
         webrtc_port = int(os.getenv("WEBRTC_PORT", "8765"))
+        fall_event_endpoint = os.getenv("FALL_EVENT_ENDPOINT", "https://api.redsafe-tw.com/edge/event/fall")
+        fall_event_enabled = os.getenv("FALL_EVENT_ENABLED", "1").lower() in {"1", "true", "yes"}
+        fall_event_timeout = float(os.getenv("FALL_EVENT_TIMEOUT", "5.0"))
+        fall_event_cooldown = float(os.getenv("FALL_EVENT_COOLDOWN", "30.0"))
+        fall_event_location = os.getenv("FALL_EVENT_LOCATION", "")
 
         db = DatabaseConfig(
             host=os.getenv("PGHOST", "localhost"),
@@ -93,5 +103,10 @@ class AppConfig:
             mosaic_fps=mosaic_fps,
             webrtc_host=webrtc_host,
             webrtc_port=webrtc_port,
+            fall_event_endpoint=fall_event_endpoint,
+            fall_event_enabled=fall_event_enabled,
+            fall_event_timeout=fall_event_timeout,
+            fall_event_cooldown=fall_event_cooldown,
+            fall_event_location=fall_event_location,
             db=db,
         )

@@ -31,7 +31,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
     psycopg[binary] \
     aiortc \
     aiohttp \
-    av
+    av \
+    requests
 
 COPY fall_detection ./fall_detection
 COPY main.py ./

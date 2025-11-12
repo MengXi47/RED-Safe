@@ -70,6 +70,8 @@ public class NotifyGrpcService extends NotifyServiceGrpc.NotifyServiceImplBase {
         String ipcName = request.getIpcName();
         String eventTime = request.getEventTime();
         String location = request.getLocation();
+        byte[] snapshot = request.getSnapshot().isEmpty() ? null : request.getSnapshot().toByteArray();
+        String snapshotMimeType = request.getSnapshotMimeType();
 
         log.info("gRPC Notify.SendFallAlert to={} patientId={}", to, edgeId);
 
@@ -82,7 +84,16 @@ public class NotifyGrpcService extends NotifyServiceGrpc.NotifyServiceImplBase {
 
 
         try {
-            emailService.sendFallAlert(to, edgeId, ipAddress, ipcName, eventTime, location);
+            emailService.sendFallAlert(
+                    to,
+                    edgeId,
+                    ipAddress,
+                    ipcName,
+                    eventTime,
+                    location,
+                    snapshot,
+                    snapshotMimeType
+            );
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
         } catch (MessagingException ex) {

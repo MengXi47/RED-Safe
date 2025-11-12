@@ -1,5 +1,6 @@
 package com.redsafetw.edge_service.grpc;
 
+import com.google.protobuf.ByteString;
 import com.grpc.notify.NotifyServiceGrpc;
 import com.grpc.notify.SendEmailVerifyCodeRequest;
 import com.grpc.notify.SendFallAlertRequest;
@@ -12,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -34,18 +36,35 @@ public class NotifyGrpcClient {
         }
     }
 
-    public void sendFallAlertEmail(String to, String edge_id, String ip, String ipc_name) {
-        OffsetDateTime now = OffsetDateTime.now();
+    public void sendFallAlertEmail(
+            String to,
+            String edgeId,
+            String ip,
+            String ipcName,
+            OffsetDateTime eventTime,
+            String location,
+            byte[] snapshot,
+            String snapshotMimeType
+    ) {
+        OffsetDateTime occurTime = Optional.ofNullable(eventTime).orElse(OffsetDateTime.now());
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-        String formatted = now.format(formatter);
+        String formatted = occurTime.format(formatter);
+
+        ByteString snapshotBytes = snapshot == null ? ByteString.EMPTY : ByteString.copyFrom(snapshot);
+        String mimeType = snapshotMimeType == null || snapshotMimeType.isBlank() ? "image/jpeg" : snapshotMimeType;
+        String safeLocation = (location == null || location.isBlank())
+                ? "臺中市太平區中山路二段57號"
+                : location;
 
         SendFallAlertRequest request = SendFallAlertRequest.newBuilder()
                 .setTo(to)
                 .setIpAddress(ip)
-                .setEdgeId(edge_id)
-                .setIpcName(ipc_name)
-                .setLocation("臺中市太平區中山路二段57號")
+                .setEdgeId(edgeId)
+                .setIpcName(ipcName == null ? "" : ipcName)
+                .setLocation(safeLocation)
                 .setEventTime(formatted)
+                .setSnapshot(snapshotBytes)
+                .setSnapshotMimeType(mimeType)
                 .build();
 
         try {

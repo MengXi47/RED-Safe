@@ -8,6 +8,7 @@ import math
 import os
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Dict, Optional, Tuple, TYPE_CHECKING
 
 import cv2
@@ -16,6 +17,7 @@ from ultralytics import YOLO
 
 from .config import AppConfig
 from .db import IPCStreamConfig
+from .event_reporter import FallEventReporter
 from .frame_bus import FrameHub
 
 if TYPE_CHECKING:
@@ -161,6 +163,8 @@ class StreamWorker:
         self._thread: threading.Thread | None = None
         self._frame_hub = frame_hub
         self._fall_overlay_until = 0.0
+        self._event_reporter = FallEventReporter(app_config)
+        self._last_report_ts = 0.0
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -341,7 +345,7 @@ class StreamWorker:
                             if self.app_config.debug:
                                 print(log_line)
                             if label_weak:
-                                # TODO: 將跌倒事件上報或觸發通知流程
+                                self._report_fall_event(result)
                                 LOGGER.warning(
                                     "Fall candidate on %s (pid=%s): %s",
                                     self.stream.stream_url,
@@ -451,3 +455,30 @@ class StreamWorker:
             or self.stream.stream_url
         )
         self._frame_hub.publish(self.stream.stream_url, label, plotted)
+
+    def _report_fall_event(self, result: "Results") -> None:
+        """於偵測到跌倒時將畫面與資訊送往雲端 API。"""
+
+        if not self.app_config.fall_event_enabled:
+            return
+
+        now = time.time()
+        if now - self._last_report_ts < self.app_config.fall_event_cooldown:
+            return
+
+        snapshot = self._encode_snapshot(result)
+        event_time_iso = datetime.now(timezone.utc).isoformat()
+        self._event_reporter.report(self.stream, snapshot, event_time_iso)
+        self._last_report_ts = now
+
+    def _encode_snapshot(self, result: "Results") -> bytes | None:
+        """將當前原始畫面轉為 JPEG bytes，失敗時回傳 None。"""
+
+        frame = getattr(result, "orig_img", None)
+        if frame is None:
+            return None
+
+        success, buffer = cv2.imencode(".jpg", frame)
+        if not success:
+            return None
+        return buffer.tobytes()

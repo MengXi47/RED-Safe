@@ -26,4 +26,6 @@ message SendFallAlertRequest {
   string ipc_name = 4;
   string event_time = 5;
   string location = 6;
+  bytes snapshot = 7;
+  string snapshot_mime_type = 8;
 }
