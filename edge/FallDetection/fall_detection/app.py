@@ -9,7 +9,10 @@ from typing import Dict, Iterable
 
 from .config import AppConfig
 from .db import DatabaseClient, IPCStreamConfig
+from .frame_bus import FrameHub
+from .mosaic import MosaicComposer, MosaicSettings
 from .stream import StreamWorker
+from .webrtc import WebRTCServer
 
 LOGGER = logging.getLogger(__name__)
 
@@ -17,10 +20,11 @@ LOGGER = logging.getLogger(__name__)
 class StreamCoordinator:
     """Manage stream workers to mirror DB rows."""
 
-    def __init__(self, app_config: AppConfig) -> None:
+    def __init__(self, app_config: AppConfig, frame_hub: FrameHub) -> None:
         self.app_config = app_config
         self._workers: Dict[str, StreamWorker] = {}
         self._lock = threading.Lock()
+        self._frame_hub = frame_hub
 
     def sync(self, streams: Iterable[IPCStreamConfig]) -> None:
         desired = {stream.stream_url: stream for stream in streams}
@@ -35,7 +39,7 @@ class StreamCoordinator:
                         stream.ip_address,
                         stream.custom_name or stream.ipc_name,
                     )
-                    worker = StreamWorker(self.app_config, stream)
+                    worker = StreamWorker(self.app_config, stream, self._frame_hub)
                     self._workers[url] = worker
                     worker.start()
                 else:
@@ -64,13 +68,32 @@ class StreamCoordinator:
 
 def run(app_config: AppConfig) -> None:
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG if app_config.debug else logging.INFO,
         format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
     LOGGER.info("Starting fall detection service with EDGE_ID=%s", app_config.edge_id)
 
+    frame_hub = FrameHub()
+    mosaic = MosaicComposer(
+        frame_hub,
+        MosaicSettings(
+            width=app_config.mosaic_width,
+            height=app_config.mosaic_height,
+            fps=app_config.mosaic_fps,
+            max_tiles=4,
+        ),
+    )
+    mosaic.start()
+
+    webrtc_server = WebRTCServer(
+        composer=mosaic,
+        host=app_config.webrtc_host,
+        port=app_config.webrtc_port,
+    )
+    webrtc_server.start()
+
     db_client = DatabaseClient(app_config.db)
-    coordinator = StreamCoordinator(app_config)
+    coordinator = StreamCoordinator(app_config, frame_hub)
 
     try:
         while True:
@@ -85,4 +108,6 @@ def run(app_config: AppConfig) -> None:
     finally:
         coordinator.shutdown()
         db_client.close()
+        webrtc_server.stop()
+        mosaic.stop()
         LOGGER.info("Shutdown complete.")

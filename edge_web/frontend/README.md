@@ -25,6 +25,11 @@ npm run dev
 The dev server defaults to `http://localhost:5173`. In Django, set `VITE_DEV_SERVER` in
 `settings.py` (or environment) to proxy assets during development.
 
+### WebRTC Signaling Endpoint
+
+- 即時顯示頁面目前寫死向 `http://127.0.0.1:8765/webrtc/offer` 發送 WebRTC offer。若部署環境需要不同
+  主機或埠號，請記得調整 `src/views/CameraRealtimeView.vue` 內的 `signalingUrl` 常數並重新建置前端。
+
 ## Production Build
 
 ```bash

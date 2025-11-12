@@ -1,4 +1,4 @@
-"""Stream worker logic for fall detection."""
+"""跌倒偵測串流處理流程。"""
 
 from __future__ import annotations
 
@@ -8,80 +8,159 @@ import math
 import os
 import threading
 import time
-from collections import defaultdict, deque
-from typing import Deque, Dict, List
+from typing import Dict, Optional, Tuple, TYPE_CHECKING
 
 import cv2
 import numpy as np
 from ultralytics import YOLO
 
-from .api import send_windows_to_api
 from .config import AppConfig
 from .db import IPCStreamConfig
+from .frame_bus import FrameHub
 
+if TYPE_CHECKING:
+    from ultralytics.engine.results import Results
 LOGGER = logging.getLogger(__name__)
 
 
-def _show_window(window_name: str, img: np.ndarray, last_time: float) -> tuple[float, bool]:
-    now = time.time()
-    fps = 1.0 / (now - last_time) if last_time else 0.0
-    cv2.putText(
-        img,
-        f"FPS: {fps:.2f}",
-        (10, 30),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (0, 255, 0),
-        2,
+def _unix_time_ms() -> int:
+    """回傳目前的 Unix 毫秒時間戳。"""
+
+    return time.time_ns() // 1_000_000
+
+
+def infer_labels(
+    tilt_angle: float,
+    height_ratio_value: float,
+    angular_velocity: float,
+    box_rate_per_s: float,
+) -> tuple[int, float]:
+    """沿用除錯腳本的啟發式規則，推論跌倒信心值。"""
+
+    if (
+        math.isnan(tilt_angle)
+        or math.isnan(height_ratio_value)
+        or math.isnan(angular_velocity)
+        or math.isnan(box_rate_per_s)
+    ):
+        return 0, 0.0
+
+    base_condition = (
+        tilt_angle > 55.0
+        and height_ratio_value > 1.1
+        and angular_velocity > 80
+        and box_rate_per_s < -0.5
     )
-    cv2.imshow(window_name, img)
-    quit_pressed = (cv2.waitKey(1) & 0xFF) == ord("q")
-    return now, quit_pressed
+    f1 = angular_velocity > 100 and box_rate_per_s < -0.2
+    f2 = angular_velocity > 170
+    weak = int(base_condition or f1 or f2)
+    strong = float(weak)
+    return weak, strong
+
+
+def _mean_valid(points: np.ndarray) -> Optional[np.ndarray]:
+    """取得有效關節點的平均值（忽略座標為零者）。"""
+
+    mask = ~np.all(np.isclose(points, 0.0), axis=1)
+    if not np.any(mask):
+        return None
+    return points[mask].mean(axis=0)
 
 
 def _body_tilt_angle_deg(kpts: np.ndarray) -> float:
-    shoulders = kpts[[5, 6]].mean(axis=0)
-    hips = kpts[[11, 12]].mean(axis=0)
+    """計算肩腰向量相對垂直軸的傾角。"""
+
+    shoulders = _mean_valid(kpts[[5, 6]])
+    hips = _mean_valid(kpts[[11, 12]])
+    if shoulders is None or hips is None:
+        return float("nan")
+
     vector = hips - shoulders
-    angle = abs(math.degrees(math.atan2(float(vector[0]), float(vector[1]) + 1e-9)))
-    return angle
+    angle = abs(
+        math.degrees(math.atan2(float(vector[0]), float(vector[1]) + 1e-9))
+    )
+    return round(angle, 3)
+
+
+def _body_tilt_angular_velocity_deg(
+    current_angle_deg: float,
+    current_timestamp_ms: int,
+    previous_angle_deg: Optional[float] = None,
+    previous_timestamp_ms: Optional[int] = None,
+) -> float:
+    """計算兩幀之間的角速度（度/秒）。"""
+
+    if math.isnan(current_angle_deg):
+        return float("nan")
+    if (
+        previous_angle_deg is None
+        or previous_timestamp_ms is None
+        or math.isnan(previous_angle_deg)
+    ):
+        return 0.0
+
+    dt_ms = current_timestamp_ms - previous_timestamp_ms
+    if dt_ms <= 0:
+        return 0.0
+    velocity = abs((current_angle_deg - previous_angle_deg) / (dt_ms / 1000.0))
+    return round(velocity, 3)
+
+
+def _box_height_change_rate(
+    current_height: float,
+    current_timestamp_ms: int,
+    previous_height: Optional[float] = None,
+    previous_timestamp_ms: Optional[int] = None,
+) -> tuple[float, float]:
+    """回傳框高比例與每秒變化率。"""
+
+    if (
+        previous_height is None
+        or previous_timestamp_ms is None
+        or previous_height <= 0.0
+    ):
+        return 1.0, 0.0
+
+    dt_ms = current_timestamp_ms - previous_timestamp_ms
+    if dt_ms <= 0:
+        return 1.0, 0.0
+
+    dt = dt_ms / 1000.0
+    ratio = current_height / max(previous_height, 1e-6)
+    rate = (ratio - 1.0) / dt
+    return round(ratio, 3), round(rate, 3)
 
 
 def _height_ratio(kpts: np.ndarray, box_h: float) -> float:
-    head = kpts[0]
-    ankles = kpts[[15, 16]].mean(axis=0)
-    head_to_ankle = float(np.linalg.norm(ankles - head))
-    return head_to_ankle / max(float(box_h), 1e-6)
+    """回傳頭至腳踝距離與框高的比值。"""
 
+    head = None if np.all(np.isclose(kpts[0], 0.0)) else kpts[0]
+    ankles = kpts[[15, 16]]
+    ankle_mask = ~np.all(np.isclose(ankles, 0.0), axis=1)
+    ankle = ankles[ankle_mask].mean(axis=0) if np.any(ankle_mask) else None
 
-def _compute_features(kpts: np.ndarray, xyxy: np.ndarray) -> Dict[str, float]:
-    x1, y1, x2, y2 = map(float, xyxy)
-    width, height = x2 - x1, y2 - y1
-    ratio = width / max(height, 1e-6)
-    angle = _body_tilt_angle_deg(kpts)
-    rel_h = _height_ratio(kpts, height)
-    return {"angle": angle, "ratio": ratio, "rel_h": rel_h, "w": width, "h": height}
+    if head is None or ankle is None:
+        return float("nan")
 
-
-def _flatten_feature_window(feature_window: List[List[float]]) -> Dict[str, float]:
-    payload: Dict[str, float] = {}
-    for idx, vec in enumerate(feature_window, start=1):
-        angle, ratio, h_ratio = vec
-        payload[f"a{idx}"] = float(angle)
-        payload[f"r{idx}"] = float(ratio)
-        payload[f"h{idx}"] = float(h_ratio)
-    return payload
+    head_ankle = float(np.linalg.norm(ankle - head))
+    return round(head_ankle / max(float(box_h), 1e-6), 3)
 
 
 class StreamWorker:
-    """Run YOLO pose tracking for a single RTSP stream."""
+    """針對單一 RTSP 串流執行 YOLO 姿態追蹤。"""
 
-    def __init__(self, app_config: AppConfig, stream: IPCStreamConfig) -> None:
+    def __init__(
+        self,
+        app_config: AppConfig,
+        stream: IPCStreamConfig,
+        frame_hub: FrameHub,
+    ) -> None:
         self.app_config = app_config
         self.stream = stream
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
-        self._window_name = f"Fall-Detection-{stream.ip_address}"
+        self._frame_hub = frame_hub
+        self._fall_overlay_until = 0.0
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -95,12 +174,12 @@ class StreamWorker:
         self._stop_event.set()
         if self._thread:
             self._thread.join(timeout=2.0)
-        if self.app_config.show_windows:
-            cv2.destroyWindow(self._window_name)
         LOGGER.info("Stopped stream worker for %s", self.stream.stream_url)
 
     def update_stream(self, stream: IPCStreamConfig) -> None:
-        """Update metadata without restarting."""
+        """在不重啟執行緒的情況下更新串流資訊。"""
+        if stream.stream_url != self.stream.stream_url:
+            self._frame_hub.remove(self.stream.stream_url)
         self.stream = stream
 
     def _run(self) -> None:
@@ -111,23 +190,29 @@ class StreamWorker:
         try:
             model = YOLO(self.app_config.model_path)
         except Exception as exc:
-            LOGGER.exception("Failed to load YOLO model for %s: %s", self.stream.stream_url, exc)
+            LOGGER.exception(
+                "Failed to load YOLO model for %s: %s",
+                self.stream.stream_url,
+                exc,
+            )
             return
 
-        frame_delay = 1.0 / self.app_config.max_fps if self.app_config.max_fps > 0 else 0.0
+        frame_delay = (
+            1.0 / self.app_config.max_fps
+            if self.app_config.max_fps > 0
+            else 0.0
+        )
 
         while not self._stop_event.is_set():
             if not self._probe_stream(self.stream.stream_url):
-                if self._stop_event.wait(self.app_config.stream_reconnect_delay):
+                if self._stop_event.wait(
+                    self.app_config.stream_reconnect_delay
+                ):
                     break
                 continue
 
-            history: Dict[int, Deque[Dict[str, float]]] = defaultdict(lambda: deque(maxlen=20))
-            feature_seq: Dict[int, Deque[List[float]]] = defaultdict(
-                lambda: deque(maxlen=self.app_config.window_frames)
-            )
-            window_batch: Deque[Dict[str, float]] = deque()
-            last_time = 0.0
+            last_box_by_id: Dict[int, Tuple[float, int]] = {}
+            last_tilt_by_id: Dict[int, Tuple[float, int]] = {}
 
             try:
                 generator = model.track(
@@ -140,8 +225,14 @@ class StreamWorker:
                     persist=True,
                 )
             except Exception as exc:
-                LOGGER.error("Failed to start tracking for %s: %s", self.stream.stream_url, exc)
-                if self._stop_event.wait(self.app_config.stream_reconnect_delay):
+                LOGGER.error(
+                    "Failed to start tracking for %s: %s",
+                    self.stream.stream_url,
+                    exc,
+                )
+                if self._stop_event.wait(
+                    self.app_config.stream_reconnect_delay
+                ):
                     break
                 continue
 
@@ -150,78 +241,135 @@ class StreamWorker:
                     if self._stop_event.is_set():
                         break
 
-                    if self.app_config.show_windows:
-                        img = result.plot()
-                        last_time, quit_pressed = _show_window(self._window_name, img, last_time)
-                        if quit_pressed:
-                            self._stop_event.set()
-                            break
-
                     keypoints = result.keypoints
                     boxes = result.boxes
-                    if (
-                        boxes is None
-                        or not hasattr(boxes, "xyxy")
-                        or boxes.xyxy is None
-                        or getattr(boxes.xyxy, "shape", [0])[0] == 0
-                    ):
-                        if self.app_config.show_windows:
-                            img = getattr(result, "orig_img", None)
-                            if img is not None:
-                                last_time, _ = _show_window(self._window_name, img, last_time)
-                        if frame_delay:
-                            time.sleep(frame_delay)
-                        continue
 
-                    if (
-                        keypoints is None
-                        or not hasattr(keypoints, "xy")
-                        or keypoints.xy is None
-                        or getattr(keypoints.xy, "shape", [0, 0, 0])[0] == 0
-                    ):
-                        if frame_delay:
-                            time.sleep(frame_delay)
-                        continue
+                    has_valid_boxes = (
+                        boxes is not None
+                        and hasattr(boxes, "xyxy")
+                        and boxes.xyxy is not None
+                        and getattr(boxes.xyxy, "shape", [0])[0] > 0
+                    )
+                    has_valid_kpts = (
+                        keypoints is not None
+                        and hasattr(keypoints, "xy")
+                        and keypoints.xy is not None
+                        and getattr(keypoints.xy, "shape", [0, 0, 0])[0] > 0
+                    )
 
-                    xyxy_all = boxes.xyxy.cpu().numpy() if hasattr(boxes, "xyxy") else []
-                    if hasattr(boxes, "id") and boxes.id is not None:
-                        ids = boxes.id.cpu().numpy().astype(int)
-                    else:
-                        ids = np.arange(len(xyxy_all))
-                    keypoints_all = keypoints.xy.cpu().numpy() if hasattr(keypoints, "xy") else []
-
-                    for i, pid in enumerate(ids):
-                        xyxy = xyxy_all[i]
-                        kpt = keypoints_all[i]
-                        new_features = _compute_features(kpt, xyxy)
-                        previous = history[pid][-1] if history[pid] else None
-                        h_ratio = (
-                            0.0
-                            if previous is None
-                            else (new_features["h"] / max(previous.get("h", 1e-6), 1e-6))
+                    if has_valid_boxes and has_valid_kpts:
+                        xyxy_all = (
+                            boxes.xyxy.cpu().numpy()
+                            if hasattr(boxes, "xyxy")
+                            else np.empty((0, 4))
                         )
-                        new_features["h_ratio"] = float(h_ratio)
-                        history[pid].append(new_features)
+                        if hasattr(boxes, "id") and boxes.id is not None:
+                            ids = boxes.id.cpu().numpy().astype(int)
+                        else:
+                            ids = np.arange(len(xyxy_all))
+                        keypoints_all = (
+                            keypoints.xy.cpu().numpy()
+                            if hasattr(keypoints, "xy")
+                            else np.empty((0, 17, 2))
+                        )
 
-                        feature_vec = [
-                            float(new_features.get("angle", 0.0)),
-                            float(new_features.get("ratio", 0.0)),
-                            float(new_features.get("h_ratio", 1.0)),
-                        ]
-                        feature_seq[pid].append(feature_vec)
+                        for i, pid in enumerate(ids):
+                            if i >= len(xyxy_all) or i >= len(keypoints_all):
+                                continue
+                            xyxy = xyxy_all[i]
+                            kpt = keypoints_all[i]
+                            _, y1, _, y2 = map(float, xyxy)
+                            height = y2 - y1
 
-                        if len(feature_seq[pid]) == self.app_config.window_frames:
-                            feature_window = list(feature_seq[pid])
-                            window_payload = _flatten_feature_window(feature_window)
-                            feature_seq[pid].popleft()
-                            window_batch.append(window_payload)
-                            if len(window_batch) >= self.app_config.window_batch_size:
-                                send_windows_to_api(self.app_config, self.stream, list(window_batch))
-                                window_batch.clear()
+                            timestamp_ms = _unix_time_ms()
+                            prev_box = last_box_by_id.get(pid)
+                            if prev_box is None:
+                                prev_height = None
+                                prev_box_ts = None
+                            else:
+                                prev_height, prev_box_ts = prev_box
 
-                    time.sleep(1 / 3.7)
+                            scale_ratio, scale_rate = _box_height_change_rate(
+                                height,
+                                timestamp_ms,
+                                prev_height,
+                                prev_box_ts,
+                            )
+
+                            tilt_angle = _body_tilt_angle_deg(kpt)
+                            prev_tilt = last_tilt_by_id.get(pid)
+                            if prev_tilt is None:
+                                prev_angle = None
+                                prev_tilt_ts = None
+                            else:
+                                prev_angle, prev_tilt_ts = prev_tilt
+
+                            tilt_velocity = _body_tilt_angular_velocity_deg(
+                                tilt_angle,
+                                timestamp_ms,
+                                prev_angle,
+                                prev_tilt_ts,
+                            )
+
+                            if math.isnan(tilt_angle):
+                                last_tilt_by_id.pop(pid, None)
+                            else:
+                                last_tilt_by_id[pid] = (
+                                    tilt_angle,
+                                    timestamp_ms,
+                                )
+
+                            height_r = _height_ratio(kpt, height)
+                            label_weak, _ = infer_labels(
+                                tilt_angle,
+                                height_r,
+                                tilt_velocity,
+                                scale_rate,
+                            )
+
+                            debug_fields = [
+                                f"ID {pid}",
+                                f"tilt={tilt_angle} deg",
+                                f"omega={tilt_velocity} deg/s",
+                                f"box_ratio={scale_ratio}",
+                                f"box_rate={scale_rate} 1/s",
+                                f"height_ratio={height_r}",
+                                f"label_weak={label_weak}",
+                            ]
+
+                            log_line = ", ".join(debug_fields)
+                            if self.app_config.debug:
+                                print(log_line)
+                            if label_weak:
+                                # TODO: 將跌倒事件上報或觸發通知流程
+                                LOGGER.warning(
+                                    "Fall candidate on %s (pid=%s): %s",
+                                    self.stream.stream_url,
+                                    pid,
+                                    log_line,
+                                )
+                                self._fall_overlay_until = time.time() + 5.0
+                            else:
+                                LOGGER.debug(
+                                    "Stream %s pid=%s metrics: %s",
+                                    self.stream.stream_url,
+                                    pid,
+                                    log_line,
+                                )
+
+                            last_box_by_id[pid] = (height, timestamp_ms)
+
+                    self._publish_frame(result)
+
+                    sleep_delay = frame_delay if frame_delay > 0 else 1 / 3.7
+                    if sleep_delay > 0:
+                        time.sleep(sleep_delay)
             except Exception as exc:
-                LOGGER.error("Error during tracking loop for %s: %s", self.stream.stream_url, exc)
+                LOGGER.error(
+                    "Error during tracking loop for %s: %s",
+                    self.stream.stream_url,
+                    exc,
+                )
             finally:
                 if hasattr(generator, "close"):
                     with contextlib.suppress(Exception):
@@ -233,13 +381,16 @@ class StreamWorker:
                     self.stream.stream_url,
                     self.app_config.stream_reconnect_delay,
                 )
-                if self._stop_event.wait(self.app_config.stream_reconnect_delay):
+                if self._stop_event.wait(
+                    self.app_config.stream_reconnect_delay
+                ):
                     break
 
+        self._frame_hub.remove(self.stream.stream_url)
         LOGGER.info("Stream loop exiting for %s", self.stream.stream_url)
 
     def _probe_stream(self, url: str) -> bool:
-        """Return True if a frame can be read within connect timeout."""
+        """於連線逾時前讀到影格則回傳 True。"""
         LOGGER.info("Probing RTSP stream %s", url)
         cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
         start = time.time()
@@ -261,3 +412,42 @@ class StreamWorker:
         finally:
             cap.release()
         return success
+
+    def _publish_frame(self, result: "Results") -> None:
+        """送出帶偵測匡線的畫面給匯流排，供 WebRTC 使用。"""
+
+        try:
+            plotted = result.plot()
+        except Exception as exc:  # pragma: no cover - best effort
+            LOGGER.debug(
+                "Failed to render frame for %s: %s", self.stream.stream_url, exc
+            )
+            return
+
+        if plotted.dtype != np.uint8:
+            plotted = np.clip(plotted, 0, 255).astype(np.uint8)
+
+        if time.time() < self._fall_overlay_until:
+            overlay = plotted.copy()
+            height, width = overlay.shape[:2]
+            box_height = int(height * 0.15)
+            cv2.rectangle(overlay, (0, 0), (width, box_height), (0, 0, 255), -1)
+            cv2.putText(
+                overlay,
+                "Fall!!!!!!!!",
+                (int(width * 0.05), int(box_height * 0.7)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                2.0,
+                (255, 255, 255),
+                4,
+                lineType=cv2.LINE_AA,
+            )
+            plotted = cv2.addWeighted(plotted, 0.5, overlay, 0.5, 0)
+
+        label = (
+            self.stream.custom_name
+            or self.stream.ipc_name
+            or self.stream.ip_address
+            or self.stream.stream_url
+        )
+        self._frame_hub.publish(self.stream.stream_url, label, plotted)

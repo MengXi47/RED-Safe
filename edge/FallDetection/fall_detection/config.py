@@ -30,14 +30,16 @@ class AppConfig:
     model_imgsz: int
     show_windows: bool
     max_fps: float
-    api_endpoint: str
     edge_id: str
-    window_frames: int
-    window_batch_size: int
     poll_interval: float
-    request_timeout: float
     stream_connect_timeout: float
     stream_reconnect_delay: float
+    debug: bool
+    mosaic_width: int
+    mosaic_height: int
+    mosaic_fps: float
+    webrtc_host: str
+    webrtc_port: int
     db: DatabaseConfig
 
     @classmethod
@@ -45,16 +47,26 @@ class AppConfig:
         model_path = os.getenv("MODEL_PATH", "../model/yolo11n-pose.pt")
         model_conf = float(os.getenv("MODEL_CONF", "0.2"))
         model_imgsz = int(os.getenv("MODEL_IMGSZ", "640"))
-        show_windows = os.getenv("MODEL_SHOW", "0").lower() in {"1", "true", "yes"}
+        show_windows = os.getenv("MODEL_SHOW", "0").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
         max_fps = float(os.getenv("MAX_FPS", "3"))
-        api_endpoint = os.getenv("FALL_WINDOW_API", "https://api.redsafe-tw.com/edge/fall/inference")
         edge_id = os.getenv("EDGE_ID", "RED-AAAAAAAA")
-        window_frames = int(os.getenv("WINDOW_FRAMES", "3"))
-        window_batch_size = int(os.getenv("WINDOW_BATCH_SIZE", "3"))
         poll_interval = float(os.getenv("IPC_POLL_INTERVAL", "1.0"))
-        request_timeout = float(os.getenv("REQUEST_TIMEOUT", "5.0"))
-        stream_connect_timeout = float(os.getenv("STREAM_CONNECT_TIMEOUT", "5.0"))
-        stream_reconnect_delay = float(os.getenv("STREAM_RECONNECT_DELAY", "5.0"))
+        stream_connect_timeout = float(
+            os.getenv("STREAM_CONNECT_TIMEOUT", "5.0")
+        )
+        stream_reconnect_delay = float(
+            os.getenv("STREAM_RECONNECT_DELAY", "5.0")
+        )
+        debug = os.getenv("DEBUG", "0").lower() in {"1", "true", "yes"}
+        mosaic_width = int(os.getenv("MOSAIC_WIDTH", "1920"))
+        mosaic_height = int(os.getenv("MOSAIC_HEIGHT", "1080"))
+        mosaic_fps = float(os.getenv("MOSAIC_FPS", "5.0"))
+        webrtc_host = os.getenv("WEBRTC_HOST", "0.0.0.0")
+        webrtc_port = int(os.getenv("WEBRTC_PORT", "8765"))
 
         db = DatabaseConfig(
             host=os.getenv("PGHOST", "localhost"),
@@ -71,13 +83,15 @@ class AppConfig:
             model_imgsz=model_imgsz,
             show_windows=show_windows,
             max_fps=max_fps,
-            api_endpoint=api_endpoint,
             edge_id=edge_id,
-            window_frames=window_frames,
-            window_batch_size=window_batch_size,
             poll_interval=poll_interval,
-            request_timeout=request_timeout,
             stream_connect_timeout=stream_connect_timeout,
             stream_reconnect_delay=stream_reconnect_delay,
+            debug=debug,
+            mosaic_width=mosaic_width,
+            mosaic_height=mosaic_height,
+            mosaic_fps=mosaic_fps,
+            webrtc_host=webrtc_host,
+            webrtc_port=webrtc_port,
             db=db,
         )

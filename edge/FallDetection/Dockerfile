@@ -10,7 +10,13 @@ RUN apt-get update && \
     apt-get install --no-install-recommends -y \
     libopenblas0 \
     libgl1 \
-    libglib2.0-0 && \
+    libglib2.0-0 \
+    libopus0 \
+    libsrtp2-1 \
+    libsrtp2-dev \
+    ffmpeg \
+    build-essential \
+    pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies; --no-cache-dir keeps the layer smaller.
@@ -22,8 +28,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
     "lap>=0.5.12" \
     numpy \
     opencv-python \
-    requests \
-    psycopg[binary]
+    psycopg[binary] \
+    aiortc \
+    aiohttp \
+    av
 
 COPY fall_detection ./fall_detection
 COPY main.py ./
