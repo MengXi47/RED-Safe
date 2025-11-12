@@ -72,6 +72,7 @@ public class EmailService {
      * @param location           事件位置描述
      * @param snapshotImageBytes 現場截圖二進位內容，若為 null 或空陣列則不附圖
      * @param snapshotMimeType   截圖 Content-Type，預設 image/jpeg
+     *                           
      */
     public void sendFallAlert(
             String to,
