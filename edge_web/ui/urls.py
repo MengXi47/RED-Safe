@@ -14,8 +14,10 @@ urlpatterns = [
     path("api/system/logs", views.api_system_logs, name="api_system_logs"),
 
     # 新增：Network
-    path("network/ip/", views.network_ip, name="network_ip"),
-    path("network/port/", views.network_port, name="network_port"),
+    path("network/config/", views.network_config, name="network_config"),
+    # 舊路徑相容處理
+    path("network/ip/", views.network_config, name="network_ip"),
+    path("network/port/", views.network_config, name="network_port"),
 
     # 新增：User
     path("user/bound/", views.user_bound, name="user_bound"),
@@ -28,7 +30,6 @@ urlpatterns = [
     path("device/info/", views.device_info, name="device_info"),
     path("api/device/info/", views.api_device_info, name="api_device_info"),
     path("api/metrics/", views.api_metrics, name="api_metrics"),
-    path("network/ip/", views.network_ip, name="network_ip"),
     path("api/network/port/", views.api_network_port, name="api_network_port"),
     path("device/qrcode.png", views.device_qr, name="device_qr"),
     path("cameras", views.cameras, name="cameras"),

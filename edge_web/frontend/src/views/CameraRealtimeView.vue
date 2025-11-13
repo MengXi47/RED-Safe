@@ -1,18 +1,25 @@
 <template>
   <div class="space-y-8">
-    <div class="relative left-1/2 w-screen max-w-[1800px] -translate-x-1/2 px-4 sm:px-8 lg:px-16">
-      <BaseCard title="即時串流預覽" description="1920x1080 5FPS">
-        <div class="space-y-4">
+    <div class="space-y-6">
+      <BaseCard title="">
+        <div class="space-y-5">
           <div
-            class="relative w-full overflow-hidden rounded-3xl border border-border bg-black shadow-lg aspect-video"
+            ref="streamShellRef"
+            class="group relative aspect-[16/9] w-full overflow-hidden rounded-3xl border border-border/60 bg-ink-inverse shadow-elev-lg"
           >
             <video
               ref="videoRef"
               autoplay
               playsinline
               muted
-              class="absolute inset-0 h-full w-full object-contain"
+              :class="['absolute inset-0 h-full w-full', videoFitClass]"
             ></video>
+
+            <div class="pointer-events-none absolute left-4 top-4 flex items-center gap-2 text-xs font-semibold">
+              <span class="rounded-full px-3 py-1 text-white" :class="statusBadge.class">{{ statusBadge.label }}</span>
+              <span class="rounded-full bg-black/60 px-3 py-1 text-white/90">{{ playerResolutionLabel }}</span>
+            </div>
+
             <div
               v-if="!hasStream"
               class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-sm text-ink-muted"
@@ -21,6 +28,7 @@
               <p>{{ connectionMessage }}</p>
             </div>
           </div>
+
           <div class="flex flex-wrap items-center gap-3">
             <BaseButton :loading="isConnecting" :disabled="isConnecting" @click="handleReconnect">
               {{ isConnecting ? '連線中...' : '重新連線' }}
@@ -28,9 +36,10 @@
             <BaseButton variant="secondary" :disabled="!peerConnection" @click="handleDisconnect">
               中斷連線
             </BaseButton>
-            <p class="text-sm text-ink-muted">
-              {{ statusHint }}
-            </p>
+            <BaseButton variant="ghost" size="sm" @click="toggleFitMode">
+              切換：{{ videoFitLabel }}
+            </BaseButton>
+            <p class="text-sm text-ink-muted">{{ statusHint }}</p>
           </div>
         </div>
       </BaseCard>
@@ -39,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, computed } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import BaseCard from '@/components/ui/BaseCard.vue';
 import BaseButton from '@/components/ui/BaseButton.vue';
 import BaseLoadingSpinner from '@/components/ui/BaseLoadingSpinner.vue';
@@ -53,11 +62,15 @@ import { useUiStore } from '@/store/ui';
 
 const uiStore = useUiStore();
 const videoRef = ref<HTMLVideoElement | null>(null);
+const streamShellRef = ref<HTMLElement | null>(null);
 const peerConnection = ref<RTCPeerConnection | null>(null);
 const hasStream = ref(false);
 const isConnecting = ref(false);
 const connectionMessage = ref('等待串流來源...');
 const lastKnownState = ref<'idle' | 'connected' | 'disconnected' | 'failed'>('idle');
+const playerMetrics = ref({ width: 0, height: 0 });
+const videoFitMode = ref<'contain' | 'cover'>('contain');
+let resizeObserver: ResizeObserver | null = null;
 
 const signalingUrl = 'http://127.0.0.1:8765/webrtc/offer';
 
@@ -73,6 +86,30 @@ const statusHint = computed(() => {
       return '尚未建立連線';
   }
 });
+
+const statusBadge = computed(() => {
+  const map: Record<'idle' | 'connected' | 'disconnected' | 'failed', { label: string; class: string }> = {
+    connected: { label: '串流中', class: 'bg-success/80 text-white' },
+    failed: { label: '連線失敗', class: 'bg-danger/80 text-white' },
+    disconnected: { label: '已中斷', class: 'bg-warning/80 text-ink' },
+    idle: { label: '等待串流', class: 'bg-black/50 text-white' }
+  };
+  return map[lastKnownState.value];
+});
+
+const playerResolutionLabel = computed(() => {
+  const { width, height } = playerMetrics.value;
+  if (!width || !height) return hasStream.value ? '載入影格中' : '待建立連線';
+  return `${Math.round(width)}×${Math.round(height)}px`;
+});
+
+const videoFitClass = computed(() =>
+  videoFitMode.value === 'contain' ? 'object-contain' : 'object-cover'
+);
+
+const videoFitLabel = computed(() =>
+  videoFitMode.value === 'contain' ? '等比例縮放' : '填滿畫面'
+);
 
 const cleanupPeer = async () => {
   const pc = peerConnection.value;
@@ -175,11 +212,34 @@ const handleReconnect = () => {
   connectStream();
 };
 
+const toggleFitMode = () => {
+  videoFitMode.value = videoFitMode.value === 'contain' ? 'cover' : 'contain';
+};
+
+const observePlayer = () => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
+  if (!streamShellRef.value || typeof ResizeObserver === 'undefined') return;
+  resizeObserver = new ResizeObserver((entries) => {
+    const entry = entries[0];
+    if (!entry) return;
+    const { width, height } = entry.contentRect;
+    playerMetrics.value = { width, height };
+  });
+  resizeObserver.observe(streamShellRef.value);
+};
+
 onMounted(() => {
   connectStream();
+  nextTick(() => {
+    observePlayer();
+  });
 });
 
 onBeforeUnmount(() => {
   handleDisconnect();
+  resizeObserver?.disconnect();
 });
 </script>

@@ -14,7 +14,7 @@
     </header>
 
     <div class="grid gap-6 xl:grid-cols-2">
-      <BaseCard title="搜尋結果" description="搜尋到的攝影機可以預覽串流或直接綁定">
+      <BaseCard title="搜尋結果">
         <BaseTable
           :columns="searchColumns"
           :items="searchResults"
@@ -38,7 +38,7 @@
         </BaseTable>
       </BaseCard>
 
-      <BaseCard title="已綁定攝影機" description="綁定後即可提供 Edge 裝置串流">
+      <BaseCard title="已綁定攝影機">
         <BaseTable
           :columns="boundColumns"
           :items="boundCameras"

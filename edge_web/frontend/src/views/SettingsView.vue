@@ -2,13 +2,11 @@
   <div class="space-y-8">
     <header class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">系統設定</h2>
-      <p class="mt-1 text-sm text-ink-muted">集中管理 Edge 裝置的系統參數與整合設定。</p>
     </header>
-    <BaseCard title="介面偏好" description="自訂儀表板的顯示模式，或同步裝置的深淺色設定。">
+    <BaseCard title="">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="space-y-1">
           <h3 class="text-base font-semibold text-ink">顯示模式</h3>
-          <p class="text-sm text-ink-muted">切換淺色、深色，或是依照系統自動追隨裝置外觀。</p>
         </div>
         <div class="theme-toggle" role="radiogroup" aria-label="主題選擇">
           <span class="theme-toggle__indicator" :style="indicatorStyle" aria-hidden="true" />

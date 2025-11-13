@@ -2,9 +2,6 @@
   <div class="space-y-8">
     <header class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">系統日誌</h2>
-      <p class="mt-1 text-sm text-ink-muted">
-        顯示 Web 端的操作軌跡並寫入本地資料庫，列表依時間由新到舊排列。
-      </p>
     </header>
     <BaseCard class="space-y-6">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

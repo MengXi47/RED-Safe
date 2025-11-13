@@ -7,9 +7,12 @@
     :data-collapsed="collapsed"
   >
     <RouterLink to="/" class="app-sidebar__brand mb-8 flex items-center gap-3">
-      <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white">
-        RS
-      </div>
+      <img
+        :src="sidebarLogoSrc"
+        alt="RED Safe"
+        class="h-10 w-10 object-contain"
+        loading="lazy"
+      />
       <div class="app-sidebar__brand-text">
         <p class="text-sm font-semibold text-ink">RED Safe</p>
         <p class="text-xs text-ink-muted">Edge 控制台</p>
@@ -103,8 +106,7 @@ const navGroups: NavGroup[] = [
   {
     label: '網路',
     items: [
-      { to: '/network/ip', label: 'IP 設定' },
-      { to: '/network/port', label: 'Port 狀態' }
+      { to: '/network/config', label: '網路配置' }
     ]
   },
   {
@@ -125,6 +127,7 @@ const navGroups: NavGroup[] = [
 
 const route = useRoute();
 const year = new Date().getFullYear();
+const sidebarLogoSrc = '/static/RED_Safe_icon1.png';
 
 // 判斷連結是否為目前頁面或其子路徑，用於啟用態樣式
 const isActive = (to: string) => route.path === to || route.path.startsWith(`${to}/`);

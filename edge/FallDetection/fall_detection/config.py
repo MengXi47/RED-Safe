@@ -81,7 +81,7 @@ class AppConfig:
         db = DatabaseConfig(
             host=os.getenv("PGHOST", "localhost"),
             port=int(os.getenv("PGPORT", "5432")),
-            name=os.getenv("PGDATABASE", "redsafedb"),
+            name=os.getenv("PGDATABASE", "postgres"),
             user=os.getenv("PGUSER", "redsafedb"),
             password=os.getenv("PGPASSWORD", "redsafedb"),
             connect_timeout=int(os.getenv("PGCONNECT_TIMEOUT", "5")),

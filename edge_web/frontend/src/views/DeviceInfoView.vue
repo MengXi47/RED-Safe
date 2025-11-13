@@ -2,7 +2,6 @@
   <div class="space-y-8">
     <header class="page-hero">
       <h2 class="text-2xl font-semibold text-ink">裝置資訊</h2>
-      <p class="mt-1 text-sm text-ink-muted">快速檢視裝置序號、版本與預設登入資訊。</p>
     </header>
     <BaseCard>
       <dl class="grid gap-4 md:grid-cols-2">

@@ -50,16 +50,10 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '已綁定的使用者', requiresAuth: true }
   },
   {
-    path: '/network/ip',
-    name: 'network-ip',
-    component: () => import('@/views/NetworkIpView.vue'),
-    meta: { title: '網路設定 - IP', requiresAuth: true }
-  },
-  {
-    path: '/network/port',
-    name: 'network-port',
-    component: () => import('@/views/NetworkPortView.vue'),
-    meta: { title: '網路設定 - Port', requiresAuth: true }
+    path: '/network/config',
+    name: 'network-config',
+    component: () => import('@/views/NetworkConfigView.vue'),
+    meta: { title: '網路配置', requiresAuth: true }
   },
   {
     path: '/device/info',

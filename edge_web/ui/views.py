@@ -397,8 +397,8 @@ def db_overview(request: HttpRequest):
 
 # --- Network ---
 @_require_auth
-def network_ip(request):
-    """顯示目前的網路介面與 IP 資訊。"""
+def network_config(request):
+    """顯示網路介面資訊並提供前端網路配置頁面 initial state。"""
 
     ip_address = "N/A"
     netmask = "N/A"
@@ -433,7 +433,7 @@ def network_ip(request):
             "dns": dns,
         }
     }
-    return render(request, "ui/network_ip.html", {"initial_state": initial_state})
+    return render(request, "ui/network_config.html", {"initial_state": initial_state})
 
 
 @_require_auth
@@ -612,13 +612,6 @@ def api_user_remove(request: HttpRequest):
         metadata={"email": email},
     )
     return JsonResponse({"status": "ok"})
-
-
-@_require_auth
-def network_port(request):
-    """顯示埠號資訊頁面，預留未來擴充。"""
-
-    return render(request, "ui/network_port.html", {"port": 8000})
 
 
 # --- 裝置 ---
