@@ -13,27 +13,17 @@ from collections.abc import Coroutine
 from ipaddress import IPv4Address, IPv6Address, IPv4Network, ip_address, ip_network
 from typing import Any, Dict, Optional
 from urllib.parse import quote
-def _current_ipv4_network() -> IPv4Network | None:
-    """取出預設介面的 IPv4 網段（如 192.168.1.0/24）。失敗回傳 None。"""
-    try:
-        gws = netifaces.gateways()
-        if 'default' not in gws or netifaces.AF_INET not in gws['default']:
-            return None
-        iface = gws['default'][netifaces.AF_INET][1]
-        addrs = netifaces.ifaddresses(iface)
-        ip_info = addrs.get(netifaces.AF_INET, [{}])[0]
-        addr = ip_info.get('addr')
-        netmask = ip_info.get('netmask')
-        if not addr or not netmask:
-            return None
-        # 允許 non-strict，避免 netmask 與位址不完全吻合時拋例外
-        return ip_network(f"{addr}/{netmask}", strict=False)  # type: ignore[return-value]
-    except Exception:
-        return None
 
-import netifaces
+try:
+    import netifaces  # type: ignore[import]
+except ImportError:  # pragma: no cover - optional dependency
+    netifaces = None  # type: ignore[assignment]
+
 import psutil
-import qrcode
+try:
+    import qrcode  # type: ignore[import]
+except ImportError:  # pragma: no cover - optional dependency
+    qrcode = None  # type: ignore[assignment]
 import requests
 from django.conf import settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
@@ -106,6 +96,46 @@ def _registration_success(status_code: int, data: Any, expected_edge_id: str) ->
     return True
 
 logger = logging.getLogger(__name__)
+QRCODE_AVAILABLE = qrcode is not None
+
+
+def _current_ipv4_network() -> IPv4Network | None:
+    """取出預設介面的 IPv4 網段（如 192.168.1.0/24）。失敗回傳 None。"""
+
+    if netifaces is None:
+        return None
+
+    try:
+        gws = netifaces.gateways()
+        if 'default' not in gws or netifaces.AF_INET not in gws['default']:
+            return None
+        iface = gws['default'][netifaces.AF_INET][1]
+        addrs = netifaces.ifaddresses(iface)
+        ip_info = addrs.get(netifaces.AF_INET, [{}])[0]
+        addr = ip_info.get('addr')
+        netmask = ip_info.get('netmask')
+        if not addr or not netmask:
+            return None
+        # 允許 non-strict，避免 netmask 與位址不完全吻合時拋例外
+        return ip_network(f"{addr}/{netmask}", strict=False)  # type: ignore[return-value]
+    except Exception:
+        return None
+
+
+def _read_nameservers() -> list[str]:
+    """解析 /etc/resolv.conf 取得 nameserver 列表。"""
+
+    dns = []
+    try:
+        with open("/etc/resolv.conf") as f:
+            for line in f:
+                if line.startswith("nameserver"):
+                    dns.append(line.split()[1])
+    except FileNotFoundError:
+        return dns
+    except OSError as exc:  # pragma: no cover - best effort telemetry
+        logger.debug("Failed to parse /etc/resolv.conf: %s", exc)
+    return dns
 
 
 def _normalize_fall_sensitivity(value: Any, default: int = 70) -> int:
@@ -140,26 +170,29 @@ def _build_device_snapshot() -> dict[str, Any]:
     payload_dict = {"serial": serial, "password": password, "name": name}
     payload = json.dumps(payload_dict, ensure_ascii=False, separators=(",", ":"))
 
-    qrcode_data: str | None
-    try:
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_M,
-            box_size=8,
-            border=2,
-        )
-        qr.add_data(payload)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
+    qrcode_data: str | None = None
+    if not QRCODE_AVAILABLE or qrcode is None:
+        logger.warning("QR generation skipped because qrcode module is unavailable.")
+    else:
+        try:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_M,
+                box_size=8,
+                border=2,
+            )
+            qr.add_data(payload)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="black", back_color="white")
 
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        buf.seek(0)
-        b64 = base64.b64encode(buf.read()).decode("ascii")
-        qrcode_data = f"data:image/png;base64,{b64}"
-    except Exception as e:  # pragma: no cover - 資料夾缺少 qrcode 依賴時容錯
-        qrcode_data = None
-        logger.warning("QR generation error: %s", e)
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            buf.seek(0)
+            b64 = base64.b64encode(buf.read()).decode("ascii")
+            qrcode_data = f"data:image/png;base64,{b64}"
+        except Exception as e:  # pragma: no cover - 資料夾缺少 qrcode 依賴時容錯
+            qrcode_data = None
+            logger.warning("QR generation error: %s", e)
 
     return {
         "serial": serial,
@@ -370,31 +403,27 @@ def network_ip(request):
     ip_address = "N/A"
     netmask = "N/A"
     gateway = "N/A"
-    dns = []
+    dns = _read_nameservers()
 
-    try:
-        # 取預設網路介面（通常是 eth0 或 wlan0）
-        gws = netifaces.gateways()
-        default_iface = (
-            gws['default'][netifaces.AF_INET][1]
-            if 'default' in gws and netifaces.AF_INET in gws['default']
-            else None
-        )
+    if netifaces is None:
+        logger.warning("netifaces not installed; network info limited to DNS entries.")
+    else:
+        try:
+            gws = netifaces.gateways()
+            default_iface = (
+                gws['default'][netifaces.AF_INET][1]
+                if 'default' in gws and netifaces.AF_INET in gws['default']
+                else None
+            )
 
-        if default_iface:
-            addrs = netifaces.ifaddresses(default_iface)
-            ip_info = addrs.get(netifaces.AF_INET, [{}])[0]
-            ip_address = ip_info.get('addr', "N/A")
-            netmask = ip_info.get('netmask', "N/A")
-            gateway = gws['default'][netifaces.AF_INET][0]
-
-        # 取 DNS
-        with open("/etc/resolv.conf") as f:
-            for line in f:
-                if line.startswith("nameserver"):
-                    dns.append(line.split()[1])
-    except Exception as e:
-        print("Network info error:", e)
+            if default_iface:
+                addrs = netifaces.ifaddresses(default_iface)
+                ip_info = addrs.get(netifaces.AF_INET, [{}])[0]
+                ip_address = ip_info.get('addr', "N/A")
+                netmask = ip_info.get('netmask', "N/A")
+                gateway = gws['default'][netifaces.AF_INET][0]
+        except Exception as exc:  # noqa: BLE001 - operational telemetry
+            logger.warning("Network info error: %s", exc)
 
     initial_state = {
         "network": {
@@ -457,25 +486,24 @@ def api_network_ip(request: HttpRequest):
     ip_address = "N/A"
     netmask = "N/A"
     gateway = "N/A"
-    dns = []
+    dns = _read_nameservers()
     iface = None
-    try:
-        gws = netifaces.gateways()
-        if 'default' in gws and netifaces.AF_INET in gws['default']:
-            gateway = gws['default'][netifaces.AF_INET][0]
-            iface = gws['default'][netifaces.AF_INET][1]
-        if iface:
-            addrs = netifaces.ifaddresses(iface)
-            ip_info = addrs.get(netifaces.AF_INET, [{}])[0]
-            ip_address = ip_info.get('addr', "N/A")
-            netmask = ip_info.get('netmask', "N/A")
-        # DNS
-        with open("/etc/resolv.conf") as f:
-            for line in f:
-                if line.startswith("nameserver"):
-                    dns.append(line.split()[1])
-    except Exception as e:
-        print("Network info API error:", e)
+
+    if netifaces is None:
+        logger.warning("netifaces not installed; api_network_ip responding with defaults.")
+    else:
+        try:
+            gws = netifaces.gateways()
+            if 'default' in gws and netifaces.AF_INET in gws['default']:
+                gateway = gws['default'][netifaces.AF_INET][0]
+                iface = gws['default'][netifaces.AF_INET][1]
+            if iface:
+                addrs = netifaces.ifaddresses(iface)
+                ip_info = addrs.get(netifaces.AF_INET, [{}])[0]
+                ip_address = ip_info.get('addr', "N/A")
+                netmask = ip_info.get('netmask', "N/A")
+        except Exception as exc:  # noqa: BLE001 - operational telemetry
+            logger.warning("Network info API error: %s", exc)
 
     return JsonResponse({
         "iface": iface or "N/A",
@@ -760,6 +788,13 @@ def api_device_info(request: HttpRequest):
 @require_http_methods(["GET"])
 def device_qr(request: HttpRequest):
     """產生裝置資訊（JSON 格式）的 QR Code 影像。"""
+
+    if not QRCODE_AVAILABLE or qrcode is None:
+        return HttpResponse(
+            "QR code generator not installed.",
+            status=503,
+            content_type="text/plain",
+        )
 
     serial = "12345678"
     password = "12345678"
