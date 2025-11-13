@@ -9,7 +9,7 @@
           role="alert"
           aria-live="assertive"
         >
-          <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center justify-between gap-3">
             <div>
               <p class="text-sm font-medium text-white">{{ toast.message }}</p>
             </div>
@@ -38,11 +38,15 @@ const toasts = toastQueue;
 
 // 根據通知種類回傳對應底色樣式
 const toastClass = (variant: 'success' | 'danger' | 'info' = 'info') => {
-  const base = 'w-full rounded-2xl px-4 py-3 shadow-elev-lg backdrop-blur-md text-white';
+  /**
+   * Tailwind 無法為以 CSS variables 定義的色票生成 `/90` 透明度類別，
+   * 造成淺色主題下背景幾乎透明。改用實色搭配 `bg-opacity-90` 確保對比。
+   */
+  const base = 'w-full rounded-2xl px-4 py-3 shadow-elev-lg backdrop-blur-md text-white bg-opacity-90';
   const map = {
-    info: 'bg-brand-600/90',
-    success: 'bg-success/90',
-    danger: 'bg-danger/90'
+    info: 'bg-brand-600',
+    success: 'bg-success',
+    danger: 'bg-danger'
   };
   return `${base} ${map[variant]}`;
 };
