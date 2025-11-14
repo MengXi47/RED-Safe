@@ -72,8 +72,14 @@ class AppConfig:
         mosaic_fps = float(os.getenv("MOSAIC_FPS", "5.0"))
         webrtc_host = os.getenv("WEBRTC_HOST", "0.0.0.0")
         webrtc_port = int(os.getenv("WEBRTC_PORT", "8765"))
-        fall_event_endpoint = os.getenv("FALL_EVENT_ENDPOINT", "https://api.redsafe-tw.com/edge/event/fall")
-        fall_event_enabled = os.getenv("FALL_EVENT_ENABLED", "1").lower() in {"1", "true", "yes"}
+        fall_event_endpoint = os.getenv(
+            "FALL_EVENT_ENDPOINT", "https://api.redsafe-tw.com/edge/event/fall"
+        )
+        fall_event_enabled = os.getenv("FALL_EVENT_ENABLED", "1").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
         fall_event_timeout = float(os.getenv("FALL_EVENT_TIMEOUT", "5.0"))
         fall_event_cooldown = float(os.getenv("FALL_EVENT_COOLDOWN", "30.0"))
         fall_event_location = os.getenv("FALL_EVENT_LOCATION", "")
@@ -81,7 +87,7 @@ class AppConfig:
         db = DatabaseConfig(
             host=os.getenv("PGHOST", "localhost"),
             port=int(os.getenv("PGPORT", "5432")),
-            name=os.getenv("PGDATABASE", "postgres"),
+            name=os.getenv("PGDATABASE", "redsafedb"),
             user=os.getenv("PGUSER", "redsafedb"),
             password=os.getenv("PGPASSWORD", "redsafedb"),
             connect_timeout=int(os.getenv("PGCONNECT_TIMEOUT", "5")),
