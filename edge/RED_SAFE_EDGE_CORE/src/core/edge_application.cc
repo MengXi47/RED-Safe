@@ -3,9 +3,11 @@
 #include "grpc/ip_resolver.hpp"
 #include "util/logging.hpp"
 
+#include <boost/asio/co_spawn.hpp>
 #include <csignal>
 #include <memory>
-#include <boost/asio/co_spawn.hpp>
+#include <thread>
+#include <chrono>
 
 // 封裝 Edge 應用程式的主要協調邏輯
 EdgeApplication::EdgeApplication(
@@ -38,9 +40,11 @@ int EdgeApplication::Run() {
     }
   }
 
-  if (!online_service_.ReportOnline(config_)) {
-    LogError("Edge 上線流程失敗，結束程式");
-    return EXIT_FAILURE;
+  constexpr std::chrono::seconds kOnlineRetryDelay{3};
+  while (!online_service_.ReportOnline(config_)) {
+    LogWarnFormat(
+        "Edge 上線流程失敗，{} 秒後重新嘗試", kOnlineRetryDelay.count());
+    std::this_thread::sleep_for(kOnlineRetryDelay);
   }
 
   try {
