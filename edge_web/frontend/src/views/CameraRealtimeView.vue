@@ -56,7 +56,7 @@ import { useUiStore } from '@/store/ui';
 
 /**
   * 組件用途：與 Edge 上的 WebRTC signaling server 建立連線，播放 Mosaic 影像。
-  * 輸入參數：無，Endpoint 透過 VITE_FALL_WEBRTC_URL 或預設 /webrtc/offer。
+  * 輸入參數：無，Endpoint 透過 VITE_FALL_WEBRTC_URL 或預設為目前主機的 8765 埠 /webrtc/offer。
   * 與其他模組關聯：依賴 uiStore 顯示通知，並使用 BaseCard/BaseButton 呈現操作。
   */
 
@@ -72,7 +72,25 @@ const playerMetrics = ref({ width: 0, height: 0 });
 const videoFitMode = ref<'contain' | 'cover'>('contain');
 let resizeObserver: ResizeObserver | null = null;
 
-const signalingUrl = 'http://127.0.0.1:8765/webrtc/offer';
+const resolveSignalingUrl = (): string => {
+  const configuredUrl = (import.meta.env.VITE_FALL_WEBRTC_URL ?? '').trim();
+  if (configuredUrl) {
+    return configuredUrl;
+  }
+
+  if (typeof window === 'undefined') {
+    return 'http://127.0.0.1:8765/webrtc/offer';
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
+  const host = window.location.hostname || '127.0.0.1';
+  const envPort = (import.meta.env.VITE_FALL_WEBRTC_PORT ?? '').trim();
+  const port = envPort || '8765';
+  const portSegment = port ? `:${port}` : '';
+  return `${protocol}://${host}${portSegment}/webrtc/offer`;
+};
+
+const signalingUrl = resolveSignalingUrl();
 
 const statusHint = computed(() => {
   switch (lastKnownState.value) {

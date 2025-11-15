@@ -149,14 +149,36 @@ void MqttWorkflow::HandleCommandTimeout(const boost::system::error_code& ec) {
   }
 
   LogWarn("指令心跳超時 60 秒，嘗試重新送出上線請求");
+  AttemptOnlineRecovery();
+}
+
+void MqttWorkflow::AttemptOnlineRecovery() {
   if (online_service_.ReportOnline(config_)) {
     LogInfo("重新送出上線請求成功");
-  } else {
-    LogWarn("重新送出上線請求失敗");
-    LogError("重新上線失敗，準備終止程式");
-    std::terminate();
+    ResetCommandKeepalive();
+    return;
   }
-  ResetCommandKeepalive();
+
+  LogWarnFormat(
+      "重新送出上線請求失敗，{} 秒後重新嘗試", online_retry_delay_.count());
+  ScheduleOnlineRetry();
+}
+
+void MqttWorkflow::ScheduleOnlineRetry() {
+  try {
+    command_keepalive_timer_.cancel();
+  } catch (const boost::system::system_error&) {
+    // Ignore cancellation errors when timer not pending.
+  }
+
+  command_keepalive_timer_.expires_after(online_retry_delay_);
+  command_keepalive_timer_.async_wait(
+      [this](const boost::system::error_code& retry_ec) {
+        if (retry_ec == boost::asio::error::operation_aborted) {
+          return;
+        }
+        AttemptOnlineRecovery();
+      });
 }
 
 // 建立各類指令處理器並掛入分派表

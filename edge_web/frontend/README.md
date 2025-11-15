@@ -27,8 +27,9 @@ The dev server defaults to `http://localhost:5173`. In Django, set `VITE_DEV_SER
 
 ### WebRTC Signaling Endpoint
 
-- 即時顯示頁面目前寫死向 `http://127.0.0.1:8765/webrtc/offer` 發送 WebRTC offer。若部署環境需要不同
-  主機或埠號，請記得調整 `src/views/CameraRealtimeView.vue` 內的 `signalingUrl` 常數並重新建置前端。
+- 即時顯示頁面會優先讀取 `VITE_FALL_WEBRTC_URL` 指向 signaling server。若未設定，則改用當前瀏覽器
+  所在主機（`window.location.hostname`）的 `8765` 埠並發送到 `/webrtc/offer`，可透過 `VITE_FALL_WEBRTC_PORT`
+  覆寫預設埠號。調整 `.env` 後重新建置即可。
 
 ## Production Build
 

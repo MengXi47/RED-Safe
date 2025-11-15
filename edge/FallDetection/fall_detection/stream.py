@@ -9,7 +9,7 @@ import os
 import threading
 import time
 from datetime import datetime, timezone
-from typing import Dict, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, Iterator, Optional, Tuple, TYPE_CHECKING
 
 import cv2
 import numpy as np
@@ -161,12 +161,16 @@ class StreamWorker:
         self.stream = stream
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
+        self._generator_lock = threading.Lock()
+        self._active_generator: Optional[Iterator["Results"]] = None
         self._frame_hub = frame_hub
+        self._model: YOLO | None = None
         self._fall_overlay_until = 0.0
         self._event_reporter = FallEventReporter(app_config)
         self._last_report_ts = 0.0
 
     def start(self) -> None:
+        """啟動專屬執行緒，建立串流推論迴圈。"""
         if self._thread and self._thread.is_alive():
             return
         LOGGER.info("Starting stream worker for %s", self.stream.stream_url)
@@ -175,7 +179,9 @@ class StreamWorker:
         self._thread.start()
 
     def stop(self) -> None:
+        """將停止事件設為 True 並確保資源被釋放。"""
         self._stop_event.set()
+        self._close_active_generator()
         if self._thread:
             self._thread.join(timeout=2.0)
         LOGGER.info("Stopped stream worker for %s", self.stream.stream_url)
@@ -186,13 +192,40 @@ class StreamWorker:
             self._frame_hub.remove(self.stream.stream_url)
         self.stream = stream
 
+    def _close_active_generator(self) -> None:
+        """關閉目前的 YOLO 追蹤產生器，避免持續抓取影格。"""
+        with self._generator_lock:
+            generator = self._active_generator
+            self._active_generator = None
+        if generator and hasattr(generator, "close"):
+            with contextlib.suppress(Exception):
+                generator.close()
+        self._close_predictor_dataset()
+
+    def _close_predictor_dataset(self) -> None:
+        """釋放 Ultralytics 內部的資料來源，確實斷開 RTSP。"""
+        model = self._model
+        if not model:
+            return
+        predictor = getattr(model, "predictor", None)
+        dataset = getattr(predictor, "dataset", None)
+        if dataset and hasattr(dataset, "close"):
+            with contextlib.suppress(Exception):
+                dataset.close()
+            try:
+                predictor.dataset = None  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
     def _run(self) -> None:
+        """主要執行迴圈，負責連線、推論與重試邏輯。"""
         timeout_us = int(self.app_config.stream_connect_timeout * 1_000_000)
         desired_options = f"rtsp_transport;tcp|stimeout;{timeout_us}"
         os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = desired_options
 
         try:
             model = YOLO(self.app_config.model_path)
+            self._model = model
         except Exception as exc:
             LOGGER.exception(
                 "Failed to load YOLO model for %s: %s",
@@ -218,6 +251,7 @@ class StreamWorker:
             last_box_by_id: Dict[int, Tuple[float, int]] = {}
             last_tilt_by_id: Dict[int, Tuple[float, int]] = {}
 
+            generator = None
             try:
                 generator = model.track(
                     source=self.stream.stream_url,
@@ -239,6 +273,9 @@ class StreamWorker:
                 ):
                     break
                 continue
+
+            with self._generator_lock:
+                self._active_generator = generator
 
             try:
                 for result in generator:
@@ -375,9 +412,7 @@ class StreamWorker:
                     exc,
                 )
             finally:
-                if hasattr(generator, "close"):
-                    with contextlib.suppress(Exception):
-                        generator.close()
+                self._close_active_generator()
 
             if not self._stop_event.is_set():
                 LOGGER.warning(
@@ -391,6 +426,7 @@ class StreamWorker:
                     break
 
         self._frame_hub.remove(self.stream.stream_url)
+        self._model = None
         LOGGER.info("Stream loop exiting for %s", self.stream.stream_url)
 
     def _probe_stream(self, url: str) -> bool:

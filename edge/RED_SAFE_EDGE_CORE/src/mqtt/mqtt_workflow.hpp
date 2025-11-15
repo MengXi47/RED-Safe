@@ -55,6 +55,8 @@ class MqttWorkflow {
       std::string payload, std::string_view error_context);
   void ResetCommandKeepalive();
   void HandleCommandTimeout(const boost::system::error_code& ec);
+  void AttemptOnlineRecovery();
+  void ScheduleOnlineRetry();
 
   boost::asio::io_context& io_context_;
   mqtt_client& client_;
@@ -65,6 +67,7 @@ class MqttWorkflow {
   std::string data_topic_;
   boost::asio::steady_timer command_keepalive_timer_;
   static constexpr std::chrono::seconds command_keepalive_timeout_{60};
+  static constexpr std::chrono::seconds online_retry_delay_{3};
   std::unordered_map<std::string, std::unique_ptr<ICommandHandler>> handlers_;
   std::unique_ptr<UnsupportedCommandHandler> unsupported_handler_holder_;
   UnsupportedCommandHandler* unsupported_handler_{nullptr};
