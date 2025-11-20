@@ -1,0 +1,4 @@
+{% extends "ui/base.html" %}
+{% block initial_state %}
+  {{ initial_state|json_script:"edge-initial-state" }}
+{% endblock %}

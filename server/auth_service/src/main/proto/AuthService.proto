@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package auth;
+
+option java_multiple_files = true;
+option java_package = "com.grpc.auth";
+option java_generic_services = true;
+
+service AuthService {
+  rpc CheckAccessToken(accesstokenchkRequset) returns (accesstokenchkResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+  rpc GetUserSecurityProfile(UserSecurityProfileRequest) returns (UserSecurityProfileResponse);
+}
+
+message accesstokenchkRequset {
+  string accesstoken = 1;
+}
+
+message accesstokenchkResponse {
+  bool chk = 1;
+  string user_id = 2;
+}
+
+message ChangePasswordRequest {
+  string user_id = 1;
+  string current_password = 2;
+  string new_password = 3;
+}
+
+message ChangePasswordResponse {
+  bool success = 1;
+  string error_code = 2;
+}
+
+message UserSecurityProfileRequest {
+  string user_id = 1;
+}
+
+message UserSecurityProfileResponse {
+  bool otp_enabled = 1;
+  string last_login_at = 2;
+  bool email_verified = 3;
+}

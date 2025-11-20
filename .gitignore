@@ -1,0 +1,42 @@
+# macOS 隱藏檔
+.DS_Store
+node_modules/
+edge/web/static/frontend/
+edge/web/staticfiles/
+
+# 忽略所有 build 目錄
+build/
+_build/
+
+
+#
+cmake-build-debug/
+cmake-build-release/
+
+#
+.idea/
+
+test/
+
+venv/
+.venv/
+
+data/
+
+*.tar.gz
+
+.vscode
+
+.cache/
+
+CMakePresets.json
+
+# Xcode user data
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+xcschemamanagement.plist
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>長者安全即時通報系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <!-- 引入 CSS -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- ===== Sign In / Sign Up 彈窗元件 ===== -->
+  <div class="sign-header">
+    <span class="sign-mark" id="goTopBtn" style="cursor:pointer;">
+      <img src="assets/icons/elder-icon.png" alt="logo" class="sign-icon"draggable="false">
+    </span>
+    <div class="button-group" id="userMenu">
+    <button class="about-btn">介紹</button>
+    <!-- 未登入時 -->
+    <button id="signBtn" class="sign-btn">Sign In / Sign Up</button>
+    <!-- 已登入時 -->
+    <div class="dropdown">
+      <button class="dropbtn user-name">👤 管理員</button>
+      <div class="dropdown-content">
+        <a href="#">會員專區</a>
+        <a href="#" id="logoutBtn">登出</a>
+      </div>
+    </div>
+  </div>
+  </div>
+
+
+  <div id="signModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeModal">&times;</span>
+      <div class="tab-group">
+        <button class="tab active" id="loginTab">登入</button>
+        <button class="tab" id="signupTab">註冊</button>
+      </div>
+      <div class="form-container">
+        <!-- 登入表單 -->
+        <form id="loginForm" class="form active" autocomplete="off">
+          <input type="email" placeholder="Email" required>
+          <input type="password" placeholder="密碼" required>
+          <button type="submit">登入</button>
+          <div class="note">請輸入您的 Email 及密碼進行登入。</div>
+        </form>
+        <!-- 註冊表單 -->
+        <form id="registerForm" class="form" autocomplete="off">
+          <input type="email" placeholder="Email" required>
+          <input type="text" placeholder="使用者名稱" required>
+          <input type="password" placeholder="密碼" required>
+          <input type="password" placeholder="確認密碼" required>
+          <button type="submit">註冊</button>
+          <div class="note">請填寫完整資訊以註冊新帳號。</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <!-- ===== 英雄區塊（首頁大圖和標題） ===== -->
+    <section class="hero" id="hero">
+      <div class="hero-inner">
+        <img src="assets/icons/elder-icon.png" alt="Elder Alert Icon" class="fade-element"draggable="false">
+        <h1 class="fade-element">長者安全即時通報系統</h1>
+        <p class="fade-element">讓每一次跌倒都能即時獲救，守護長者的黃金時刻</p>
+      </div>
+    </section>
+
+    <!-- ===== 流程區塊，橫向排列 ===== -->
+    <section class="scroll-section" id="flow">
+      <div class="flow-item fade-element">
+        <img src="assets/icons/live-video.png" alt="即時影像"draggable="false" />
+        <p>即時影像</p>
+      </div>
+      <div class="arrow fade-element">➜</div>
+      <div class="flow-item fade-element">
+        <img src="assets/icons/edge-analysis.png" alt="邊緣分析"draggable="false" />
+        <p>邊緣分析</p>
+      </div>
+      <div class="arrow fade-element">➜</div>
+      <div class="flow-item fade-element">
+        <img src="assets/icons/ai-judgment.png" alt="AI 判斷"draggable="false" />
+        <p>AI 判斷</p>
+      </div>
+    </section>
+
+    <!-- ===== 偵測警示區塊 ===== -->
+    <section class="scroll-section" id="alert">
+      <div class="phone-sim fade-element">
+        <p>偵測跌倒！</p>
+        <button>您是否安全？</button>
+      </div>
+    </section>
+
+    <!-- ===== 三個核心價值卡片區塊 ===== -->
+    <section class="scroll-section" id="value">
+      <div class="card fade-element">✅ 即時警示</div>
+      <div class="card fade-element">🔒 資安保障</div>
+      <div class="card fade-element">📈 數據驅動</div>
+    </section>
+
+    <!-- ===== 頁尾區塊 ===== -->
+    <footer class="footer fade-element">
+      <p>RED-Safe</p>
+    </footer>
+  </main>
+
+  <!-- ===== 引入 JavaScript ===== -->
+  <script src="js/scroll.js" type="module"></script>
+  <script src="js/sign.js"></script>
+  <script src="js/usermenu.js"></script>
+  <script>
+    // 頁面第一次載入時自動刷新一次，避免無限重載
+    if (!sessionStorage.getItem('reloaded')) {
+      sessionStorage.setItem('reloaded', 'yes');
+      window.location.reload();
+    }
+  </script>
+  <script>
+    // 每次載入自動滾到 hero 區
+    window.addEventListener('DOMContentLoaded', () => {
+      const hero = document.getElementById('hero');
+      if (hero) {
+        hero.scrollIntoView({ behavior: 'auto' });
+      }
+    });
+  </script>
+</body>
+</html>

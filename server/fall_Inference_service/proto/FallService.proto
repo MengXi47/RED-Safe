@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package fallinference;
+
+message FallInferenceRequest {
+  // 平坦化之 9 維特徵，例如 [a1, r1, h1, a2, r2, h2, a3, r3, h3]
+  repeated float features = 1;
+}
+
+message FallInferenceResponse {
+  // 模型推論的跌倒機率（百分比）
+  double probability = 1;
+}
+
+service FallInferenceService {
+  rpc InferFallProbability (FallInferenceRequest) returns (FallInferenceResponse);
+}

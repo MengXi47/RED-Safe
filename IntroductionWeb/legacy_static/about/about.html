@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>RED-Safe 產品介紹</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="sign-header">
+    <span class="sign-mark" id="goTopBtn" style="cursor:pointer;">
+      <img src="../assets/icons/elder-icon.png" alt="logo" class="sign-icon" draggable="false">
+    </span>
+    <div class="button-group" id="userMenu">
+      <button class="about-btn">介紹</button>
+      <!-- 未登入時 -->
+      <button id="signBtn" class="sign-btn">Sign In / Sign Up</button>
+      <!-- 已登入時 -->
+      <div class="dropdown">
+        <button class="dropbtn user-name">👤 管理員</button>
+        <div class="dropdown-content">
+          <a href="#">會員專區</a>
+          <a href="#" id="logoutBtn">登出</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div id="signModal" class="modal">
+    <div class="modal-content">
+      <span class="close" id="closeModal">&times;</span>
+      <div class="tab-group">
+        <button class="tab active" id="loginTab">登入</button>
+        <button class="tab" id="signupTab">註冊</button>
+      </div>
+      <div class="form-container">
+        <!-- 登入表單 -->
+        <form id="loginForm" class="form active" autocomplete="off">
+          <input type="email" placeholder="Email" required>
+          <input type="password" placeholder="密碼" required>
+          <button type="submit">登入</button>
+          <div class="note">請輸入您的 Email 及密碼進行登入。</div>
+        </form>
+        <!-- 註冊表單 -->
+        <form id="registerForm" class="form" autocomplete="off">
+          <input type="email" placeholder="Email" required>
+          <input type="text" placeholder="使用者名稱" required>
+          <input type="password" placeholder="密碼" required>
+          <input type="password" placeholder="確認密碼" required>
+          <button type="submit">註冊</button>
+          <div class="note">請填寫完整資訊以註冊新帳號。</div>
+        </form>
+      </div>
+    </div>
+  </div>
+  
+
+  <main>
+    <!-- 英雄區塊 -->
+    <section class="hero" id="hero">
+      <div class="hero-inner">
+        <img src="../assets/icons/elder-icon.png" alt="Elder Alert Icon" class="fade-element" draggable="false">
+        <h1 class="fade-element">RED-Safe 長者安全即時通報系統</h1>
+        <p class="fade-element">守護長者黃金時刻，讓科技成為最安心的陪伴</p>
+      </div>
+    </section>
+
+    <!-- 商品介紹卡片區塊 -->
+    <section class="scroll-section" id="about-intro">
+      <div class="about-card fade-element">
+        <h2>產品簡介</h2>
+        <p>
+          RED-Safe 結合邊緣運算與 AI 深度學習，透過攝影機與本地分析設備，能即時偵測跌倒等高風險事件，第一時間發送警示給家屬或照護人員，必要時自動通報，為長者打造全方位安全守護網。
+        </p>
+      </div>
+      <div class="about-card fade-element">
+        <h2>核心價值</h2>
+        <ul>
+          <li>✅ 即時警示：即時跌倒偵測，爭取救援黃金期</li>
+          <li>🔒 資安保障：影像本地分析，僅傳送事件結果</li>
+          <li>📈 數據驅動：活動數據分析，預防風險</li>
+          <li>🤝 減輕照護負擔：24 小時自動監控</li>
+          <li>🔗 多元整合：可串接智慧家庭/醫療/保險平台</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 應用場景圖片區塊 -->
+    <section class="scroll-section about-img-row" id="about-imgs">
+      <img src="png/owzqpshggwfzql71ngre.png" alt="長者居家安全情境" class="fade-element"draggable="false">
+      <img src="png/oofdjghl18qpikuy5c64.png" alt="AI 影像分析示意" class="fade-element"draggable="false">
+      <img src="png/nzjtzvdsl7im5gbrxk7f.png" alt="即時通報 App" class="fade-element"draggable="false"body style="background-color: #0b0c10;">
+    </section>
+
+    <!-- 技術亮點與市場機會 -->
+    <section class="scroll-section" id="about-tech">
+      <div class="about-card fade-element">
+        <h2>技術亮點</h2>
+        <ul>
+          <li>🌟 AI 跌倒偵測準確率高達 90%</li>
+          <li>⚡ 即時反應，延遲低於 3 秒</li>
+          <li>🛡️ 邊緣運算架構，資料不出門</li>
+          <li>📱 App 即時互動</li>
+        </ul>
+      </div>
+      <div class="about-card fade-element">
+        <h2>市場機會</h2>
+        <ul>
+          <li>高齡化社會，長者安全需求快速成長</li>
+          <li>政府與醫療機構推動智慧照護</li>
+          <li>可拓展至健康管理、遠距醫療等多元場域</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <!-- 頁尾 -->
+  <footer class="footer fade-element">
+    <p>RED-Safe</p>
+  </footer>
+
+  <script src="script.js"></script>
+  <script src="../js/sign.js"></script>
+  <script src="../js/usermenu.js"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+
+    environment {
+        SERVICE_DIR     = 'server/user_service'
+        IMAGE_NAME      = 'user-service:latest'
+        CONTAINER_NAME  = 'user-service'
+        DOCKERFILE_PATH = 'Dockerfile'
+    }
+
+    options {
+        timestamps()
+    }
+
+    stages {
+        stage('Preparation') {
+            steps {
+                script {
+                    env.SERVICE_DIR = fileExists('server/user_service/pom.xml') ? 'server/user_service' : 'user_service'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            when {
+                beforeAgent true
+                changeset "server/user_service/**"
+            }
+            steps {
+                dir(env.SERVICE_DIR) {
+                    sh 'chmod +x mvnw'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            when {
+                beforeAgent true
+                changeset "server/user_service/**"
+            }
+            steps {
+                dir(env.SERVICE_DIR) {
+                    sh "docker build -t ${IMAGE_NAME} -f ${DOCKERFILE_PATH} ."
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                beforeAgent true
+                changeset "server/user_service/**"
+            }
+            steps {
+                dir(env.SERVICE_DIR) {
+                    sh "docker container rm -f ${CONTAINER_NAME} || true"
+                    sh "docker run -d --name ${CONTAINER_NAME} --network host --restart unless-stopped ${IMAGE_NAME}"
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            when {
+                beforeAgent true
+                changeset "server/user_service/**"
+            }
+            steps {
+                sh 'docker image prune -f'
+            }
+        }
+    }
+}

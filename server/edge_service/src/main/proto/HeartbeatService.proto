@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package heartbeat;
+
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "com.grpc.heartbeat";
+option java_generic_services = true;
+
+service HeartbeatService {
+  rpc RegisterEdgeHeartbeat (RegisterEdgeHeartbeatRequest) returns (google.protobuf.Empty);
+}
+
+message RegisterEdgeHeartbeatRequest {
+  string edge_id = 1;
+}

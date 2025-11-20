@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package ipcscan.grpc;
+
+service IPCScanService {
+  rpc Scan(ScanRequest) returns (ScanResponse);
+}
+
+message ScanRequest {}
+
+// 回傳json
+message ScanResponse {
+  string result = 1;
+}

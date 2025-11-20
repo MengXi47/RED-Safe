@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package notify;
+
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "com.grpc.notify";
+option java_generic_services = true;
+
+service NotifyService {
+  rpc SendEmailVerifyCode (SendEmailVerifyCodeRequest) returns (google.protobuf.Empty);
+}
+
+message SendEmailVerifyCodeRequest {
+  string to = 1;
+  string code = 2;
+  int32 ttl_minutes = 3;
+}

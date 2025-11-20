@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+
+    environment {
+        SERVICE_DIR     = 'server/ios_service'
+        IMAGE_NAME      = 'ios-service:latest'
+        CONTAINER_NAME  = 'ios-service'
+        DOCKERFILE_PATH = 'dockerfile'
+    }
+
+    options {
+        timestamps()
+    }
+
+    stages {
+        stage('Preparation') {
+            steps {
+                script {
+                    env.SERVICE_DIR = fileExists('server/ios_service/pom.xml') ? 'server/ios_service' : 'ios_service'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            when {
+                beforeAgent true
+                changeset "server/ios_service/**"
+            }
+            steps {
+                dir(env.SERVICE_DIR) {
+                    sh 'chmod +x mvnw'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            when {
+                beforeAgent true
+                changeset "server/ios_service/**"
+            }
+            steps {
+                dir(env.SERVICE_DIR) {
+                    sh "docker build -t ${IMAGE_NAME} -f ${DOCKERFILE_PATH} ."
+                }
+            }
+        }
+
+        stage('Deploy') {
+            when {
+                beforeAgent true
+                changeset "server/ios_service/**"
+            }
+            steps {
+                dir(env.SERVICE_DIR) {
+                    sh "docker container rm -f ${CONTAINER_NAME} || true"
+                    sh "docker run -d --name ${CONTAINER_NAME} --network host --restart unless-stopped ${IMAGE_NAME}"
+                }
+            }
+        }
+
+        stage('Cleanup') {
+            when {
+                beforeAgent true
+                changeset "server/ios_service/**"
+            }
+            steps {
+                sh 'docker image prune -f'
+            }
+        }
+    }
+}

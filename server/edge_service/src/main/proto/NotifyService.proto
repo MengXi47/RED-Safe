@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package notify;
+
+import "google/protobuf/empty.proto";
+
+option java_multiple_files = true;
+option java_package = "com.grpc.notify";
+option java_generic_services = true;
+
+service NotifyService {
+  rpc SendEmailVerifyCode (SendEmailVerifyCodeRequest) returns (google.protobuf.Empty);
+  rpc SendFallAlert (SendFallAlertRequest) returns (google.protobuf.Empty);
+}
+
+message SendEmailVerifyCodeRequest {
+  string to = 1;
+  string code = 2;
+  int32 ttl_minutes = 3;
+}
+
+message SendFallAlertRequest {
+  string to = 1;
+  string edge_id = 2;
+  string ip_address = 3;
+  string ipc_name = 4;
+  string event_time = 5;
+  string location = 6;
+  bytes snapshot = 7;
+  string snapshot_mime_type = 8;
+}

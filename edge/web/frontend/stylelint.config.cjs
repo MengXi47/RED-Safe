@@ -1,0 +1,7 @@
+module.exports = {
+  extends: ["stylelint-config-standard"],
+  rules: {
+    "selector-class-pattern": null
+  },
+  ignoreFiles: ["**/node_modules/**", "**/dist/**"]
+};
